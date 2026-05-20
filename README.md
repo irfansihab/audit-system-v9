@@ -377,6 +377,38 @@ Agen baca state dari sini setiap run. Tidak ada caching cross-penugasan.
 
 ---
 
+## Chat History — Persistence Antar Sesi
+
+Setiap kali Anda jalankan agen lewat tab Chat AT atau Chat KT, **percakapan otomatis tersimpan di database**. Saat logout/login lagi atau buka penugasan di hari berikutnya, history percakapan tampil utuh — tidak perlu mulai dari nol.
+
+### Apa yang tersimpan
+
+Per run, di tabel `agent_runs`:
+- `input_summary` — prompt user (max 500 char)
+- `output_summary` — respons agen (max 2000 char)
+- `tool_calls` (JSON) — daftar tool yang dipanggil + arguments
+- `status` — `completed` / `failed` / `running`
+- `started_at` + `ended_at` — timestamps
+- `error_message` — kalau gagal
+
+### Cara akses
+
+Backend endpoint: `GET /agen/{name}/history?penugasan_id=X`  
+Frontend: ChatTab auto-load saat mount, render sebagai threaded conversation (prompt → response → audit trail collapsible).
+
+Tombol **"↻ Refresh history"** di ChatTab untuk force re-fetch.
+
+### Isolasi
+
+History di-filter per kombinasi `(penugasan_id, agent_name)`:
+- Chat AT penugasan 1 ≠ Chat AT penugasan 2 (terpisah)
+- Chat AT ≠ Chat KT (per agent)
+- History antar user tidak terlihat di list yang sama (tapi semua user dengan akses penugasan bisa lihat) — desain prototype, untuk produksi bisa di-filter per `user_id`
+
+Implementasi: `backend/app/routes/agen.py` (endpoint) + `frontend/app/penugasan/[id]/page.tsx` (ChatTab).
+
+---
+
 ## Wiki / Pattern Library
 
 Folder `wiki/` adalah **knowledge base auditor** yang dapat diakses agen saat menjalankan reviu. Sekarang berisi `temuan-patterns/{skill}/`. Pattern adalah "rumus" temuan yang sudah teruji — judul baku, kriteria peraturan, bukti yang harus dicari, format penulisan, dan rekomendasi standar.
@@ -504,34 +536,37 @@ Plus jebakan minor:
 
 ### Tier 1 — pipeline core (paling impact)
 
-- [ ] **Alur Ketua Tim end-to-end.** Saat ini sasaran-assignment.json + context.md tujuan/tim harus diisi manual. Bangun:
-  - Agen KT yang baca ST/PKP dari `_INGESTED/`, ekstrak sasaran, prompt user untuk konfirmasi
-  - UI tab "Setup Penugasan" untuk Ketua Tim (sebelum tab Chat AT muncul)
+- [x] **Alur Ketua Tim end-to-end.** ✅ done — UI tab "Setup Penugasan" untuk KT dengan editable form sasaran + context.md. Chat KT Mode A bantu draft sasaran via percakapan. KKP approval lewat status `DISETUJUI_KT` di Setup tab.
 - [x] **Apply pola hardening (tools=[], strict prompt) ke 3 agen lain:** Ingestion, KT, QC SAIPI. ✅ done
 - [x] **Agen Ingestion otomatis dipanggil saat upload dokumen.** ✅ done (BackgroundTasks di POST /dokumen)
 - [x] **Wiki / Pattern Library** dapat diakses agen lewat `list_temuan_patterns` + `get_temuan_pattern`. ✅ done — auditor tinggal populate `wiki/temuan-patterns/`.
-- [x] **Feedback loop retrospective** dari agen ke `_FEEDBACK-AGEN/` per penugasan. ✅ done (Phase 1) — Phase 2 dashboard aggregate cross-penugasan masih pending.
+- [x] **Feedback loop retrospective** dari agen ke `_FEEDBACK-AGEN/` per penugasan. ✅ done (Phase 1) — Phase 2 dashboard aggregate cross-penugasan masih pending di Tier 2.
+- [x] **Workflow refactor PT→KT→AT→KT** ✅ done — role gating ketat (PT-only create, AT-only upload, KT-only sasaran), KKP approval mechanism, frontend isolation per penugasan.
+- [x] **Login simplified (no NIP, just role picker)** ✅ done — 3 kartu PT/KT/AT, backend auto-pick user seed.
+- [x] **Chat history persistence** ✅ done — backend `GET /agen/{name}/history`, frontend ChatTab auto-load + threaded conversation render.
 
 ### Tier 2 — UX & robustness
 
 - [ ] **Fix hydration warning di dashboard.** Console menampilkan "Expected server HTML to contain a matching `<main>` in `<body>`". Tidak blocking tapi noise.
 - [ ] **Streaming response agen (SSE) bukan polling.** Route `/agen/{name}/stream` ada tapi UI masih pakai sync POST.
-- [ ] **Persist agent run history per penugasan** — tampilkan di tab "Riwayat" supaya auditor lihat tool trail historis.
 - [ ] **Validation: prevent run kalau sasaran-assignment.json kosong.** Saat ini agen "lapor & berhenti" — bagus, tapi UI tidak kasih indikator visual.
 - [ ] **Dashboard feedback aggregate (Feedback Phase 2).** Scan semua `_FEEDBACK-AGEN/*.json` cross-penugasan → tampilkan top workflow issues + top pattern suggestions + severity heatmap. Format: dedicated route `/feedback` di frontend.
+- [ ] **Notification antar role** saat handover (PT buat penugasan → KT dapat notif; KT setup done → AT dapat notif; AT KKP done → KT dapat notif untuk approve).
 
 ### Tier 3 — deployment & ops
 
-- [ ] **Redeploy ke Fly.io** dengan Dockerfile yang sudah include Node.js + claude-code CLI. Lihat [DEPLOY.md](DEPLOY.md).
-- [ ] **Verifikasi `claude` CLI auth headless di container** (via `ANTHROPIC_API_KEY` env, bukan OAuth).
+- [x] **Redeploy ke Fly.io** dengan Dockerfile yang include Node.js + claude-code CLI + wiki/. ✅ done (lihat [DEPLOY.md](DEPLOY.md))
+- [ ] **Verifikasi `claude` CLI auth headless di container** (via `ANTHROPIC_API_KEY` env, bukan OAuth). Test SSH masuk + `claude --version`.
 - [ ] **Migrate `.env` config approach** — pakai absolute env injection di `config.py` agar tidak butuh symlink.
 - [ ] **Budget alert** di Anthropic Console + Fly Dashboard.
+- [ ] **Populate wiki patterns** — minimal 13 RP + 12 RKA (lihat [ROADMAP.md](ROADMAP.md) W1+W2).
 
 ### Tier 4 — fitur cadangan (tahap-2)
 
-- [ ] Scheduler / CACM integration
+- [ ] CACM integration (lihat [ROADMAP.md](ROADMAP.md) W3 untuk design)
 - [ ] Auto-inject ke INTEGRAL
 - [ ] Multi-tenant (lebih dari Inspektorat II)
+- [ ] Multi-anggota tim per penugasan (saat ini cuma 1 seed AT — perlu lebih banyak user AT)
 - [ ] Migrasi ke PDN — lihat [DEPLOY.md § Migrasi PDN](DEPLOY.md#migrasi-ke-pdn-tahap-2)
 
 ---
@@ -569,11 +604,17 @@ Logika V6 di `backend/v6/` ditandai **read-only** secara konvensional. Agen di-b
 - Output kompatibel V6 (`temuan.json`, `KKP-{anggota}.docx`, `LHR-DRAFT.docx`) supaya tahap-2 (auto-inject INTEGRAL) tinggal pakai output yang sama.
 - Stack: FastAPI + SQLAlchemy async + Postgres + claude-agent-sdk + Next.js 14 + Tailwind.
 - Lisensi: internal Komdigi (belum di-set di repo publik).
+- Production deployed: backend di Fly.io Singapore (`audit-ai-v7.fly.dev`), frontend di Vercel (`audit-ai-v7.vercel.app`). Lihat [DEPLOY.md](DEPLOY.md).
 
 ---
 
 ## Lihat Juga
 
-- [DEPLOY.md](DEPLOY.md) — Panduan deploy ke Fly.io + Vercel
-- `backend/app/prompts/anggota_tim.md` — System prompt agen AT (referensi untuk hardening agen lain)
-- `backend/app/agents/base.py` — Builder pattern + design invariants
+- [DEPLOY.md](DEPLOY.md) — Panduan deploy ke Fly.io + Vercel + troubleshooting
+- [ROADMAP.md](ROADMAP.md) — Desain proyek 4 minggu (wiki populate + CACM integration)
+- [ROADMAP.html](ROADMAP.html) — Versi visual interaktif (Gantt + sequence diagram)
+- [wiki/README.md](wiki/README.md) — Panduan menulis pattern temuan
+- `backend/app/prompts/{anggota_tim,ketua_tim,ingestion,qc_saipi}.md` — System prompts per agen
+- `backend/app/agents/base.py` — Builder pattern + design invariants (`tools=[]`, `disallowed_tools=[...]`)
+- `backend/app/routes/agen.py` — Agent runner + isolation guarantee + chat history endpoint
+- `backend/app/tools/*.py` — MCP tool bridges (V6 + KKP + LHR + Wiki + Feedback)
