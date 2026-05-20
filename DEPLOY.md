@@ -143,7 +143,7 @@ URL akan otomatis: `https://audit-ai-v7.vercel.app` (atau alias custom).
 | Backend health | https://audit-ai-v7.fly.dev/health | `{"status":"ok"}` |
 | Backend Swagger | https://audit-ai-v7.fly.dev/docs | UI muncul |
 | Frontend landing | https://audit-ai-v7.vercel.app | Halaman login |
-| Login | (UI) | Email `auditor.at@komdigi.go.id` + NIP 18 digit |
+| Login | (UI) | Pilih kartu peran (AT/KT/PM) — tidak perlu NIP/password. Prototype only — diganti SSO di production. |
 | Run AI di Chat AT | (UI) | Agen merespon tanpa error "Claude Code not found" |
 
 ---

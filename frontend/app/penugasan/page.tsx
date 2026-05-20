@@ -78,12 +78,18 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex justify-between items-center mb-5">
           <h1 className="text-2xl font-bold text-primary-dark">Penugasan Saya</h1>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 rounded bg-primary text-white text-sm font-semibold hover:bg-primary-dark"
-          >
-            {showForm ? '× Batal' : '+ Penugasan Baru'}
-          </button>
+          {session?.role_aktif === 'PT' ? (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="px-4 py-2 rounded bg-primary text-white text-sm font-semibold hover:bg-primary-dark"
+            >
+              {showForm ? '× Batal' : '+ Penugasan Baru'}
+            </button>
+          ) : (
+            <span className="text-xs text-gray-400 italic">
+              🔒 Hanya Pengendali Teknis yang dapat membuat penugasan
+            </span>
+          )}
         </div>
 
         {error && (
@@ -92,7 +98,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {showForm && (
+        {showForm && session?.role_aktif === 'PT' && (
           <form
             onSubmit={handleCreate}
             className="bg-white border border-gray-200 rounded-lg p-5 mb-5 grid gap-3"
@@ -141,7 +147,9 @@ export default function DashboardPage() {
           <div className="text-gray-500 text-sm">Memuat…</div>
         ) : penugasan.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
-            Belum ada penugasan. Klik <strong>+ Penugasan Baru</strong>.
+            {session?.role_aktif === 'PT'
+              ? <>Belum ada penugasan. Klik <strong>+ Penugasan Baru</strong>.</>
+              : <>Belum ada penugasan. Tunggu Pengendali Teknis membuat penugasan terlebih dahulu.</>}
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">

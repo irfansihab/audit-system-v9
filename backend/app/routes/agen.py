@@ -166,6 +166,16 @@ async def trigger_ingestion(
 # ============================================================
 
 async def _stream_agent(agent_name: str, user_prompt: str, penugasan_id: int, user_id: int):
+    # ISOLATION GUARANTEE:
+    # - AGENT_BUILDERS[name]() membuat ClaudeAgentOptions BARU per invoke
+    #   (fresh in-process MCP server, fresh load prompt dari .md)
+    # - ClaudeSDKClient(options=options) spawn subprocess Claude Code BARU
+    #   (lihat SubprocessCLITransport di claude-agent-sdk)
+    # - Subprocess di-terminate saat __aexit__ → tidak ada state agent yang
+    #   bertahan ke invoke berikutnya.
+    # Konsekuensi: zero context/memory leak antar penugasan ATAU antar run.
+    # State per-penugasan disimpan di filesystem (temuan.json, dll) — agen
+    # baca dari sana setiap run.
     options = AGENT_BUILDERS[agent_name]()
 
     async with SessionLocal() as db:
@@ -246,8 +256,8 @@ async def stream_agent(
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Agen tidak dikenal: {agent_name}")
     if agent_name == "anggota_tim" and role != Role.AT:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Hanya Anggota Tim")
-    if agent_name == "ketua_tim" and role not in (Role.KT, Role.PT, Role.PM):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Hanya Ketua Tim/PT/PM")
+    if agent_name == "ketua_tim" and role not in (Role.KT, Role.PT):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Hanya Ketua Tim atau Pengendali Teknis")
 
     p = (await db.execute(select(Penugasan).where(Penugasan.id == penugasan_id))).scalar_one_or_none()
     if not p:
@@ -275,8 +285,8 @@ async def run_agent(
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Agen tidak dikenal: {agent_name}")
     if agent_name == "anggota_tim" and role != Role.AT:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Hanya Anggota Tim")
-    if agent_name == "ketua_tim" and role not in (Role.KT, Role.PT, Role.PM):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Hanya Ketua Tim/PT/PM")
+    if agent_name == "ketua_tim" and role not in (Role.KT, Role.PT):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Hanya Ketua Tim atau Pengendali Teknis")
 
     penugasan_id = int(payload.get("penugasan_id"))
     prompt = str(payload.get("prompt", ""))
@@ -340,4 +350,57 @@ async def run_agent(
         "output": "".join(output_parts),
         "tool_calls": tool_calls,
         "error": error_msg,
+    }
+
+
+# ============================================================
+# CHAT HISTORY — semua run agen untuk penugasan tertentu
+# ============================================================
+
+
+@router.get("/{agent_name}/history")
+async def get_agent_history(
+    agent_name: str,
+    penugasan_id: int,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Return list semua AgentRun untuk penugasan + agent, urutan oldest → newest.
+
+    Dipakai oleh frontend ChatTab untuk render percakapan lampau saat mount,
+    supaya user yang login ulang tidak mulai dari kosong.
+    """
+    if agent_name not in AGENT_BUILDERS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Agen tidak dikenal: {agent_name}")
+
+    rows = (
+        await db.execute(
+            select(AgentRun)
+            .where(
+                AgentRun.penugasan_id == penugasan_id,
+                AgentRun.agent_name == agent_name,
+            )
+            .order_by(AgentRun.started_at.asc())
+        )
+    ).scalars().all()
+
+    return {
+        "agent_name": agent_name,
+        "penugasan_id": penugasan_id,
+        "total": len(rows),
+        "runs": [
+            {
+                "id": r.id,
+                "status": r.status,
+                "input_summary": r.input_summary or "",
+                "output_summary": r.output_summary or "",
+                "tool_calls": r.tool_calls or [],
+                "tokens_in": r.tokens_in or 0,
+                "tokens_out": r.tokens_out or 0,
+                "started_at": r.started_at.isoformat() if r.started_at else None,
+                "ended_at": r.ended_at.isoformat() if r.ended_at else None,
+                "error_message": r.error_message,
+            }
+            for r in rows
+        ],
     }

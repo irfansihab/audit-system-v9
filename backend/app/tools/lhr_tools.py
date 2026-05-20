@@ -22,6 +22,75 @@ from app.tools.v6_bridge import run_v6_script, safe_read_json
 
 
 @tool(
+    "write_sasaran_assignment",
+    "Tulis (overwrite) _PKP/sasaran-assignment.json. PAKAI HANYA di mode 'Setup Penugasan' "
+    "saat sasaran-assignment masih kosong/draft. Input `sasaran` adalah list of dict dengan "
+    "field: sasaran_id (mis. 'S-PBJ-01'), deskripsi, assigned_to (list[str] nama anggota), "
+    "langkah_kerja (list[str]), status (default 'AKTIF'). KT primary path tetap via UI form — "
+    "tool ini fallback untuk agent-driven setup.",
+    {"penugasan_folder": str, "sasaran": list},
+)
+async def write_sasaran_assignment(args: dict) -> dict:
+    folder = Path(args["penugasan_folder"])
+    path = folder / "_PKP" / "sasaran-assignment.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    raw_sasaran = args.get("sasaran", [])
+    if not isinstance(raw_sasaran, list):
+        return {
+            "content": [{"type": "text", "text": "FAILED|sasaran harus list of dict"}],
+            "is_error": True,
+        }
+
+    # Normalize + validasi
+    sasaran_clean: list[dict] = []
+    seen_ids: set[str] = set()
+    for s in raw_sasaran:
+        if not isinstance(s, dict):
+            continue
+        sid = str(s.get("sasaran_id", "")).strip()
+        if not sid:
+            continue
+        if sid in seen_ids:
+            return {
+                "content": [{"type": "text", "text": f"FAILED|sasaran_id duplikat: {sid}"}],
+                "is_error": True,
+            }
+        seen_ids.add(sid)
+        assigned = s.get("assigned_to", [])
+        if isinstance(assigned, str):
+            assigned = [assigned]
+        langkah = s.get("langkah_kerja", [])
+        if isinstance(langkah, str):
+            langkah = [langkah]
+        sasaran_clean.append({
+            "sasaran_id": sid,
+            "deskripsi": str(s.get("deskripsi", "")).strip(),
+            "assigned_to": [str(x).strip() for x in assigned if str(x).strip()],
+            "langkah_kerja": [str(x).strip() for x in langkah if str(x).strip()],
+            "status": str(s.get("status", "AKTIF")).strip() or "AKTIF",
+        })
+
+    # Preserve existing envelope kalau file sudah ada, supaya penugasan_id/skill tidak hilang
+    existing = safe_read_json(path) if path.exists() else {}
+    data = {
+        "penugasan_id": existing.get("penugasan_id", folder.name),
+        "skill": existing.get("skill", ""),
+        "schema_version": "v4.0.0",
+        "tanggal_dibuat": datetime.utcnow().isoformat() + "Z",
+        "sasaran": sasaran_clean,
+    }
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return {
+        "content": [{
+            "type": "text",
+            "text": f"OK|total_sasaran={len(sasaran_clean)}|path={path.name}",
+        }]
+    }
+
+
+@tool(
     "read_temuan_json",
     "Baca _KKP/temuan.json penugasan. Return JSON lengkap dengan envelope penugasan + array temuan.",
     {"penugasan_folder": str},
@@ -39,22 +108,38 @@ async def read_temuan_json(args: dict) -> dict:
 
 @tool(
     "check_completeness",
-    "Pastikan semua sasaran di sasaran-assignment.json sudah SELESAI_KKP.",
+    "Pastikan semua sasaran di sasaran-assignment.json sudah DISETUJUI_KT (sudah di-approve "
+    "oleh Ketua Tim). Kalau ada yang masih AKTIF (belum ada temuan) atau SELESAI_KKP "
+    "(sudah ada temuan tapi belum approve), STOP — minta KT approve dulu lewat UI Setup.",
     {"penugasan_folder": str},
 )
 async def check_completeness(args: dict) -> dict:
     folder = Path(args["penugasan_folder"])
     assignment = safe_read_json(folder / "_PKP" / "sasaran-assignment.json")
     sasaran_list = assignment.get("sasaran", []) if isinstance(assignment, dict) else []
-    belum = [s for s in sasaran_list if s.get("status") != "SELESAI_KKP"]
+
+    # Approved statuses yang siap LHR
+    APPROVED = {"DISETUJUI_KT"}
+
+    belum = [s for s in sasaran_list if s.get("status") not in APPROVED]
     if belum:
         text = "BELUM_LENGKAP|sasaran_belum=" + json.dumps(
-            [{"id": s.get("sasaran_id"), "assigned_to": s.get("assigned_to")} for s in belum],
+            [
+                {
+                    "id": s.get("sasaran_id"),
+                    "status_current": s.get("status"),
+                    "assigned_to": s.get("assigned_to"),
+                }
+                for s in belum
+            ],
             ensure_ascii=False,
         )
         return {"content": [{"type": "text", "text": text}], "is_error": False}
     return {
-        "content": [{"type": "text", "text": f"OK|total_sasaran={len(sasaran_list)}|all_selesai_kkp=true"}]
+        "content": [{
+            "type": "text",
+            "text": f"OK|total_sasaran={len(sasaran_list)}|all_disetujui_kt=true"
+        }]
     }
 
 
@@ -194,6 +279,7 @@ async def run_qc_lhp(args: dict) -> dict:
 
 
 LHR_TOOLS = [
+    write_sasaran_assignment,  # Setup Penugasan mode
     read_temuan_json,
     check_completeness,
     write_rekomendasi_json,

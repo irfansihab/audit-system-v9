@@ -195,80 +195,120 @@ chmod +x node_modules/.bin/*   # kalau snapshot lama hilang executable flag
 npm run dev
 ```
 
-Buka http://localhost:3000. Login dengan:
-- Email: `auditor.at@komdigi.go.id` (role Anggota Tim) atau `auditor.kt@komdigi.go.id` (role Ketua Tim)
-- NIP: 18 digit apa saja (mis. `198501012010011001`)
+Buka http://localhost:3000. **Login cukup pilih peran** — tidak perlu NIP atau password (prototype). Klik salah satu kartu:
+
+| Peran | Akun yang dipakai | Hak Akses |
+|-------|------------------|-----------|
+| **PT** (Pengendali Teknis) | Inspektorat II (`inspektorat2.kominfo.2@gmail.com`) | Buat penugasan baru |
+| **KT** (Ketua Tim) | Budi Hartono (`auditor.kt@komdigi.go.id`) | Setup sasaran, approve KKP, susun LHR |
+| **AT** (Anggota Tim) | Sarah Aulia (`auditor.at@komdigi.go.id`) | Upload dokumen, susun KKP, penyempurnaan konteks |
+
+Backend auto-pick user seed pertama yang `role_default == role` yang dipilih.
+
+Untuk tambah/edit user seed: edit `backend/app/init_db.py` lalu jalankan ulang `python -m app.init_db`.
+
+Production nanti diganti SSO Komdigi (OIDC).
 
 ---
 
-## Cara Pakai (Workflow Reviu Pengadaan)
+## Cara Pakai — Workflow Reviu
 
-> ⚠️ Alur Ketua Tim **belum diimplementasikan**. Untuk sekarang, sasaran/assignment harus diisi manual di file. Lihat [TODO](#todo) di bawah.
+Alur penugasan ada **5 tahap** dengan pembagian peran yang ketat:
 
-### 1. Buat penugasan baru di UI
-
-Login → klik **+ Penugasan Baru** → pilih skill "Reviu Pengadaan" → isi obyek + nomor ST → klik Buat.
-
-Backend otomatis membuat 3 file scaffold:
-- `<folder-penugasan>/context.md` — template metadata (auditor isi periode, TA, tujuan, tim)
-- `<folder-penugasan>/_PKP/sasaran-assignment.json` — array sasaran kosong
-- `<folder-penugasan>/_KKP/temuan.json` — envelope kosong siap di-append
-
-### 2. Upload dokumen audit
-
-Tab **Dokumen** → upload KAK, HPS, RFI, Kontrak (PDF). Bridge auto-routing ke subfolder kategoris:
-- KAK/HPS/RFI/KONTRAK → `02-kontrak/`
-- TOR/RAB → `03-perencanaan/`
-- ST/KP/PKP → `00-input/`
-
-### 3. Edit context.md dan sasaran-assignment.json manual
-
-Buka folder penugasan di Finder. Edit `context.md`:
-- Periode, Tahun Anggaran, Tujuan
-- Tabel Tim (Ketua, Anggota dengan NIP + Jabfung)
-
-Edit `_PKP/sasaran-assignment.json` — tambahkan minimal 1 sasaran:
-
-```json
-{
-  "sasaran": [
-    {
-      "sasaran_id": "S-PBJ-01",
-      "deskripsi": "Kewajaran HPS",
-      "assigned_to": ["Sarah Aulia"],
-      "langkah_kerja": ["Cek kelengkapan RFI", "Verifikasi dasar hukum"]
-    }
-  ]
-}
+```
+1. PT buat penugasan
+        ↓
+2. KT setup sasaran + context.md (form di Setup Penugasan tab)
+        ↓
+3. AT upload dokumen + run agen → KKP per sasaran
+        ↓
+4. KT approve setiap KKP (ubah status → DISETUJUI_KT)
+        ↓
+5. KT draft LHR (run agen Mode B) + QC SAIPI
 ```
 
-### 4. Jalankan Agen Ingestion
+### 1. PT — Buat penugasan baru
 
-(Belum ada UI tombol terpisah — auditor manual call agen `ingestion` atau script V6 untuk ekstrak PDF → JSON di `_INGESTED/`.)
+Login sebagai **PT** (kartu Pengendali Teknis). Halaman `/penugasan` → klik **+ Penugasan Baru** → pilih skill (`reviu-pengadaan` atau `reviu-rka-kl`) → isi obyek + nomor ST (opsional) → klik **Buat**.
 
-### 5. Jalankan Agen Anggota Tim
+Backend auto-scaffold 3 file:
+- `<folder>/context.md` — template metadata (placeholder `[DIISI AUDITOR]`)
+- `<folder>/_PKP/sasaran-assignment.json` — array sasaran kosong
+- `<folder>/_KKP/temuan.json` — envelope kosong
 
-Tab **Chat AT** → tulis prompt: "Mulai analisis reviu-pengadaan untuk penugasan ini." → klik Jalankan.
+### 2. KT — Setup penugasan
 
-Agen akan:
-1. `read_context` — baca context, sasaran, daftar file input
-2. `list_ingested` — cek hasil ingestion
-3. `run_batch_pbj` — pipeline V6 deterministic (3 anomali untuk reviu-pengadaan)
-4. `read_pdf_page` (banyak kali) — verifikasi false positive + temuan substantif
-5. `append_temuan` (per temuan) — tulis ke `_KKP/temuan.json` (bridge transform skema)
-6. `render_kkp_docx` — generate `_KKP/KKP-{nama}.docx`
-7. `run_qc_kkp` — gate SAIPI; return PASS / PASS_WITH_WARNINGS / BLOCKED_KRITIS
+Logout PT, login sebagai **KT**. Buka penugasan → tab **Setup Penugasan**:
 
-Output: di chat ada ringkasan temuan + path file. Detail audit trail tool calls bisa dibuka via `<details>` collapsible.
+**Section 1 — context.md:** isi Periode, Tahun Anggaran, Tujuan reviu, Tabel Tim (Ketua, Anggota dengan NIP + Jabfung). Klik **Simpan Konteks**.
 
-### 6. Output yang dihasilkan
+**Section 2 — Sasaran:** klik **+ Tambah Sasaran** beberapa kali. Per sasaran:
+- ID (`S-PBJ-01` atau `S-RKA-01`)
+- Deskripsi
+- Status: `AKTIF`
+- Assigned to (nama anggota dari Tabel Tim)
+- Langkah kerja (opsional)
+
+Klik **Simpan Sasaran**.
+
+> 💡 KT juga bisa pakai tab **Chat KT** untuk bantu drafting via percakapan: "saya mau reviu cloud, fokus HPS dan KAK, anggotanya Sarah Aulia". Agen rumuskan jadi sasaran terstruktur, KT confirm via UI.
+
+### 3. AT — Upload dokumen + analisis
+
+Logout KT, login sebagai **AT**. Buka penugasan yang sama:
+
+**Tab Dokumen:** upload KAK, HPS, RFI, Kontrak (untuk Reviu Pengadaan) atau TOR, RAB (untuk RKA-K/L). PT/KT tidak bisa upload — hanya AT. Auto-routing ke subfolder kategoris, auto-trigger V6 ingestion di background.
+
+**Tab Konteks (opsional):** AT bisa edit context.md untuk **menyempurnakan detail** berdasarkan dokumen yang ditemukan saat analisis. Section sasaran read-only untuk AT.
+
+**Tab Chat AT:** ketik *"Mulai analisis [skill] untuk penugasan ini."* Agen otomatis:
+1. `read_context` + `list_ingested` (cek prasyarat)
+2. `list_temuan_patterns(skill)` (lihat pattern wiki)
+3. `run_batch_pbj` / `run_batch_rka` (pipeline V6 deterministic)
+4. `read_pdf_page` untuk verifikasi anomali
+5. `append_temuan` per temuan (auto-transform schema)
+6. `render_kkp_docx` → `_KKP/KKP-{nama}.docx`
+7. `run_qc_kkp` (gate SAIPI)
+8. `submit_feedback` (refleksi retrospective)
+
+### 4. KT — Approve KKP
+
+Logout AT, login sebagai **KT**. Buka penugasan → tab **Setup Penugasan**:
+
+Refresh halaman. Sasaran yang AT sudah input temuan akan tampil dengan status `SELESAI_KKP` (warna amber). KT review:
+- Buka tab **Output & QC** → preview/download `_KKP/KKP-{nama}.docx`, `_KKP/temuan.json`, dan `_QA-SAIPI/laporan-qa-kkp.md`
+- Setelah verifikasi OK, kembali ke Setup → ubah status sasaran dari `SELESAI_KKP` ke `DISETUJUI_KT` (warna emerald)
+- Kalau perlu revisi: pilih `DITOLAK_KT` — AT lihat & perbaiki
+
+Klik **Simpan Sasaran**. Lakukan untuk semua sasaran.
+
+### 5. KT — Draft LHR
+
+Setelah semua sasaran berstatus `DISETUJUI_KT`, di tab **Chat KT** ketik:
+
+*"Susun LHR untuk penugasan ini."*
+
+Agen KT Mode B akan:
+1. `check_completeness` — verifikasi semua sasaran DISETUJUI_KT
+2. `read_temuan_json` — baca temuan terstruktur
+3. Tanya KT: judul LHR, nama auditi, dasar permintaan, gambaran umum, tanggal exit meeting
+4. `list_temuan_patterns` + `get_temuan_pattern` per pattern relevan → format rekomendasi
+5. `write_rekomendasi_json` → `_LHP/rekomendasi.json`
+6. `render_lhr_rka` atau `render_lhr_pbj` → `_LHP/LHR-DRAFT.docx`
+7. `run_qc_lhp` — gate SAIPI tahap LHP
+8. `submit_feedback`
+
+### Output Akhir
 
 | Berkas | Lokasi |
 |--------|--------|
-| KKP Word per anggota | `backend/data/penugasan/{kode}/_KKP/KKP-{nama-anggota}.docx` |
-| Temuan JSON | `backend/data/penugasan/{kode}/_KKP/temuan.json` |
-| Anomali rule-based | `backend/data/penugasan/{kode}/_KKP/anomalies.json` |
-| Laporan QA SAIPI | `backend/data/penugasan/{kode}/_QA-SAIPI/laporan-qa-kkp.md` |
+| KKP Word per anggota | `_KKP/KKP-{nama-anggota}.docx` |
+| Temuan JSON | `_KKP/temuan.json` |
+| Laporan QA KKP | `_QA-SAIPI/laporan-qa-kkp.md` |
+| Rekomendasi JSON | `_LHP/rekomendasi.json` |
+| **LHR Draft** | `_LHP/LHR-DRAFT.docx` ← siap KT isi nomor + TTD |
+| Laporan QA LHP | `_QA-SAIPI/laporan-qa-lhp.md` |
+| Feedback agen | `_FEEDBACK-AGEN/feedback-{agent}-{ts}.json` |
 
 ---
 
@@ -311,6 +351,29 @@ Setelah lima fix di bawah, run berikutnya: **39 tool calls**, 0 edit ke V6/bridg
 3. **Pipeline deterministic V6 = source of truth.** Agen verifikasi & lengkapi, tidak ganti.
 4. **Setiap temuan punya `dokumen_sumber` ter-verify lewat `read_pdf_page`.** Anti-halusinasi.
 5. **MCP tools harus idempotent dan return ringkas.** Hindari output > 4KB ke agen.
+
+### Isolasi Context & Memori Antar Penugasan
+
+Tidak ada agent state yang bocor antar penugasan, antar run, atau antar user:
+
+**Backend (per invoke `/agen/{name}/run` atau `/agen/{name}/stream`):**
+- `AGENT_BUILDERS[name]()` membuat `ClaudeAgentOptions` BARU — fresh MCP server in-process, fresh load prompt dari `.md`
+- `ClaudeSDKClient(options=...)` spawn subprocess Claude Code BARU lewat `SubprocessCLITransport`
+- Subprocess di-terminate saat context manager exit → tidak ada state yang bertahan
+- Lihat comment di `backend/app/routes/agen.py::_stream_agent` dan `::run_agent`
+
+**Penyimpanan state per-penugasan ada di filesystem:**
+- `_PKP/sasaran-assignment.json` — sasaran + assignment
+- `_KKP/temuan.json` — temuan ter-input
+- `_QA-SAIPI/laporan-qa-*.md` — hasil QC
+- `_FEEDBACK-AGEN/feedback-*.json` — refleksi agen
+- `context.md` — metadata penugasan
+
+Agen baca state dari sini setiap run. Tidak ada caching cross-penugasan.
+
+**Frontend (per komponen tab):**
+- Tab components (`DokumenTab`, `SetupPenugasanTab`, `ChatTab`, `OutputTab`) di-mount dengan `key={...-${id}}` — React force unmount + remount saat penugasan ganti. Lihat `frontend/app/penugasan/[id]/page.tsx`.
+- State lokal (chat prompt, modal preview, form draft) clean otomatis
 
 ---
 

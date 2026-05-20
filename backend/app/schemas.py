@@ -8,9 +8,14 @@ from app.models import DokumenStatus, PenugasanStatus, Role, Skill
 
 # ===== Auth =====
 class LoginRequest(BaseModel):
-    email: EmailStr
-    nip: str
-    role: Role | None = None  # opsional override
+    """Prototype login — cukup pilih role.
+
+    Backend auto-pick user seed pertama yang `role_default == role`.
+    Email + NIP optional (untuk kasus produksi nanti pakai SSO).
+    """
+    role: Role
+    email: EmailStr | None = None
+    nip: str | None = None
 
 
 class UserOut(BaseModel):

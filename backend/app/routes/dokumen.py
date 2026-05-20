@@ -50,6 +50,18 @@ async def upload_dokumen(
     current: tuple[User, Role] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DokumenOut:
+    """Hanya Anggota Tim (AT) yang boleh upload dokumen analisis.
+
+    KT/PT bisa GET (lihat) tapi tidak POST (upload). Workflow: KT setup
+    sasaran dulu, kemudian AT yang upload bukti + analisis.
+    """
+    user, role = current
+    if role != Role.AT:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Hanya Anggota Tim (AT) yang boleh upload dokumen. Role Anda: {role.value}.",
+        )
+
     p = (
         await db.execute(select(Penugasan).where(Penugasan.id == penugasan_id))
     ).scalar_one_or_none()

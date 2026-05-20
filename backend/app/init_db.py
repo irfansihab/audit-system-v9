@@ -28,7 +28,7 @@ SEED_USERS = [
         "email": "inspektorat2.kominfo.2@gmail.com",
         "nama_lengkap": "Inspektorat II Komdigi",
         "nip": "197001012000011001",
-        "role_default": Role.PM,
+        "role_default": Role.PT,
     },
 ]
 

@@ -2,8 +2,10 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -113,17 +115,27 @@ async def create_penugasan(
     current: tuple[User, Role] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PenugasanOut:
+    """Hanya Pengendali Teknis (PT) yang boleh buat penugasan baru.
+
+    Workflow: PT create → KT setup → AT upload+analisis → KT approve + LHR.
+    """
     user, role = current
+    if role != Role.PT:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Hanya Pengendali Teknis (PT) yang boleh buat penugasan baru. Role Anda: {role.value}.",
+        )
+
     kode = gen_kode_penugasan(payload.skill.value)
     folder = penugasan_folder(kode)
 
-    # Scaffolding file V6 yang harus ada (context.md, sasaran-assignment.json, temuan.json stub)
-    # supaya pipeline V6 tidak gagal karena file hilang & agen tidak perlu improvisasi bikin sendiri.
+    # Scaffolding file V6 — context.md template, sasaran-assignment.json kosong, temuan.json envelope.
+    # ketua_tim_name dikosongkan dulu (akan di-assign saat KT setup penugasan).
     _scaffold_penugasan_files(
         folder=folder,
         kode=kode,
         payload=payload,
-        ketua_tim_name=user.nama_lengkap if role in (Role.KT, Role.PT, Role.PM) else None,
+        ketua_tim_name=None,  # PT yang buat, KT yang setup nanti
     )
 
     p = Penugasan(
@@ -133,7 +145,7 @@ async def create_penugasan(
         nomor_st=payload.nomor_st,
         tanggal_st=payload.tanggal_st,
         status=PenugasanStatus.DRAFT,
-        ketua_tim_id=user.id if role in (Role.KT, Role.PT, Role.PM) else None,
+        ketua_tim_id=None,  # ditetapkan saat KT setup
         folder_path=str(folder),
     )
     db.add(p)
@@ -163,3 +175,191 @@ async def get_penugasan(
     if not p:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Penugasan tidak ditemukan")
     return PenugasanOut.model_validate(p)
+
+
+# ============================================================
+# SETUP PENUGASAN — endpoint untuk Ketua Tim mengelola sasaran-assignment + context
+# Hanya role KT/PT/PM yang bisa PUT. Role apapun bisa GET.
+# ============================================================
+
+
+class SasaranItem(BaseModel):
+    """Schema 1 sasaran untuk sasaran-assignment.json.
+
+    Sesuai yang dibaca V6 qc_saipi.py: butuh sasaran_id, assigned_to, dan
+    optional langkah_kerja. status default AKTIF, diubah ke SELESAI_KKP
+    oleh AT setelah temuan ter-input.
+    """
+
+    sasaran_id: str = Field(..., min_length=1, description="ID unik, mis. S-PBJ-01")
+    deskripsi: str = Field(default="", description="Deskripsi sasaran")
+    assigned_to: list[str] = Field(default_factory=list, description="Nama anggota tim")
+    langkah_kerja: list[str] = Field(default_factory=list)
+    status: str = Field(default="AKTIF")
+
+
+class SasaranAssignmentPayload(BaseModel):
+    sasaran: list[SasaranItem]
+
+
+def _require_sasaran_setup_role(role: Role) -> None:
+    """Hanya KT yang boleh edit sasaran-assignment. PT bisa juga (override)."""
+    if role not in (Role.KT, Role.PT):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Role {role.value} tidak boleh edit sasaran-assignment. Hanya KT/PT.",
+        )
+
+
+def _require_context_edit_role(role: Role) -> None:
+    """KT setup awal context.md, AT penyempurnaan saat analisis."""
+    if role not in (Role.KT, Role.PT, Role.AT):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Role {role.value} tidak boleh edit context.md.",
+        )
+
+
+async def _get_penugasan_or_404(db: AsyncSession, penugasan_id: int) -> Penugasan:
+    p = (
+        await db.execute(select(Penugasan).where(Penugasan.id == penugasan_id))
+    ).scalar_one_or_none()
+    if not p:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Penugasan tidak ditemukan")
+    return p
+
+
+@router.get("/{penugasan_id}/sasaran-assignment")
+async def get_sasaran_assignment(
+    penugasan_id: int,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Read isi _PKP/sasaran-assignment.json — bisa diakses semua role.
+
+    Auto-enrich status: kalau ada minimal 1 temuan untuk sasaran tertentu
+    di _KKP/temuan.json, dan status masih AKTIF, otomatis upgrade ke
+    SELESAI_KKP (KT lalu manual ubah ke DISETUJUI_KT setelah review).
+    """
+    p = await _get_penugasan_or_404(db, penugasan_id)
+    folder = Path(p.folder_path)
+    sa_path = folder / "_PKP" / "sasaran-assignment.json"
+
+    if not sa_path.exists():
+        return {
+            "penugasan_id": p.kode,
+            "skill": p.skill.value,
+            "schema_version": "v4.0.0",
+            "sasaran": [],
+        }
+    try:
+        data = json.loads(sa_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "sasaran-assignment.json corrupt — perlu di-perbaiki manual",
+        )
+
+    # Auto-detect SELESAI_KKP berdasarkan temuan.json
+    temuan_path = folder / "_KKP" / "temuan.json"
+    sasaran_with_temuan: set[str] = set()
+    if temuan_path.exists():
+        try:
+            temuan_data = json.loads(temuan_path.read_text(encoding="utf-8"))
+            for t in temuan_data.get("temuan", []):
+                sid = t.get("sasaran_id")
+                if sid:
+                    sasaran_with_temuan.add(sid)
+        except json.JSONDecodeError:
+            pass
+
+    for s in data.get("sasaran", []):
+        # Upgrade AKTIF → SELESAI_KKP kalau ada temuan, tapi jangan downgrade DISETUJUI_KT/DITOLAK_KT
+        if s.get("status") == "AKTIF" and s.get("sasaran_id") in sasaran_with_temuan:
+            s["status"] = "SELESAI_KKP"
+
+    return data
+
+
+@router.put("/{penugasan_id}/sasaran-assignment")
+async def put_sasaran_assignment(
+    penugasan_id: int,
+    payload: SasaranAssignmentPayload,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Overwrite _PKP/sasaran-assignment.json — hanya KT/PT."""
+    user, role = current
+    _require_sasaran_setup_role(role)
+    p = await _get_penugasan_or_404(db, penugasan_id)
+
+    # Validasi: sasaran_id unique
+    ids = [s.sasaran_id for s in payload.sasaran]
+    if len(ids) != len(set(ids)):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"sasaran_id duplikat ditemukan: {ids}",
+        )
+
+    folder = Path(p.folder_path)
+    path = folder / "_PKP" / "sasaran-assignment.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    data = {
+        "penugasan_id": p.kode,
+        "skill": p.skill.value,
+        "schema_version": "v4.0.0",
+        "tanggal_dibuat": datetime.utcnow().isoformat() + "Z",
+        "sasaran": [s.model_dump() for s in payload.sasaran],
+    }
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return {
+        "ok": True,
+        "total_sasaran": len(payload.sasaran),
+        "path": str(path.relative_to(folder)),
+    }
+
+
+@router.get("/{penugasan_id}/context-md")
+async def get_context_md(
+    penugasan_id: int,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Read isi context.md — bisa diakses semua role."""
+    p = await _get_penugasan_or_404(db, penugasan_id)
+    path = Path(p.folder_path) / "context.md"
+    if not path.exists():
+        return {"content": "", "exists": False}
+    return {
+        "content": path.read_text(encoding="utf-8"),
+        "exists": True,
+    }
+
+
+class ContextMdPayload(BaseModel):
+    content: str = Field(..., description="Isi context.md raw markdown")
+
+
+@router.put("/{penugasan_id}/context-md")
+async def put_context_md(
+    penugasan_id: int,
+    payload: ContextMdPayload,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Overwrite context.md — KT/PT setup awal, AT untuk penyempurnaan saat analisis."""
+    user, role = current
+    _require_context_edit_role(role)
+    p = await _get_penugasan_or_404(db, penugasan_id)
+
+    path = Path(p.folder_path) / "context.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(payload.content, encoding="utf-8")
+
+    return {
+        "ok": True,
+        "size_bytes": len(payload.content.encode("utf-8")),
+        "path": "context.md",
+    }
