@@ -10,12 +10,12 @@ Prototype ini membungkus skill V6 (`audit-system-v4`) ke dalam empat agen Claude
 
 ## Empat Agen
 
-| Agen | Peran | Model | Status hardening |
-|------|-------|-------|------------------|
-| Ingestion | Ekstrak PDF/Word → JSON terstruktur (deterministic + Haiku fallback) | claude-haiku-4-5 | ⏳ belum |
-| **Anggota Tim (AT)** | Analisis dokumen + susun KKP | claude-sonnet-4-6 | ✅ hardened |
-| QC SAIPI | Gate kepatuhan SAIPI stage KKP & LHP | claude-haiku-4-5 | ⏳ belum |
-| Ketua Tim (KT) | Susun draft LHR dari `temuan.json` | claude-sonnet-4-6 | ⏳ belum |
+| Agen                 | Peran                                                                | Model             | Status hardening |
+| -------------------- | -------------------------------------------------------------------- | ----------------- | ---------------- |
+| Ingestion            | Ekstrak PDF/Word → JSON terstruktur (deterministic + Haiku fallback) | claude-haiku-4-5  | ⏳ belum          |
+| **Anggota Tim (AT)** | Analisis dokumen + susun KKP                                         | claude-sonnet-4-6 | ✅ hardened       |
+| QC SAIPI             | Gate kepatuhan SAIPI stage KKP & LHP                                 | claude-haiku-4-5  | ⏳ belum          |
+| Ketua Tim (KT)       | Susun draft LHR dari `temuan.json`                                   | claude-sonnet-4-6 | ⏳ belum          |
 
 "Hardened" = `tools=[]` (no built-in tools), prompt ketat (no V6 edits, no improvisation), MCP-only access. Lihat [Pipeline V6 Hardening](#pipeline-v6-hardening) di bawah.
 
@@ -82,13 +82,13 @@ audit-system-v7/
 
 ### Prasyarat
 
-| Tool | Min versi | Install di macOS |
-|------|-----------|------------------|
-| Git | 2.x | `brew install git` |
-| Python | 3.12+ | `brew install python@3.12` |
-| Node.js | 20+ | `brew install node@20` + add to PATH |
-| Docker Desktop | latest | `brew install --cask docker` |
-| Claude Code CLI | latest | `npm install -g @anthropic-ai/claude-code` |
+| Tool            | Min versi | Install di macOS                           |
+| --------------- | --------- | ------------------------------------------ |
+| Git             | 2.x       | `brew install git`                         |
+| Python          | 3.12+     | `brew install python@3.12`                 |
+| Node.js         | 20+       | `brew install node@20` + add to PATH       |
+| Docker Desktop  | latest    | `brew install --cask docker`               |
+| Claude Code CLI | latest    | `npm install -g @anthropic-ai/claude-code` |
 
 Plus:
 - Anthropic API key dari https://console.anthropic.com
@@ -197,11 +197,11 @@ npm run dev
 
 Buka http://localhost:3000. **Login cukup pilih peran** — tidak perlu NIP atau password (prototype). Klik salah satu kartu:
 
-| Peran | Akun yang dipakai | Hak Akses |
-|-------|------------------|-----------|
-| **PT** (Pengendali Teknis) | Inspektorat II (`inspektorat2.kominfo.2@gmail.com`) | Buat penugasan baru |
-| **KT** (Ketua Tim) | Budi Hartono (`auditor.kt@komdigi.go.id`) | Setup sasaran, approve KKP, susun LHR |
-| **AT** (Anggota Tim) | Sarah Aulia (`auditor.at@komdigi.go.id`) | Upload dokumen, susun KKP, penyempurnaan konteks |
+| Peran                      | Akun yang dipakai                                   | Hak Akses                                        |
+| -------------------------- | --------------------------------------------------- | ------------------------------------------------ |
+| **PT** (Pengendali Teknis) | Inspektorat II (`inspektorat2.kominfo.2@gmail.com`) | Buat penugasan baru                              |
+| **KT** (Ketua Tim)         | Budi Hartono (`auditor.kt@komdigi.go.id`)           | Setup sasaran, approve KKP, susun LHR            |
+| **AT** (Anggota Tim)       | Sarah Aulia (`auditor.at@komdigi.go.id`)            | Upload dokumen, susun KKP, penyempurnaan konteks |
 
 Backend auto-pick user seed pertama yang `role_default == role` yang dipilih.
 
@@ -424,6 +424,12 @@ Saat agen Anggota Tim atau Ketua Tim jalan, dia akan:
 
 Tanpa pattern, agen tetap berfungsi (pipeline V6 + judgment LLM). Pattern hanya membuatnya lebih **konsisten** dengan gaya penulisan tim dan **tidak terlewat** mendeteksi kondisi yang sudah pernah ditemukan sebelumnya.
 
+> **Rencana integrasi dua arah (W1–W3).** Selain pattern terkurasi, ada vault pengetahuan penuh
+> (`llm-wiki/`, hasil ingest Karpathy via Claude+Obsidian) yang akan tersambung: agen bisa
+> **mencari konteks** (profil auditi, riwayat BPK, vendor, regulasi) saat analisis, dan setelah
+> penugasan selesai **temuan diusulkan kembali ke wiki**. Detail bertahap di
+> **[docs/rencana-cacm-wiki.html](docs/rencana-cacm-wiki.html)** dan [ROADMAP.md §13](ROADMAP.md). Tab `/knowledge` (saat ini scaffold) jadi antarmukanya.
+
 ### Cara menambahkan pattern baru
 
 1. Tentukan skill (`reviu-pengadaan` atau `reviu-rka-kl`)
@@ -564,7 +570,11 @@ Plus jebakan minor:
 
 ### Tier 4 — fitur cadangan (tahap-2)
 
-- [ ] CACM integration (lihat [ROADMAP.md](ROADMAP.md) W3 untuk design)
+- [x] **Tab top-level CACM (`/cacm`) & Knowledge (`/knowledge`)** ✅
+- [x] **W1 — baca vault** ✅ `APP_VAULT_PATH` + tool `search_wiki`/`get_wiki_page` (dipakai agen AT/KT) + `GET /knowledge/wiki/search|page` + panel "Cari Wiki".
+- [x] **C1a — ingest EWS SIRUP + usulan penugasan** ✅ integrasi dengan delivery EWS tim (`CACM/`, gitignored). Model `CacmRun`/`EwsFinding` + `USULAN_CACM`; `routes/cacm.py` (`/ingest`, `/ingest-sample`, `/runs`, `/findings/{id}/promote|dismiss`, `/usulan/{id}/accept`); UI `/cacm`. Demo: tombol "Muat contoh EWS".
+- [ ] **C1b — webhook + pull live** — `POST /cacm/ews-webhook` (HMAC) + `POST /cacm/sync` (REST `X-API-Key`) ke agent tim.
+- [ ] **Wiki W2/W3** — promosi pattern dari feedback + tulis-balik temuan ke vault. Rencana: [docs/rencana-cacm-wiki.html](docs/rencana-cacm-wiki.html) + [ROADMAP.md §13](ROADMAP.md).
 - [ ] Auto-inject ke INTEGRAL
 - [ ] Multi-tenant (lebih dari Inspektorat II)
 - [x] Multi-anggota tim per penugasan ✅ done — 2 seed AT (Sarah Aulia, Citra Lestari), login pemilih orang (`GET /auth/users`), KT assign sasaran per anggota via dropdown nama AT nyata, AT hanya lihat & kerjakan "Sasaran Saya". Tambah user AT lain: edit `backend/app/init_db.py`.
@@ -614,6 +624,7 @@ Logika V6 di `backend/v6/` ditandai **read-only** secara konvensional. Agen di-b
 - [DEPLOY.md](DEPLOY.md) — Panduan deploy ke Fly.io + Vercel + troubleshooting
 - [ROADMAP.md](ROADMAP.md) — Desain proyek 4 minggu (wiki populate + CACM integration)
 - [ROADMAP.html](ROADMAP.html) — Versi visual interaktif (Gantt + sequence diagram)
+- [docs/rencana-cacm-wiki.html](docs/rencana-cacm-wiki.html) — Rencana detail CACM &amp; Wiki (versi visual)
 - [wiki/README.md](wiki/README.md) — Panduan menulis pattern temuan
 - `backend/app/prompts/{anggota_tim,ketua_tim,ingestion,qc_saipi}.md` — System prompts per agen
 - `backend/app/agents/base.py` — Builder pattern + design invariants (`tools=[]`, `disallowed_tools=[...]`)

@@ -56,3 +56,6 @@ llm-wiki/
 
 # Backup sed
 .env.bak*
+
+# EWS SIRUP delivery tim (service terpisah; jangan vendor node_modules/.env/crawl besar)
+CACM/

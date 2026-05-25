@@ -473,8 +473,57 @@ Hal yang **TIDAK** termasuk dalam roadmap 1 bulan ini:
 
 ---
 
-## 13. Lihat Juga
+## 13. Adendum — Rencana Detail CACM & Wiki (revisi 22 Mei 2026)
 
+> Versi visual & lengkap: **[docs/rencana-cacm-wiki.html](docs/rencana-cacm-wiki.html)** (buka di browser).
+> Adendum ini merevisi pendekatan §5 (Wiki) & §6 (CACM) menjadi bertahap, prototype-first.
+
+**Prinsip:** vault `llm-wiki/` tetap repo eksternal (Karpathy method); sistem audit terhubung sebagai
+referensi + pengusul update (human-in-the-loop). Agen in-app tetap hardened — scraping CACM di luar app,
+app menerima hasilnya. Loop: CACM ➝ usulan penugasan ➝ reviu selesai ➝ temuan update wiki ➝ wiki perkaya
+konteks berikutnya.
+
+### Wiki — integrasi dua arah
+
+| Fase | Item | Inti |
+|------|------|------|
+| **W1** (prioritas) | Baca penuh vault | Config `APP_VAULT_PATH`; tool `search_wiki` + `get_wiki_page` (index-driven); prompt AT/KT cari konteks auditi/vendor/BPK; panel "Cari Wiki" di tab Knowledge |
+| **W2** | Pemantauan & promosi pattern | `GET /knowledge/pattern-monitor` agregasi `pattern_suggestions`; `POST /knowledge/patterns` promosikan ke `wiki/temuan-patterns/{skill}/` |
+| **W3** | Tulis-balik penugasan ➝ vault | Saat `LHP_DONE`, generate draft `pengawasan-{kode}.md` (format Karpathy + sitasi) + delta `index.md`/`log.md`; review & apply; model `WikiProposal` |
+
+### CACM — integrasi EWS SIRUP tim (revisi 25 Mei 2026)
+
+Tim (Eva S., Inspektorat II) sudah membangun **layanan EWS SIRUP mandiri** (`CACM/ews-system-delivery/`):
+agent Node/TS (Puppeteer) yang crawl SIRUP publik otomatis → evaluasi **9 skenario EWS-01..09** →
+**push webhook (HMAC)** + **REST API (X-API-Key)** + scheduler cron (tgl 1 & 15). Ada `ews-dummy-app`
+(referensi UI), docs lengkap (data-schema, api-reference, ews-rules, INTEGRATION_GUIDE), dan `sample-data/`.
+v7 = **aplikasi internal penerima**; agent tetap service terpisah milik tim (tidak di-embed).
+
+> Batasan SIRUP (dari tim): data = **RUP/perencanaan** saja (HPS/pemenang/kontrak ada di SPSE, tidak di SIRUP).
+> Maka temuan EWS → usulan **reviu pengadaan tahap perencanaan**. EWS di luar MR; jembatan ke MR manual.
+
+| Fase | Item | Inti |
+|------|------|------|
+| **C1a** (prototype, offline) | Ingest hasil EWS dari file | `PenugasanStatus`+`USULAN_CACM`; tabel `CacmRun`+`EwsFinding`; `routes/cacm.py` (`POST /cacm/ingest`, `/ingest-sample`, `GET /cacm/runs`, `/runs/{id}`); UI `/cacm` (ringkasan run + tabel findings). Pakai `sample-ews-hasil.json` → demo tanpa deploy agent |
+| **C1b** (live) | Webhook + pull | `POST /cacm/ews-webhook` (verifikasi HMAC `X-Agent-Signature`); `POST /cacm/sync` (pull REST `X-API-Key`); config `CACM_WEBHOOK_SECRET`/`CACM_AGENT_*` |
+| **C1c** | Usulan penugasan | Finding MERAH/KUNING → `POST /cacm/findings/{id}/promote` buat `Penugasan(USULAN_CACM)` prefilled (obyek, skill=reviu-pengadaan, context dari penjelasan+regulasi+paket_detail) / `/dismiss`; anti-duplikat per satker+kode; badge "Usulan CACM" di list |
+| **C2** (kemudian) | Otomasi penuh | Scheduler agent → webhook → draft usulan otomatis + notifikasi PT. Tidak ada auto-push balik ke CACM/MR |
+
+### Keputusan terbuka
+1. **W3** — usul `.md` untuk di-apply via Obsidian (rekomendasi) vs app tulis langsung ke vault.
+2. ~~Intake CACM~~ → **terjawab oleh delivery tim**: webhook HMAC (push) + REST (pull); C1a pakai file sample.
+
+### Status (per 25 Mei 2026)
+- [x] Tab top-level `/cacm` & `/knowledge`
+- [x] **W1 baca vault** — `APP_VAULT_PATH` + `search_wiki`/`get_wiki_page` + endpoint + panel "Cari Wiki" (verified)
+- [x] **C1a ingest offline + usulan** — model `CacmRun`/`EwsFinding` + `PenugasanStatus.USULAN_CACM`; `routes/cacm.py` (`/ingest`, `/ingest-sample`, `/runs`, `/findings/{id}/promote|dismiss`, `/usulan/{id}/accept`); UI `/cacm` (ringkasan + findings + promote/dismiss). E2E verified via ASGI test (20 findings sample → promote → USULAN_CACM → accept→DRAFT)
+- [ ] **C1b webhook/pull** (berikutnya) · [ ] C2 otomasi · [ ] W2 promosi pattern · [ ] W3 tulis-balik
+
+---
+
+## 14. Lihat Juga
+
+- [docs/rencana-cacm-wiki.html](docs/rencana-cacm-wiki.html) — rencana CACM & Wiki (versi visual)
 - [README.md](README.md) — setup dev lokal + arsitektur teknis
 - [DEPLOY.md](DEPLOY.md) — panduan deploy Fly.io + Vercel
 - [wiki/README.md](wiki/README.md) — panduan menulis pattern temuan
@@ -482,4 +531,4 @@ Hal yang **TIDAK** termasuk dalam roadmap 1 bulan ini:
 
 ---
 
-*Dokumen ini dibuat 20 Mei 2026, akan di-update setiap akhir minggu sebagai bagian dari workflow.*
+*Dokumen ini dibuat 20 Mei 2026, di-update setiap akhir minggu. Adendum §13 ditambah 22 Mei, direvisi 25 Mei 2026 (integrasi EWS SIRUP tim + W1 selesai).*

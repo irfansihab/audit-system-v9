@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rencana Implementasi — CACM &amp; Wiki | Audit AI v7</title>
+<style>
+  :root {
+    --primary: #1e3a5f;
+    --primary-light: #2c5282;
+    --accent: #d69e2e;
+    --wiki: #2b6cb0;
+    --cacm: #b7791f;
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1a202c;
+    --muted: #718096;
+    --green: #2f855a;
+    --amber: #b7791f;
+    --red: #c53030;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px 80px; }
+  header.hero {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff; padding: 40px 0 32px; margin-bottom: 28px;
+  }
+  header.hero .wrap { padding-bottom: 0; }
+  header.hero h1 { margin: 0 0 6px; font-size: 28px; }
+  header.hero .sub { opacity: .85; font-size: 14px; }
+  header.hero .meta { margin-top: 14px; font-size: 13px; opacity: .8; }
+  h2 { font-size: 22px; margin: 38px 0 4px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+  h2 .tag { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; vertical-align: middle; margin-left: 8px; color:#fff; }
+  h3 { font-size: 17px; margin: 22px 0 8px; }
+  p { margin: 8px 0; }
+  ul { margin: 8px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  code { background: #edf2f7; padding: 1px 6px; border-radius: 4px; font-size: 13px; font-family: "SF Mono", Menlo, Consolas, monospace; }
+  .lead { font-size: 15px; color: var(--muted); }
+
+  .principles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; margin: 18px 0; }
+  .principle { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .principle b { display: block; color: var(--primary); margin-bottom: 4px; }
+  .principle span { font-size: 13.5px; color: var(--muted); }
+
+  .flow { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin: 16px 0; overflow-x: auto; }
+  .flow-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .node { border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; background: #fbfdff; min-width: 110px; text-align: center; }
+  .node.ext { border-style: dashed; background: #fffaf0; }
+  .node.app { border-color: var(--wiki); background: #ebf4ff; }
+  .arrow { color: var(--muted); font-weight: 700; font-size: 18px; }
+  .flow .cap { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .phase { background: var(--card); border: 1px solid var(--border); border-left: 5px solid var(--wiki); border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+  .phase.cacm { border-left-color: var(--cacm); }
+  .phase h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: #fff; letter-spacing: .3px; }
+  .pill.w { background: var(--wiki); }
+  .pill.c { background: var(--cacm); }
+  .pill.prio { background: var(--green); }
+  .pill.later { background: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: #f1f5f9; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+  tr:hover td { background: #fafcff; }
+
+  .callout { border-radius: 10px; padding: 14px 16px; margin: 16px 0; font-size: 14px; }
+  .callout.decide { background: #fffbeb; border: 1px solid #f6e05e; }
+  .callout.note { background: #ebf8ff; border: 1px solid #90cdf4; }
+  .callout b { display:block; margin-bottom: 4px; }
+
+  .seq { counter-reset: step; list-style: none; padding-left: 0; }
+  .seq li { counter-increment: step; padding: 10px 14px 10px 48px; position: relative; background:#fff; border:1px solid var(--border); border-radius: 8px; margin: 8px 0; }
+  .seq li::before { content: counter(step); position: absolute; left: 12px; top: 10px; width: 24px; height: 24px; background: var(--primary); color:#fff; border-radius: 50%; text-align:center; line-height: 24px; font-size: 13px; font-weight: 700; }
+  .seq small { color: var(--muted); }
+
+  .loop { text-align:center; font-size: 14px; background: linear-gradient(135deg,#ebf4ff,#fffaf0); border:1px solid var(--border); border-radius: 10px; padding: 16px; margin: 18px 0; }
+  .loop b { color: var(--primary); }
+  footer { color: var(--muted); font-size: 13px; margin-top: 40px; border-top: 1px solid var(--border); padding-top: 16px; }
+  .legend { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>Rencana Implementasi — CACM &amp; Wiki</h1>
+    <div class="sub">Audit AI v7 · Inspektorat II Komdigi</div>
+    <div class="meta">Revisi 22 Mei 2026 · Status: rencana (belum ada kode) · Pendamping: <code>ROADMAP.md</code>, <code>README.md</code></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <p class="lead">Dua fitur saling mengisi dalam satu loop: <b>CACM</b> menjadi sumber proaktif penugasan,
+  dan <b>Wiki</b> menjadi memori organisasi yang dibaca agen saat analisis lalu diperbarui setelah penugasan selesai.</p>
+
+  <h3>Prinsip dasar</h3>
+  <div class="principles">
+    <div class="principle"><b>Vault = sumber eksternal</b><span><code>llm-wiki/</code> tetap repo terpisah (Karpathy method via Claude+Obsidian). Sistem audit terhubung sebagai referensi &amp; pengusul update — tidak meng-vendor vault.</span></div>
+    <div class="principle"><b>Human-in-the-loop</b><span>Setiap tulisan ke wiki diusulkan dulu untuk disetujui auditor, mengikuti aturan sitasi <code>(source: …)</code> — bukan auto-commit.</span></div>
+    <div class="principle"><b>Agen tetap hardened</b><span>Agen in-app <code>tools=[]</code> (tak bisa browser/shell). Scraping CACM tetap di luar app; app menerima hasilnya.</span></div>
+    <div class="principle"><b>Prototype dulu, API kemudian</b><span>CACM diuji lewat scrape SIRUP manual via Claude. Bila terbukti, baru sambung ke API/DB CACM organisasi.</span></div>
+  </div>
+
+  <div class="loop">
+    🔁 <b>Loop tertutup:</b> CACM ➝ usulan penugasan ➝ reviu selesai ➝ temuan memperbarui Wiki ➝ Wiki memperkaya konteks penugasan &amp; interpretasi sinyal CACM berikutnya.
+  </div>
+
+  <!-- ====================== WIKI ====================== -->
+  <h2 style="border-color:var(--wiki)">A. Wiki — Integrasi Dua Arah <span class="tag" style="background:var(--wiki)">knowledge</span></h2>
+
+  <h3>Kondisi sekarang</h3>
+  <ul>
+    <li><b>Baca (sebagian):</b> agen memakai <code>list/get_temuan_patterns</code> + <code>list/get_konteks</code> atas <code>wiki/</code> proyek (subset terkurasi).</li>
+    <li><b>Tulis-balik:</b> belum ada. <code>submit_feedback</code> menghasilkan <code>pattern_suggestions</code> yang hanya mengendap di <code>_FEEDBACK-AGEN/</code> + tampil di <code>/feedback</code>.</li>
+    <li><b>Vault penuh</b> (<code>llm-wiki/</code>): 179 catatan + <code>index.md</code> + <code>log.md</code>, hasil ingest Karpathy dari dokumen resmi non-rahasia — belum tersentuh agen.</li>
+  </ul>
+
+  <h3>Arsitektur target</h3>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="node ext"><b>llm-wiki/</b><br/>vault Karpathy<br/>(eksternal)</div>
+      <span class="arrow">⇄</span>
+      <div class="node app"><b>wiki tools</b><br/>search + baca + usul update</div>
+      <span class="arrow">⇄</span>
+      <div class="node app"><b>Agen &amp; UI</b><br/>analisis penugasan</div>
+    </div>
+    <div class="cap">Baca: agen menarik konteks (profil auditi, riwayat BPK, vendor, regulasi). Tulis: usulan catatan terkurasi yang disetujui auditor lalu di-apply.</div>
+  </div>
+
+  <div class="phase">
+    <h3><span class="pill w">W1</span> Baca penuh vault <span class="pill prio">PRIORITAS</span></h3>
+    <ul>
+      <li><b>Config</b> <code>APP_VAULT_PATH</code> (default = <code>llm-wiki/</code>), read-only.</li>
+      <li><b>Tool baru:</b> <code>search_wiki(query)</code> (index-driven + keyword atas <code>index.md</code> &amp; isi) dan <code>get_wiki_page(name)</code>.</li>
+      <li><b>Prompt AT/KT:</b> langkah opsional "cari konteks auditi/vendor/BPK di vault" sebelum susun temuan.</li>
+      <li><b>UI:</b> panel "Cari Wiki" di tab Knowledge (search ➝ daftar ➝ preview).</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h3><span class="pill w">W2</span> Pemantauan &amp; promosi pattern</h3>
+    <ul>
+      <li><code>GET /knowledge/pattern-monitor</code> — agregasi <code>pattern_suggestions</code> lintas penugasan (frekuensi, contoh, status).</li>
+      <li><code>POST /knowledge/patterns</code> — promosikan usulan disetujui menjadi file pattern di <code>wiki/temuan-patterns/{skill}/</code>.</li>
+      <li><b>UI:</b> tabel usulan ➝ tombol "Promosikan" / "Tolak".</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h3><span class="pill w">W3</span> Tulis-balik penugasan ➝ vault (tutup loop)</h3>
+    <ul>
+      <li>Saat penugasan <code>LHP_DONE</code>: hasilkan <b>draft catatan</b> <code>pengawasan-{kode}.md</code> (Summary, Sources=LHP/KKP, temuan+rekomendasi, <code>[[wikilink]]</code> ke auditi/regulasi/vendor) + delta <code>index.md</code> &amp; <code>log.md</code>.</li>
+      <li><b>Review &amp; apply:</b> draft tampil di tab Knowledge (status USULAN). Auditor approve ➝ <i>opsi A</i> export .md untuk di-apply via Obsidian (rekomendasi) atau <i>opsi B</i> app menulis langsung ke vault.</li>
+      <li>Model <code>WikiProposal</code> untuk melacak usulan.</li>
+    </ul>
+  </div>
+
+  <!-- ====================== CACM ====================== -->
+  <h2 style="border-color:var(--cacm)">B. CACM — Prototype Scrape SIRUP Manual <span class="tag" style="background:var(--cacm)">monitoring</span></h2>
+
+  <h3>Kondisi sekarang</h3>
+  <ul>
+    <li>Sistem CACM nyata (aggregator MonSAKTI/SIRUP/KRISNA) — sudah tersambung banyak API, tapi <b>baru jadi database, belum dimanfaatkan</b>.</li>
+    <li>Skill <code>ews-cacm-komdigi</code> sudah bisa scrape CACM via Claude-in-Chrome + evaluasi threshold (rasio RUP↔DIPA, konsentrasi vendor &gt;30%, PDN &lt;40%, kontrak lewat tempo, RO realisasi 0).</li>
+    <li>Di app: tab <code>/cacm</code> masih scaffold; <code>PenugasanStatus</code> belum punya <code>USULAN_CACM</code>.</li>
+  </ul>
+
+  <h3>Arsitektur target</h3>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="node ext"><b>Claude-in-Chrome</b><br/>+ skill EWS<br/>(manual, luar app)</div>
+      <span class="arrow">➝</span>
+      <div class="node">sinyal SIRUP<br/>(JSON)</div>
+      <span class="arrow">➝</span>
+      <div class="node app"><code>/cacm/signals</code><br/>+ evaluasi threshold</div>
+      <span class="arrow">➝</span>
+      <div class="node app">Usulan Penugasan<br/><code>USULAN_CACM</code></div>
+      <span class="arrow">➝</span>
+      <div class="node">PT review<br/>terima / tolak</div>
+    </div>
+    <div class="cap">Scraping di luar app (agen in-app tak punya browser). App = penampung sinyal + evaluator + alur usulan. Fase berikut tinggal ganti sumber sinyal: manual ➝ API CACM.</div>
+  </div>
+
+  <div class="phase cacm">
+    <h3><span class="pill c">C1</span> Penampung sinyal + usulan penugasan <span class="pill prio">PROTOTYPE</span></h3>
+    <ul>
+      <li><b>Model:</b> <code>PenugasanStatus</code> + <code>USULAN_CACM</code>; tabel <code>CacmSignal</code> (sumber=SIRUP, satker, periode, payload, severity, status).</li>
+      <li><b>Backend</b> <code>routes/cacm.py</code>: <code>POST /cacm/signals</code> (terima hasil scrape, jalankan evaluator), <code>GET /cacm/signals</code>, <code>POST /cacm/signals/{id}/promote</code> (buat penugasan <code>USULAN_CACM</code> ter-prefill), <code>/dismiss</code>.</li>
+      <li><b>Evaluator</b> <code>app/cacm_rules.py</code> — port subset ews-rules untuk SIRUP ➝ severity + alasan.</li>
+      <li><b>UI <code>/cacm</code>:</b> ingest sinyal (paste/upload), tabel sinyal + severity, tombol "Jadikan usulan" / "Abaikan"; badge "Usulan CACM" di list penugasan.</li>
+    </ul>
+  </div>
+
+  <div class="phase cacm">
+    <h3><span class="pill c">C2</span> Konektor API CACM <span class="pill later">SETELAH PROTOTYPE</span></h3>
+    <ul>
+      <li><code>app/cacm_connector.py</code> — klien ke API/DB CACM organisasi, menggantikan intake manual.</li>
+      <li><code>POST /cacm/sync</code> terjadwal (cron / skill schedule) ➝ tarik SIRUP harian ➝ sinyal otomatis.</li>
+      <li>(Opsional) push ringkasan hasil reviu balik ke anotasi CACM.</li>
+    </ul>
+  </div>
+
+  <!-- ====================== MODEL & SEQ ====================== -->
+  <h2>C. Perubahan Data Model</h2>
+  <table>
+    <thead><tr><th>Perubahan</th><th>Detail</th><th>Fase</th></tr></thead>
+    <tbody>
+      <tr><td><code>PenugasanStatus</code></td><td>+ nilai <code>USULAN_CACM</code> (diabaikan derivasi status penugasan asli)</td><td>C1</td></tr>
+      <tr><td>Tabel <code>CacmSignal</code></td><td>sumber, satker, periode, payload JSON, severity, status, dibuat_at</td><td>C1</td></tr>
+      <tr><td>Tabel <code>WikiProposal</code></td><td>penugasan_id, jenis, konten_md, status, dibuat_at</td><td>W3</td></tr>
+      <tr><td>Config</td><td><code>APP_VAULT_PATH</code> (wiki); kredensial CACM</td><td>W1 / C2</td></tr>
+    </tbody>
+  </table>
+
+  <h2>D. Urutan yang Disarankan</h2>
+  <ol class="seq">
+    <li><b>W1</b> — Baca vault. <small>Nilai tinggi, risiko rendah; langsung memperkaya agen.</small></li>
+    <li><b>C1</b> — Sinyal SIRUP + usulan penugasan. <small>Prototype CACM end-to-end, feed manual.</small></li>
+    <li><b>W2</b> — Promosi pattern. <small>Manfaatkan feedback yang sudah ada.</small></li>
+    <li><b>W3</b> — Tulis-balik penugasan ➝ wiki. <small>Menutup loop pengetahuan.</small></li>
+    <li><b>C2</b> — Konektor API CACM. <small>Setelah prototype terbukti bermanfaat.</small></li>
+  </ol>
+
+  <h2>E. Keputusan yang Dibutuhkan</h2>
+  <div class="callout decide">
+    <b>1. Tulis-balik wiki (W3)</b>
+    App <b>mengusulkan .md untuk di-apply via Obsidian</b> (rekomendasi — menjaga alur curate Anda) <i>atau</i> app <b>menulis langsung ke vault</b>?
+  </div>
+  <div class="callout decide">
+    <b>2. Intake CACM (C1)</b>
+    Hasil scrape <b>di-paste/upload</b> ke tab CACM (paling cepat) <i>atau</i> dibuatkan <b>format JSON baku</b> + panduan agar skill EWS mengeluarkan tepat format itu?
+  </div>
+  <div class="callout note">
+    <b>3. Mulai dari mana</b>
+    Rekomendasi: <b>W1 dulu</b> (baca vault), lalu <b>C1</b> (prototype CACM).
+  </div>
+
+  <footer>
+    Dokumen rencana — dibuat 22 Mei 2026. Belum ada kode yang ditulis. Lihat juga
+    <code>ROADMAP.md</code> §13 (adendum) dan <code>README.md</code> (bagian Wiki &amp; tab CACM/Knowledge).
+  </footer>
+
+</div>
+</body>
+</html>
