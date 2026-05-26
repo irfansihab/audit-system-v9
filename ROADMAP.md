@@ -548,6 +548,7 @@ Folder `skills/` (taksonomi `audit-system-v4`, 22 entri cowork) ditambahkan. v7 
   - ✅ **Format non-KKSA** (`docs/rencana-format-laporan.html`) — `format_registry` (profil kksa/memo/rb-4dim) + `render_report` dispatcher; **Memo Konsultansi** (`append_saran` → `render_memo`) + **Eval RB tabel 4-dimensi** (`write_penilaian_rb` → `render_rb`) = renderer milik-app (python-docx), V6 read-only dijaga. Verified.
   - ✅ **Meta-skill graduasi** (`docs/rencana-graduasi-skill.html`) — `graduasi.py` v7-native (validasi → domain term → konsolidasi kriteria → cluster temuan Jaccard dari `temuan.json` → DRAFT di `knowledge/skills/_draft/`); `routes/graduasi.py` (candidates/run/drafts/promote/reject, PT/PM); promote → `knowledge/skills/` + `registry.refresh`; panel Graduasi di tab Knowledge. Verified E2E (run→draft→promote→terdaftar).
   - ✅ Tombol gate one-click + "Jalankan Gate" (prefill Chat).
+  - ✅ **Isi LKE Excel (SAKIP/SPIP) tanpa ubah rumus** — `app/lke_writer.py` (`LKEWriter`, openpyxl `data_only=False`) + tool `fill_lke`: tulis cell INPUT saja, **tolak** cell formula (cell-map + runtime `data_type=='f'`) & sheet agregator; sumber = LKE upload auditor / template SPIP bawaan; output `_KKP/LKE-terisi-<skill>.xlsx` (asli tak diubah). Prompt AT: SAKIP/SPIP **isi LKE dulu** (rumus dipertahankan) → baru catatan/temuan. Verified: rumus identik sebelum/sesudah.
   - ⏳ Sisa: tes live agen (audit-kinerja / gate SPIP / memo / RB / graduasi); skeleton LHP non-KKSA yang lebih kaya bila perlu.
 
 ---
