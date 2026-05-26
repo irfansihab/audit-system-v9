@@ -11,13 +11,19 @@ Klasifikasi jenis dokumen:
 ST/KP/PKP/OTHER dilewati (tak punya digest script).
 
 Kualitas:
-  - JSON valid + tidak kosong (deteksi PDF scan/gambar → "perlu OCR").
+  - JSON valid + tidak kosong.
   - Cakupan field kunci per jenis (reuse _summarize_digest).
+  - Deteksi GAMBAR tertanam per dokumen → tandai "data mungkin di gambar" bila
+    field kunci hilang + dokumen memuat gambar (tabel/diagram di-render jadi image).
+  - (opsional) --llm-fallback → untuk dokumen yang field kuncinya hilang (parser
+    deterministik tak menangani), panggil model murah (Haiku) atas TEKS dokumen
+    untuk MEMULIHKAN field yang hilang. Mengukur berapa yang bisa dipulihkan.
   - (opsional) --golden golden.json → skor akurasi terhadap nilai harapan.
 
 Pakai (dari root repo, venv aktif):
   PYTHONPATH=backend backend/.venv/bin/python backend/scripts/digestion_harness.py \
-      --corpus <folder> [--out <folder>] [--workers 4] [--golden golden.json]
+      --corpus <folder> [--out <folder>] [--workers 4] [--golden golden.json] \
+      [--llm-fallback] [--llm-model claude-3-5-haiku-latest]
 
 Format golden.json:
   { "NAMA-FILE.pdf": { "label": "nilai harapan (substring, case-insensitive)", ... } }
@@ -32,6 +38,13 @@ import tempfile
 import time
 from pathlib import Path
 
+from app.llm_extract import (
+    DEFAULT_LLM_MODEL,
+    analyze_images,
+    extract_pdf_pages,
+    llm_extract_fields,
+    resolve_anthropic_key,
+)
 from app.storage import classify_doc_by_filename, target_subfolder_for
 from app.tools.kkp_tools import _summarize_digest
 from app.tools.v6_bridge import run_v6_script, safe_read_json
@@ -88,7 +101,18 @@ async def main() -> int:
     ap.add_argument("--out", default=None, help="folder output (default: <corpus>/_digest-test)")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--golden", default=None)
+    ap.add_argument("--llm-fallback", action="store_true",
+                    help="Untuk dokumen yang field kuncinya hilang, panggil model murah "
+                         "(Haiku) atas TEKS dokumen untuk memulihkan field. Butuh ANTHROPIC_API_KEY.")
+    ap.add_argument("--llm-model", default=DEFAULT_LLM_MODEL,
+                    help=f"Model fallback (default: {DEFAULT_LLM_MODEL}).")
     args = ap.parse_args()
+
+    llm_on = bool(args.llm_fallback)
+    if llm_on and not resolve_anthropic_key():
+        print("PERINGATAN: --llm-fallback diminta tapi ANTHROPIC_API_KEY tidak ada — "
+              "fallback dimatikan (set di .env atau env var).")
+        llm_on = False
 
     corpus = Path(args.corpus).resolve()
     if not corpus.is_dir():
@@ -134,7 +158,8 @@ async def main() -> int:
                      _digest(sem, "scripts/audit-pengadaan/digest_pengadaan.py", [str(pbj_stage), "-o", str(o)], o)))
 
     print(f"Korpus: {corpus}  | PDF={len(pdfs)} (TOR={len(tor)} RAB={len(rab)} PBJ={len(pbj)} skip={len(skipped)})")
-    print(f"Workers={args.workers}  | output={out_dir}\n--- menjalankan digest paralel ---")
+    print(f"Workers={args.workers}  | LLM-fallback={'ON ('+args.llm_model+')' if llm_on else 'off'}"
+          f"  | output={out_dir}\n--- menjalankan digest paralel ---")
     t0 = time.perf_counter()
     results = await asyncio.gather(*(c for *_, c in jobs))
     wall = time.perf_counter() - t0
@@ -146,6 +171,31 @@ async def main() -> int:
         nonempty = bool(data) and bool(json.dumps(data).strip()) and json.dumps(data) != "{}"
         summ = _summarize_digest(out.name, data) if nonempty else {}
         pres, tot, missing = coverage(js, summ)
+
+        # Analisis GAMBAR (selalu) — agregasi lintas file sumber.
+        img_total = img_pages = 0
+        for f in files:
+            a = analyze_images(f)
+            img_total += a["total_images"]; img_pages += a["pages_with_images"]
+
+        # Fallback LLM (opt-in) — hanya bila ada field kunci yang hilang.
+        llm_recovered: list[str] = []
+        llm_filled: dict = {}
+        llm_error: str | None = None
+        if llm_on and ok and missing:
+            pages_text: list[str] = []
+            for f in files:
+                pages_text += extract_pdf_pages(f)
+            res = llm_extract_fields(pages_text, js, missing, model=args.llm_model)
+            if res.get("_error"):
+                llm_error = res["_error"]
+            else:
+                for k in missing:
+                    v = res.get(k)
+                    if v not in (None, "", [], 0):
+                        llm_recovered.append(k); llm_filled[k] = v
+        missing_after = [k for k in missing if k not in llm_recovered]
+
         gh = gt = None; gmiss = []
         if ok:
             # golden cocokkan per file (untuk PBJ: cocokkan tiap file ke dok gabungan)
@@ -155,6 +205,10 @@ async def main() -> int:
                     gh = (gh or 0) + h; gt = (gt or 0) + t; gmiss += [f"{f.name}:{x}" for x in m]
         rows.append({"label": label, "jenis": js, "ok": ok, "time_s": round(dur, 2),
                      "nonempty": nonempty, "coverage": f"{pres}/{tot}", "missing": missing,
+                     "missing_after": missing_after,
+                     "images": img_total, "pages_with_images": img_pages,
+                     "llm_recovered": llm_recovered, "llm_filled": llm_filled,
+                     "llm_error": llm_error,
                      "golden": (f"{gh}/{gt}" if gt else None), "golden_miss": gmiss,
                      "error": (err[:200] if not ok else "")})
 
@@ -163,7 +217,10 @@ async def main() -> int:
     by = {}
     for r in rows:
         by.setdefault(r["jenis"], []).append(r)
-    print(f"{'jenis':11} {'n':>2} {'ok':>3} {'kosong':>6} {'avg s':>6} {'cakupan rata2':>14}")
+    header = f"{'jenis':11} {'n':>2} {'ok':>3} {'kosong':>6} {'avg s':>6} {'cakupan':>9} {'gbr':>5}"
+    if llm_on:
+        header += f" {'+LLM':>5}"
+    print(header)
     for js, rs in by.items():
         nok = sum(1 for r in rs if r["ok"])
         empt = sum(1 for r in rs if r["ok"] and not r["nonempty"])
@@ -173,17 +230,41 @@ async def main() -> int:
             a, b = r["coverage"].split("/")
             if int(b): cov_pct.append(int(a) / int(b))
         cavg = f"{(sum(cov_pct)/len(cov_pct)*100):.0f}%" if cov_pct else "-"
-        print(f"{js:11} {len(rs):>2} {nok:>3} {empt:>6} {avg:>6.2f} {cavg:>14}")
+        imgtot = sum(r["images"] for r in rs)
+        line = f"{js:11} {len(rs):>2} {nok:>3} {empt:>6} {avg:>6.2f} {cavg:>9} {imgtot:>5}"
+        if llm_on:
+            rec = sum(len(r["llm_recovered"]) for r in rs)
+            line += f" {('+' + str(rec)) if rec else '-':>5}"
+        print(line)
 
-    attention = [r for r in rows if (not r["ok"]) or (not r["nonempty"]) or r["missing"] or r["golden_miss"]]
+    if llm_on:
+        rec_total = sum(len(r["llm_recovered"]) for r in rows)
+        rec_docs = sum(1 for r in rows if r["llm_recovered"])
+        n_err = sum(1 for r in rows if r["llm_error"])
+        print(f"\nLLM fallback ({args.llm_model}): pulih {rec_total} field di {rec_docs} dok"
+              + (f" · {n_err} dok gagal panggil LLM" if n_err else ""))
+
+    attention = [r for r in rows if (not r["ok"]) or (not r["nonempty"])
+                 or r["missing_after"] or r["golden_miss"] or r["llm_error"]]
     if attention:
         print(f"\n=== PERLU PERHATIAN ({len(attention)}) ===")
         for r in attention:
             why = []
-            if not r["ok"]: why.append(f"GAGAL: {r['error']}")
-            elif not r["nonempty"]: why.append("KOSONG (kemungkinan scan/gambar → OCR)")
-            if r["missing"]: why.append(f"field hilang: {','.join(r['missing'])}")
-            if r["golden_miss"]: why.append(f"golden meleset: {','.join(r['golden_miss'])}")
+            if not r["ok"]:
+                why.append(f"GAGAL: {r['error']}")
+            elif not r["nonempty"]:
+                why.append("KOSONG (tak ada teks terbaca — cek dokumen)")
+            if r["missing_after"]:
+                msg = f"field hilang: {','.join(r['missing_after'])}"
+                if r["pages_with_images"]:
+                    msg += f" → data mungkin di GAMBAR ({r['images']} gbr/{r['pages_with_images']} hlm)"
+                why.append(msg)
+            if r["llm_recovered"]:
+                why.append(f"LLM pulih: {','.join(r['llm_recovered'])}")
+            if r["llm_error"]:
+                why.append(f"fallback LLM gagal: {r['llm_error']}")
+            if r["golden_miss"]:
+                why.append(f"golden meleset: {','.join(r['golden_miss'])}")
             print(f"  [{r['jenis']}] {r['label'][:50]} — {' ; '.join(why)}")
     if skipped:
         print(f"\nDilewati (non-digestible): {[p.name for p, _ in skipped]}")
@@ -192,11 +273,17 @@ async def main() -> int:
     (out_dir / "report.json").write_text(json.dumps(
         {"corpus": str(corpus), "wall_s": round(wall, 2), "rows": rows,
          "skipped": [p.name for p, _ in skipped]}, ensure_ascii=False, indent=2), encoding="utf-8")
-    md = [f"# Laporan Ujicoba Digestion", f"Korpus: `{corpus}` · wall {wall:.2f}s · {len(jobs)} job\n",
-          "| jenis | dok | ok | kosong | waktu(s) | cakupan | golden |", "|---|---|---|---|---|---|---|"]
+    md = [f"# Laporan Ujicoba Digestion",
+          f"Korpus: `{corpus}` · wall {wall:.2f}s · {len(jobs)} job"
+          + (f" · LLM-fallback `{args.llm_model}`" if llm_on else "") + "\n",
+          "| jenis | dok | ok | kosong | waktu(s) | cakupan | gbr | LLM pulih | golden |",
+          "|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
+        rec = ("+" + ",".join(r["llm_recovered"])) if r["llm_recovered"] else (
+            "gagal" if r["llm_error"] else "-")
         md.append(f"| {r['jenis']} | {r['label'][:40]} | {'✓' if r['ok'] else '✗'} | "
-                  f"{'kosong' if r['ok'] and not r['nonempty'] else '-'} | {r['time_s']} | {r['coverage']} | {r['golden'] or '-'} |")
+                  f"{'kosong' if r['ok'] and not r['nonempty'] else '-'} | {r['time_s']} | "
+                  f"{r['coverage']} | {r['images'] or '-'} | {rec} | {r['golden'] or '-'} |")
     (out_dir / "report.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     print(f"\nReport: {out_dir/'report.md'} + report.json")
 
