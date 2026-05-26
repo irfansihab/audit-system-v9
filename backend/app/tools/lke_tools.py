@@ -15,6 +15,7 @@ import shutil
 from pathlib import Path
 
 from claude_agent_sdk import tool
+from openpyxl import load_workbook
 
 from app.config import get_settings
 from app.lke_writer import LKEWriter
@@ -104,9 +105,71 @@ async def fill_lke(args: dict) -> dict:
         "sumber": note,
         "output": str(out.relative_to(folder)),
         "ditulis": len(writer.written),
-        "ditolak_formula": writer.refused,  # cell yg ditolak (formula/agregator) — pilih cell input lain
+        "ditolak_count": len(writer.refused),
+        "ditolak_formula": writer.refused[:40],  # cell ditolak (formula/agregator) — pilih cell input lain
     }
-    return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)[:4000]}]}
+    return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]}
 
 
-LKE_TOOLS = [fill_lke]
+def _lke_to_read(folder: Path, skill: str) -> tuple[Path | None, str]:
+    """LKE yang dibaca: salinan kerja _KKP/LKE-terisi (bila ada, paling mutakhir),
+    else sumber (upload auditee / template)."""
+    work = folder / "_KKP" / f"LKE-terisi-{_slug(skill)}.xlsx"
+    if work.is_file():
+        return work, f"salinan kerja: {work.name}"
+    src, _cmap, note = _resolve_source(folder, skill)
+    return src, note
+
+
+@tool(
+    "read_lke",
+    "Baca isi Lembar Kerja Evaluasi (LKE) auditee untuk skill evaluasi (SAKIP/SPIP) — "
+    "self-assessment yang sudah diisi auditee. Tanpa `sheet`: daftar nama sheet + "
+    "jumlah cell terisi. Dengan `sheet`: nilai cell non-kosong (coord→{v,f}; f=true bila "
+    "FORMULA, jangan ditulis). Pakai untuk MENILAI self-assessment auditee sebelum "
+    "mengisi kolom APIP via fill_lke.",
+    {"penugasan_folder": str, "skill": str, "sheet": str},
+)
+async def read_lke(args: dict) -> dict:
+    folder = Path(args["penugasan_folder"])
+    skill = str(args.get("skill", "")).strip()
+    sheet = str(args.get("sheet", "")).strip()
+    src, note = _lke_to_read(folder, skill)
+    if src is None or not Path(src).is_file():
+        return {"content": [{"type": "text", "text": f"FAILED|{note}"}], "is_error": True}
+    try:
+        wb = load_workbook(src, data_only=False, read_only=False)
+    except Exception as e:  # noqa: BLE001
+        return {"content": [{"type": "text", "text": f"FAILED|gagal buka LKE: {e}"}], "is_error": True}
+
+    if not sheet:
+        sheets = []
+        for sn in wb.sheetnames:
+            ws = wb[sn]
+            filled = sum(1 for row in ws.iter_rows() for c in row if c.value not in (None, ""))
+            sheets.append({"sheet": sn, "terisi": filled, "dim": ws.dimensions})
+        payload = {"sumber": note, "total_sheet": len(sheets), "sheets": sheets}
+        return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]}
+
+    if sheet not in wb.sheetnames:
+        return {"content": [{"type": "text", "text": f"NOT_FOUND|sheet '{sheet}'. Ada: {wb.sheetnames}"}], "is_error": True}
+    ws = wb[sheet]
+    # Bound DATA (bukan slice string JSON): max 150 cell, nilai dipotong 60 char.
+    _CAP = 150
+    cells: dict[str, dict] = {}
+    capped = False
+    for row in ws.iter_rows():
+        for c in row:
+            if c.value in (None, ""):
+                continue
+            if len(cells) >= _CAP:
+                capped = True
+                break
+            cells[c.coordinate] = {"v": str(c.value)[:60], "f": c.data_type == "f"}
+        if capped:
+            break
+    payload = {"sumber": note, "sheet": sheet, "n_cell": len(cells), "capped": capped, "cells": cells}
+    return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]}
+
+
+LKE_TOOLS = [read_lke, fill_lke]
