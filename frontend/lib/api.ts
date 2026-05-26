@@ -149,6 +149,31 @@ export const api = {
   getGates: (penugasanId: number) =>
     request<GateStatus>(`/penugasan/${penugasanId}/gates`),
 
+  // ===== Graduasi (meta-skill) =====
+  getGraduasiCandidates: () =>
+    request<{ groups: { skill: string; penugasan: { kode: string; obyek: string; n_temuan: number }[] }[] }>(
+      '/graduasi/candidates'
+    ),
+  getGraduasiDrafts: () =>
+    request<{ drafts: { nama: string; fungsi?: string; skill_induk?: string; n_temuan?: number; generated_at?: string }[] }>(
+      '/graduasi/drafts'
+    ),
+  runGraduasi: (penugasanKodes: string[], nama?: string) =>
+    request<{ ok: boolean; nama: string; n_temuan: number; n_redflag: number; sumber_penugasan: string[] }>(
+      '/graduasi/run',
+      { method: 'POST', body: JSON.stringify({ penugasan_kodes: penugasanKodes, nama }) }
+    ),
+  promoteGraduasi: (nama: string) =>
+    request<{ ok: boolean; nama: string; skill_terdaftar: boolean }>('/graduasi/promote', {
+      method: 'POST',
+      body: JSON.stringify({ nama }),
+    }),
+  rejectGraduasi: (nama: string) =>
+    request<{ ok: boolean; nama: string }>('/graduasi/reject', {
+      method: 'POST',
+      body: JSON.stringify({ nama }),
+    }),
+
   /** Keputusan auditor atas satu gate: LANJUT / KOREKSI / ULANG. */
   recordGateDecision: (
     penugasanId: number,

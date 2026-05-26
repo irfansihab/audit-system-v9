@@ -200,6 +200,9 @@ export default function KnowledgePage() {
           )}
         </div>
 
+        {/* ===== Graduasi (PT/PM) ===== */}
+        {(session.role_aktif === 'PT' || session.role_aktif === 'PM') && <GraduasiPanel />}
+
         {/* ===== W2/W3 scaffold ===== */}
         <div className="mb-3 text-sm text-gray-500">Berikutnya (substansi menyusul):</div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -213,5 +216,96 @@ export default function KnowledgePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+// Panel Graduasi (PT/PM): pilih penugasan sejenis → suling jadi DRAFT skill →
+// reviu → promote ke registry. Human-in-the-loop.
+function GraduasiPanel() {
+  const [groups, setGroups] = useState<{ skill: string; penugasan: { kode: string; obyek: string; n_temuan: number }[] }[]>([]);
+  const [drafts, setDrafts] = useState<{ nama: string; skill_induk?: string; n_temuan?: number }[]>([]);
+  const [picked, setPicked] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const refresh = () => {
+    api.getGraduasiCandidates().then((r) => setGroups(r.groups)).catch(() => {});
+    api.getGraduasiDrafts().then((r) => setDrafts(r.drafts)).catch(() => {});
+  };
+  useEffect(() => { refresh(); }, []);
+
+  const toggle = (kode: string) => setPicked((p) => ({ ...p, [kode]: !p[kode] }));
+  const selected = Object.keys(picked).filter((k) => picked[k]);
+
+  const run = async () => {
+    if (selected.length === 0) { setMsg('Pilih ≥1 penugasan dulu.'); return; }
+    setBusy(true); setMsg(null);
+    try {
+      const r = await api.runGraduasi(selected);
+      setMsg(`Draft "${r.nama}" dibuat (${r.n_temuan} temuan, ${r.n_redflag} pola). Reviu lalu Promote.`);
+      setPicked({}); refresh();
+    } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
+  };
+  const act = async (nama: string, kind: 'promote' | 'reject') => {
+    if (kind === 'reject' && !confirm(`Tolak & hapus draft "${nama}"?`)) return;
+    if (kind === 'promote' && !confirm(`Promote draft "${nama}" jadi skill aktif di registry?`)) return;
+    setBusy(true); setMsg(null);
+    try {
+      if (kind === 'promote') { await api.promoteGraduasi(nama); setMsg(`Skill "${nama}" dipromote & terdaftar.`); }
+      else { await api.rejectGraduasi(nama); setMsg(`Draft "${nama}" ditolak.`); }
+      refresh();
+    } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mb-6 bg-white border border-violet-200 rounded-lg p-5">
+      <h2 className="font-semibold text-primary-dark mb-1">Graduasi Skill (PT/PM)</h2>
+      <p className="text-xs text-gray-500 mb-3">
+        Suling pola dari penugasan sejenis (skill sama) menjadi DRAFT skill spesifik. Generate = draft;
+        Anda reviu lalu <b>Promote</b> agar terdaftar. Human-in-the-loop.
+      </p>
+      {msg && <div className="mb-3 p-2 rounded bg-violet-50 text-violet-800 text-xs">{msg}</div>}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <div className="text-xs font-semibold text-gray-600 mb-1">Kandidat penugasan (punya temuan)</div>
+          <div className="border border-gray-200 rounded max-h-60 overflow-y-auto divide-y">
+            {groups.length === 0 ? (
+              <div className="p-3 text-xs text-gray-400 italic">Belum ada penugasan ber-temuan.</div>
+            ) : groups.map((g) => (
+              <div key={g.skill} className="p-2">
+                <div className="text-[11px] uppercase text-gray-400 mb-1">{g.skill}</div>
+                {g.penugasan.map((p) => (
+                  <label key={p.kode} className="flex items-start gap-2 text-xs py-0.5 cursor-pointer">
+                    <input type="checkbox" checked={!!picked[p.kode]} onChange={() => toggle(p.kode)} className="mt-0.5" />
+                    <span className="text-gray-700">{p.obyek} <span className="text-gray-400">({p.n_temuan} temuan)</span></span>
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+          <button onClick={run} disabled={busy} className="mt-2 text-xs px-3 py-1.5 rounded bg-violet-600 text-white font-medium disabled:opacity-50">
+            ⚗ Graduasikan {selected.length > 0 ? `(${selected.length})` : ''}
+          </button>
+        </div>
+
+        <div>
+          <div className="text-xs font-semibold text-gray-600 mb-1">Draft skill (perlu reviu)</div>
+          <div className="border border-gray-200 rounded max-h-60 overflow-y-auto divide-y">
+            {drafts.length === 0 ? (
+              <div className="p-3 text-xs text-gray-400 italic">Belum ada draft.</div>
+            ) : drafts.map((d) => (
+              <div key={d.nama} className="p-2 flex items-center justify-between gap-2">
+                <span className="text-xs text-gray-700">{d.nama} <span className="text-gray-400">← {d.skill_induk}</span></span>
+                <span className="flex gap-1 shrink-0">
+                  <button onClick={() => act(d.nama, 'promote')} disabled={busy} className="text-[11px] px-2 py-0.5 rounded bg-emerald-600 text-white disabled:opacity-50">Promote</button>
+                  <button onClick={() => act(d.nama, 'reject')} disabled={busy} className="text-[11px] px-2 py-0.5 rounded bg-gray-400 text-white disabled:opacity-50">Tolak</button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -545,7 +545,10 @@ Folder `skills/` (taksonomi `audit-system-v4`, 22 entri cowork) ditambahkan. v7 
   - ✅ **Rapikan folder** — aset cowork → `knowledge/{skills,templates,wiki,tasks}` (config `APP_*_PATH` + mount docker disesuaikan); hapus `backend/wiki/` basi.
   - 📋 **Pemetaan `tasks/` cowork → v7:** Task 00 (role)→auth/role-gating; 01 (start)→PT create+KT setup+AT upload; 03 (KKP)→agen AT; 04 (LHP)→agen KT + `render_lhp` per-template. ARSIP sebagian dilebur/sengaja dilewati.
   - ✅ **Template generik + UX kriteria** — `template-lhp-generic.docx` (kata "Reviu"→"Pengawasan") jadi fallback untuk 6 skill tanpa skeleton (*-umum + kepatuhan-saipi); resolver: per-skill → generic → app RKA. UI Dokumen kini skill-aware: dropdown jenis (KRITERIA/OBJEK untuk criteria-driven, TOR/RAB untuk RKA, KAK/HPS/dst untuk PBJ) + petunjuk per jenis skill. Gate one-click (tombol LANJUT/KOREKSI/ULANG) sudah ada.
-  - ⏳ Sisa: format non-KKSA asli (RB tabel 4-dimensi, Memo Konsultansi — perlu render khusus), tombol "Jalankan gate aktif" dari panel (kini via chat `[MODE:GATE]`), integrasi meta-skill graduasi, tes live agen.
+  - ✅ **Format non-KKSA** (`docs/rencana-format-laporan.html`) — `format_registry` (profil kksa/memo/rb-4dim) + `render_report` dispatcher; **Memo Konsultansi** (`append_saran` → `render_memo`) + **Eval RB tabel 4-dimensi** (`write_penilaian_rb` → `render_rb`) = renderer milik-app (python-docx), V6 read-only dijaga. Verified.
+  - ✅ **Meta-skill graduasi** (`docs/rencana-graduasi-skill.html`) — `graduasi.py` v7-native (validasi → domain term → konsolidasi kriteria → cluster temuan Jaccard dari `temuan.json` → DRAFT di `knowledge/skills/_draft/`); `routes/graduasi.py` (candidates/run/drafts/promote/reject, PT/PM); promote → `knowledge/skills/` + `registry.refresh`; panel Graduasi di tab Knowledge. Verified E2E (run→draft→promote→terdaftar).
+  - ✅ Tombol gate one-click + "Jalankan Gate" (prefill Chat).
+  - ⏳ Sisa: tes live agen (audit-kinerja / gate SPIP / memo / RB / graduasi); skeleton LHP non-KKSA yang lebih kaya bila perlu.
 
 ---
 
