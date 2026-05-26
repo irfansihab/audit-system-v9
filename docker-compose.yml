@@ -29,11 +29,18 @@ services:
       APP_SECRET_KEY: ${APP_SECRET_KEY:-dev-secret-please-change}
       APP_DATA_DIR: /data
       APP_V6_PATH: /v6
+      APP_SKILLS_PATH: /skills
+      APP_TEMPLATES_PATH: /templates
+      APP_WIKI_PATH: /wiki
       APP_CORS_ORIGINS: http://localhost:3000
     volumes:
       - ./backend/app:/app/app
       - audit_v7_data:/data
       - ../audit-system-v4:/v6:ro
+      # Aset cowork (registry skill, template LHP, pattern wiki) — read-only
+      - ./knowledge/skills:/skills:ro
+      - ./knowledge/templates:/templates:ro
+      - ./knowledge/wiki:/wiki:ro
     ports:
       - "8000:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

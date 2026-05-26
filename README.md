@@ -33,10 +33,11 @@ audit-system-v7/
 ├── DEPLOY.md                 # panduan deploy Fly.io + Vercel
 ├── docker-compose.yml        # postgres lokal + backend container (opsional)
 ├── .env.example              # template variabel environment
-├── wiki/                     # knowledge base auditor — pattern temuan, dll
-│   └── temuan-patterns/
-│       ├── reviu-pengadaan/
-│       └── reviu-rka-kl/
+├── knowledge/                # aset cowork (audit-system-v4) — di-wire via APP_*_PATH
+│   ├── skills/               # registry skill pengawasan (SKILL.md + references) — APP_SKILLS_PATH
+│   ├── templates/            # template laporan: _skeleton-lhp/template-lhp-[skill].docx — APP_TEMPLATES_PATH
+│   ├── wiki/                 # knowledge base auditor — temuan-patterns/{skill}/ + konteks — APP_WIKI_PATH
+│   └── tasks/                # referensi alur cowork (00/01/03/04 + *-bertahap) — TIDAK di-wire (dok)
 ├── backend/                  # FastAPI + Claude Agent SDK
 │   ├── Dockerfile            # python:3.12-slim + Node.js + claude-code CLI
 │   ├── fly.toml              # Fly.io app config
@@ -65,7 +66,8 @@ audit-system-v7/
 │       │   ├── v6_bridge.py  # +qc_summary_counts
 │       │   ├── pipeline_tools.py  # run_batch_*, read_pdf_page, read_anomalies
 │       │   ├── kkp_tools.py  # context-gen, append_temuan, render_kkp, run_qc_kkp
-│       │   ├── lhr_tools.py  # render_lhr_rka, run_qc_lhp
+│       │   ├── lhr_tools.py  # render_lhp (per-jenis template), render_lhr_pbj, run_qc_lhp
+│       │   ├── skill_tools.py # load_skill, read_skill_reference (registry knowledge/skills)
 │       │   └── wiki_tools.py # pattern/konteks + search_wiki/get_wiki_page (vault)
 │       ├── prompts/          # system prompts (.md): anggota_tim, ketua_tim
 │       └── routes/           # auth, penugasan, dokumen, agen, files, feedback, knowledge, cacm
@@ -122,7 +124,9 @@ APP_ENV=development
 APP_SECRET_KEY=<random 32 hex bytes — generate via: openssl rand -hex 32>
 APP_DATA_DIR=/path/absolut/ke/audit-system-v7/backend/data
 APP_V6_PATH=/path/absolut/ke/audit-system-v7/backend/v6
-APP_WIKI_PATH=/path/absolut/ke/audit-system-v7/wiki
+APP_WIKI_PATH=/path/absolut/ke/audit-system-v7/knowledge/wiki
+APP_SKILLS_PATH=/path/absolut/ke/audit-system-v7/knowledge/skills
+APP_TEMPLATES_PATH=/path/absolut/ke/audit-system-v7/knowledge/templates
 APP_CORS_ORIGINS=http://localhost:3000
 NEXT_PUBLIC_API_BASE=http://localhost:8000
 ```
@@ -420,7 +424,7 @@ Plus panduan lengkap di `wiki/README.md`.
 Path wiki diatur via env var `APP_WIKI_PATH` di `.env`:
 
 ```
-APP_WIKI_PATH=/Users/itjen/Downloads/sistem audit v7/wiki
+APP_WIKI_PATH=/Users/itjen/Downloads/sistem audit v7/knowledge/wiki
 ```
 
 Bila folder wiki tidak ada atau kosong, agen akan return `WIKI_KOSONG` dan lanjut tanpa pattern.
