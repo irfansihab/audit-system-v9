@@ -20,6 +20,7 @@ from app.tools.feedback_tools import FEEDBACK_TOOLS
 from app.tools.kkp_tools import list_ingested, read_context
 from app.tools.lhr_tools import LHR_TOOLS
 from app.tools.pipeline_tools import read_pdf_page
+from app.tools.skill_tools import SKILL_TOOLS
 from app.tools.wiki_tools import WIKI_TOOLS
 
 
@@ -28,10 +29,11 @@ def build_ketua_tim_agent() -> ClaudeAgentOptions:
     # - read_pdf_page → baca PKP/ST mentah saat ekstrak sasaran
     # - list_ingested → cek hasil ingestion sebelum extract
     # - read_context → baca context.md + sasaran-assignment yang ada
+    # - SKILL_TOOLS → muat prosedur skill non-RKA/PBJ saat susun sasaran/LHP
     kt_extra = [read_pdf_page, list_ingested, read_context]
     return build_agent_options(
         prompt_name="ketua_tim",
-        tools=LHR_TOOLS + kt_extra + WIKI_TOOLS + FEEDBACK_TOOLS,
+        tools=LHR_TOOLS + kt_extra + WIKI_TOOLS + SKILL_TOOLS + FEEDBACK_TOOLS,
         server_name="kt",
         model="claude-sonnet-4-6",
     )

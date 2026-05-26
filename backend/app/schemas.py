@@ -1,9 +1,10 @@
 """Pydantic schemas untuk request/response API."""
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
-from app.models import DokumenStatus, PenugasanStatus, Role, Skill
+from app.models import DokumenStatus, PenugasanStatus, Role
+from app.skills_registry import available_slugs, skill_exists
 
 
 # ===== Auth =====
@@ -36,9 +37,21 @@ class SessionOut(BaseModel):
 # ===== Penugasan =====
 class PenugasanCreate(BaseModel):
     obyek: str
-    skill: Skill
+    # Skill kini folder-driven (lihat skills_registry) — bukan enum tetap.
+    # Divalidasi terhadap registry supaya skill baru cukup ditambah sebagai folder.
+    skill: str
     nomor_st: str | None = None
     tanggal_st: str | None = None
+
+    @field_validator("skill")
+    @classmethod
+    def _skill_terdaftar(cls, v: str) -> str:
+        slug = str(v).strip().lower()
+        if not skill_exists(slug):
+            raise ValueError(
+                f"skill '{v}' tidak terdaftar. Tersedia: {', '.join(available_slugs())}"
+            )
+        return slug
 
 
 class PenugasanOut(BaseModel):
@@ -46,7 +59,8 @@ class PenugasanOut(BaseModel):
     id: int
     kode: str
     obyek: str
-    skill: Skill
+    # String bebas (DB menyimpan str) — bisa skill di luar 2 pipeline lama.
+    skill: str
     nomor_st: str | None
     tanggal_st: str | None
     status: PenugasanStatus

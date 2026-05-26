@@ -53,7 +53,17 @@ async function request<T>(
 
 // ===== Types =====
 export type Role = 'AT' | 'KT' | 'PT' | 'PM';
-export type Skill = 'reviu-rka-kl' | 'reviu-pengadaan';
+// Skill kini folder-driven di backend (registry) — bukan enum tetap. Tetap
+// alias `string` supaya komponen lama yang mereferensikan `Skill` tidak rusak.
+export type Skill = string;
+
+export interface SkillInfo {
+  slug: string;
+  name: string;
+  jenis: string;
+  output: string;
+  has_pipeline: boolean;
+}
 
 export interface User {
   id: number;
@@ -112,6 +122,9 @@ export const api = {
    * dan oleh KT untuk dropdown assignment sasaran. Publik (prototype). */
   listUsers: (role?: Role) =>
     request<User[]>(`/auth/users${role ? `?role=${role}` : ''}`),
+
+  /** Daftar skill pengawasan terdaftar (folder-driven) untuk dropdown. */
+  getSkills: () => request<SkillInfo[]>('/skills'),
 
   listPenugasan: () => request<Penugasan[]>('/penugasan'),
 

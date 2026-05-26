@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, getSession, clearToken, Penugasan, Session, Skill } from '@/lib/api';
+import { api, getSession, clearToken, Penugasan, Session, Skill, SkillInfo } from '@/lib/api';
 
 // Status penugasan (di-derive backend dari artefak) → label + warna yang ramah.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [showForm, setShowForm] = useState(false);
   const [obyek, setObyek] = useState('');
   const [skill, setSkill] = useState<Skill>('reviu-rka-kl');
+  const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [nomorSt, setNomorSt] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +52,15 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
     // Badge notifikasi usulan CACM (abaikan error — fitur opsional)
     api.getCacmPending().then((r) => setCacmPending(r.count)).catch(() => {});
+    // Daftar skill untuk dropdown (folder-driven). Fallback ke 2 skill pipeline.
+    api
+      .getSkills()
+      .then((rows) => {
+        setSkills(rows);
+        if (rows.length && !rows.some((r) => r.slug === skill)) setSkill(rows[0].slug);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -214,8 +224,19 @@ export default function DashboardPage() {
                 onChange={(e) => setSkill(e.target.value as Skill)}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
               >
-                <option value="reviu-rka-kl">Reviu RKA-K/L</option>
-                <option value="reviu-pengadaan">Reviu Pengadaan</option>
+                {skills.length === 0 ? (
+                  <>
+                    <option value="reviu-rka-kl">Reviu RKA-K/L</option>
+                    <option value="reviu-pengadaan">Reviu Pengadaan</option>
+                  </>
+                ) : (
+                  skills.map((s) => (
+                    <option key={s.slug} value={s.slug}>
+                      {s.jenis || s.name}
+                      {s.has_pipeline ? '' : ' · criteria-driven'}
+                    </option>
+                  ))
+                )}
               </select>
             </label>
             <label className="block">

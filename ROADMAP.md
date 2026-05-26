@@ -530,13 +530,19 @@ Audit read-only fokus kecepatan + buang yang tak optimal. Dikerjakan (commit ter
 - **Penyederhanaan workflow (sesuai alur yang diminta):** hapus tombol "Mulai Ingestion" (digest **auto** saat upload); **Generate Context** jadi tombol terpisah + editable di tab Konteks, **di-gate**: hanya aktif bila **KT sudah isi sasaran** + **AT sudah upload dokumen ter-digest** (`storage.context_readiness` + hard gate `[MODE:CONTEXT]` di stream + endpoint `/context-readiness`). **Verified live**: run AT `[MODE:CONTEXT]` → susun `context.md` dari digest+sasaran lalu BERHENTI (tak lanjut pipeline).
 - **Gate kepatuhan QC dipindah lebih awal ke UI** (dari feedback agen): warning sasaran tanpa anggota (REN-006), Nomor ST kosong (REN-003), notice KP/PKP (REN-001/002); tool `read_anomalies` + guard folder QC.
 - **P3 (hapus digest-ganda) DIBATALKAN** — bertentangan dengan alur: `context.md` dibangun dari digest ingestion, jadi digest ingestion dipertahankan.
-- **Sisa usulan (P4/P5):** paralelkan digest (`asyncio.gather`), aktifkan `DocumentCache`, cache `search_wiki`, perbaiki N+1 `/cacm/runs`, hapus kolom mati (`Penugasan.context_md`, `AgentRun.tokens_*`).
+- **P4 (selesai):** digest ingestion **paralel** via `asyncio.gather` (dibatasi semaphore 4) + **`DocumentCache` aktif** — digest per-file TOR/RAB ditulis ke cache by sha256; upload file identik = cache-HIT (disalin ke `_INGESTED` lokal via `stage_cached_digest`, tahan banting). Verified: 3 digest ~0.45s (paralel) vs ~1.2s sekuensial; cache-HIT terbaca `read_ingested_digest`.
+- **Sisa usulan (P5):** cache `search_wiki`, perbaiki N+1 `/cacm/runs`, hapus kolom mati (`Penugasan.context_md`, `AgentRun.tokens_*`).
+
+### Perluasan skill pengawasan (26 Mei 2026) — rencana
+
+Folder `skills/` (taksonomi `audit-system-v4`, 22 entri cowork) ditambahkan. v7 baru kenal 2 skill (RKA-K/L, Pengadaan). Rencana **Hybrid**: bangun mesin **skill generik criteria-driven** (registry folder-driven + loader SKILL.md/references ke agen), pilot **audit-kinerja** (reuse renderer KKSA), graduasikan skill panas ke pipeline kemudian. Detail visual: **[docs/rencana-skill-pengawasan.html](docs/rencana-skill-pengawasan.html)**. Pra-kerja sudah jalan: `list_temuan_patterns` kini folder-driven (12 kategori pattern terbaca).
 
 ---
 
 ## 14. Lihat Juga
 
 - [docs/rencana-cacm-wiki.html](docs/rencana-cacm-wiki.html) — rencana CACM & Wiki (versi visual)
+- [docs/rencana-skill-pengawasan.html](docs/rencana-skill-pengawasan.html) — rencana perluasan skill pengawasan (mesin skill generik, pilot audit-kinerja)
 - [README.md](README.md) — setup dev lokal + arsitektur teknis
 - [DEPLOY.md](DEPLOY.md) — panduan deploy Fly.io + Vercel
 - [wiki/README.md](wiki/README.md) — panduan menulis pattern temuan
@@ -544,4 +550,4 @@ Audit read-only fokus kecepatan + buang yang tak optimal. Dikerjakan (commit ter
 
 ---
 
-*Dokumen ini dibuat 20 Mei 2026, di-update setiap akhir minggu. Adendum §13 ditambah 22 Mei; direvisi 25 Mei 2026 (integrasi EWS SIRUP tim + W1; CACM C1a/C1b/C2; audit P1/P2 + penyederhanaan workflow + gate Generate Context).*
+*Dokumen ini dibuat 20 Mei 2026, di-update setiap akhir minggu. Adendum §13 ditambah 22 Mei; direvisi 25 Mei 2026 (integrasi EWS SIRUP tim + W1; CACM C1a/C1b/C2; audit P1/P2 + penyederhanaan workflow + gate Generate Context); 26 Mei 2026 (P4 digest paralel + DocumentCache; rencana perluasan skill pengawasan).*

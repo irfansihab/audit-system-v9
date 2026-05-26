@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     app_data_dir: str = "/data"
     app_v6_path: str = "/v6"
     app_wiki_path: str = "/wiki"  # knowledge base auditor (pattern temuan, dll)
+    # Folder skill pengawasan (SKILL.md + references) — registry skill v7.
+    # Default mengikuti layout repo; di docker di-mount ke /skills.
+    app_skills_path: str = "/skills"
     # Vault pengetahuan penuh (Obsidian/Karpathy) — read-only referensi. Catatan
     # ada di <app_vault_path>/wiki/. Kosong = fitur baca vault non-aktif.
     app_vault_path: str = ""
@@ -67,6 +70,10 @@ class Settings(BaseSettings):
     @property
     def wiki_path(self) -> Path:
         return Path(self.app_wiki_path)
+
+    @property
+    def skills_path(self) -> Path:
+        return Path(self.app_skills_path)
 
     @property
     def vault_path(self) -> Path | None:
