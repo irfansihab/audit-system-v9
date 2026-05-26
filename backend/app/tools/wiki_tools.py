@@ -105,6 +105,15 @@ def _scan_pattern_files(skill: str) -> list[Path]:
     return sorted([p for p in folder.glob("*.md") if p.name.lower() != "readme.md"])
 
 
+def _available_skills() -> list[str]:
+    """Daftar skill yang punya folder pattern (turunan dari isi folder, bukan
+    hardcode) — tambah folder = tambah skill, tanpa ubah kode."""
+    base = settings.wiki_path / "temuan-patterns"
+    if not base.exists():
+        return []
+    return sorted(d.name for d in base.iterdir() if d.is_dir())
+
+
 @tool(
     "list_temuan_patterns",
     "Daftar semua pattern temuan dari wiki untuk skill tertentu. "
@@ -115,11 +124,15 @@ def _scan_pattern_files(skill: str) -> list[Path]:
 )
 async def list_temuan_patterns(args: dict) -> dict:
     skill = args["skill"].strip().lower()
-    if skill not in {"reviu-pengadaan", "reviu-rka-kl"}:
+    if not _patterns_dir(skill).exists():
+        avail = _available_skills()
         return {
             "content": [{
                 "type": "text",
-                "text": f"FAILED|skill='{skill}' tidak valid. Gunakan: reviu-pengadaan atau reviu-rka-kl",
+                "text": (
+                    f"FAILED|skill='{skill}' belum punya folder pattern. "
+                    f"Tersedia: {', '.join(avail) if avail else '(belum ada)'}"
+                ),
             }],
             "is_error": True,
         }
