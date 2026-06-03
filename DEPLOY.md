@@ -98,6 +98,8 @@ cd "/Users/itjen/Downloads/sistem audit v7"
 bash scripts/deploy-fly.sh
 ```
 
+> 🪟 **Windows (PowerShell):** pakai `.\scripts\deploy-fly.ps1` (equivalent — verifikasi V6 + sync wiki + `fly deploy`).
+
 `deploy-fly.sh` akan:
 1. Verifikasi `backend/v6/{scripts,skills,templates,checklists}` ada (V6 embedded)
 2. Cek sanity binary entrypoint V6: `v6/scripts/reviu-rka-kl/run_batch.py` + `v6/scripts/reviu-pengadaan/run_batch.py`
@@ -169,6 +171,8 @@ Yang dilakukan:
 cd "/Users/itjen/Downloads/sistem audit v7"
 bash scripts/deploy-vercel.sh   # atau cd frontend && vercel --prod
 ```
+
+> 🪟 **Windows (PowerShell):** `.\scripts\deploy-vercel.ps1` (equivalent).
 
 ---
 
@@ -344,5 +348,5 @@ Karena seluruh kode portable (FastAPI + Postgres + filesystem), migrasi terbatas
 
 - [README.md](README.md) — Setup dev lokal + arsitektur + workflow auditor
 - `backend/fly.toml` — Fly app config (mounts, env, http_service)
-- `scripts/deploy-fly.sh` — Validasi V6 layout + fly deploy
-- `scripts/deploy-vercel.sh` — Vercel deploy wrapper
+- `scripts/deploy-fly.sh` (+ `.ps1` equivalent untuk Windows) — Validasi V6 layout + sync wiki + fly deploy
+- `scripts/deploy-vercel.sh` (+ `.ps1` equivalent untuk Windows) — Vercel deploy wrapper

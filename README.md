@@ -86,15 +86,19 @@ audit-system-v7/
 
 **Test lapangan: setup dari nol di MacBook butuh ~45 menit + akumulasi 8 hop debug** (lihat [Gotcha Setup](#gotcha-setup) di bawah). README ini sudah memperingatkan semua jebakan tersebut di muka, jadi setup ulang harusnya < 15 menit.
 
+> 🪟 **Windows users:** semua perintah `bash ...` di bawah punya pasangan PowerShell. Pilih jalur kamu — keduanya didukung:
+> - **PowerShell native (tanpa Git Bash):** lihat [Setup Windows (PowerShell)](#setup-windows-powershell) di bawah Quick Start. Pakai `scripts\setup-dev.ps1`, `scripts\dev-backend.ps1`, dst.
+> - **Git Bash di Windows:** ikuti langkah Quick Start (`bash scripts/...sh`) — script `.sh` sudah toleran venv Windows (`.venv/Scripts/activate`) & Python `python`/`py`/`python3`.
+
 ### Prasyarat
 
-| Tool            | Min versi | Install di macOS                           |
-| --------------- | --------- | ------------------------------------------ |
-| Git             | 2.x       | `brew install git`                         |
-| Python          | 3.12+     | `brew install python@3.12`                 |
-| Node.js         | 20+       | `brew install node@20` + add to PATH       |
-| Docker Desktop  | latest    | `brew install --cask docker`               |
-| Claude Code CLI | latest    | `npm install -g @anthropic-ai/claude-code` |
+| Tool            | Min versi | Install di macOS                           | Install di Windows                                   |
+| --------------- | --------- | ------------------------------------------ | ---------------------------------------------------- |
+| Git             | 2.x       | `brew install git`                         | https://git-scm.com/download/win (sudah include Git Bash) |
+| Python          | 3.12+     | `brew install python@3.12`                 | https://www.python.org/downloads/ (centang "Add to PATH") |
+| Node.js         | 20+       | `brew install node@20` + add to PATH       | https://nodejs.org (LTS)                             |
+| Docker Desktop  | latest    | `brew install --cask docker`               | https://docs.docker.com/desktop/install/windows-install/ |
+| Claude Code CLI | latest    | `npm install -g @anthropic-ai/claude-code` | `npm install -g @anthropic-ai/claude-code`           |
 
 Plus:
 - Anthropic API key dari https://console.anthropic.com
@@ -216,6 +220,88 @@ Backend auto-pick user seed pertama yang `role_default == role` yang dipilih.
 Untuk tambah/edit user seed: edit `backend/app/init_db.py` lalu jalankan ulang `python -m app.init_db`.
 
 Production nanti diganti SSO Komdigi (OIDC).
+
+---
+
+## Setup Windows (PowerShell)
+
+PowerShell shipped dengan Windows 10+. Tidak perlu Git Bash / WSL — semua script punya pasangan `.ps1`. Equivalent dari Quick Start macOS di atas:
+
+**0. Sekali setup — izinkan run script (PowerShell menolak `.ps1` by default):**
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+**1. Clone repo** (sama):
+
+```powershell
+git clone https://github.com/irfansihab/audit-system-v7
+cd audit-system-v7
+```
+
+**2. Setup .env** — `.env` di project-root cukup; script `.ps1` di Windows tidak butuh symlink ke `backend\.env` (Windows symlinks butuh admin/Developer Mode). `dev-backend.ps1` otomatis fallback ke project-root `.env`.
+
+```powershell
+Copy-Item .env.example .env
+notepad .env   # isi ANTHROPIC_API_KEY, APP_DATA_DIR (path absolut Windows-style), dll.
+```
+
+Untuk `APP_SECRET_KEY`, generate via Python:
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+**3. Setup all-in-one** — venv backend, install deps, init DB, install frontend deps:
+
+```powershell
+.\scripts\setup-dev.ps1
+```
+
+Script ini:
+- ✓ Bikin `.env` & `frontend\.env.local` dari `.env.example` kalau belum ada
+- ✓ Cek Docker Desktop running → `docker compose up -d db`
+- ✓ Pakai `python` / `python3` / `py` (mana yang ada di PATH)
+- ✓ Bikin `.venv` lalu activate via `.venv\Scripts\Activate.ps1`
+- ✓ `pip install -r requirements.txt` + `python -m app.init_db`
+- ✓ `cd frontend && npm install`
+
+**4. Auth Claude Code CLI** (sekali):
+
+```powershell
+claude /login
+```
+
+**5. Jalankan backend** (terminal PowerShell pertama):
+
+```powershell
+.\scripts\dev-backend.ps1
+```
+
+Script ini parse `.env`, set `$env:ANTHROPIC_API_KEY` ke environment proses (supaya subprocess `claude` CLI mewarisi), activate venv, lalu `uvicorn --reload --port 8000`.
+
+**6. Jalankan frontend** (terminal PowerShell kedua):
+
+```powershell
+cd frontend
+npm run dev
+```
+
+**7. Deploy** (kalau perlu push ke Fly.io/Vercel):
+
+```powershell
+.\scripts\deploy-fly.ps1       # backend → Fly.io
+.\scripts\deploy-vercel.ps1    # frontend → Vercel
+```
+
+### Catatan khusus Windows
+
+- **Symlink `backend\.env` tidak diperlukan** — script `.ps1` cari `backend\.env` dulu, kalau tidak ada fallback ke project-root `.env`. Equivalent gotcha #1 di macOS terselesaikan tanpa admin.
+- **CRLF line ending di `.env`** — `dev-backend.ps1` strip whitespace + quotes saat ekstraksi `ANTHROPIC_API_KEY`. Aman pakai Notepad.
+- **`python3` vs `python`** — script otomatis pilih `python` (Windows default) atau `python3` / `py` (fallback). Tidak perlu alias manual.
+- **Path absolut di `.env`** — pakai forward slash atau double-backslash di `APP_DATA_DIR` / `APP_WIKI_PATH` / dll (pydantic-settings menerima keduanya), mis. `C:/audit-system-v7/backend/data`.
+- **Test script di Git Bash juga didukung** — `.sh` sudah toleran venv Windows (`.venv/Scripts/activate`) + `python` fallback, jadi `bash scripts/dev-backend.sh` di Git Bash juga jalan.
 
 ---
 

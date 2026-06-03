@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# Setup lokal pengembangan
-# Jalankan dari folder audit-system-v7/
+# Setup lokal pengembangan.
+# Jalankan dari folder audit-system-v7/.
+#
+# Cross-platform:
+#   - macOS / Linux: bash scripts/setup-dev.sh
+#   - Windows (Git Bash): bash scripts/setup-dev.sh
+#   - Windows (PowerShell native, tanpa Git Bash): pakai scripts\setup-dev.ps1
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -27,10 +32,38 @@ sleep 5
 
 # 3. Backend deps
 cd backend
-if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
+
+# Resolusi perintah Python: di Windows umumnya `python` (bukan `python3`).
+PYTHON_CMD=""
+for cand in python3 python py; do
+    if command -v "$cand" > /dev/null 2>&1; then
+        PYTHON_CMD="$cand"
+        break
+    fi
+done
+if [ -z "$PYTHON_CMD" ]; then
+    echo "❌ Tidak menemukan python3 / python / py di PATH. Install Python 3.11+ dulu."
+    exit 1
 fi
-source .venv/bin/activate
+echo "🐍 Pakai Python: $PYTHON_CMD ($($PYTHON_CMD --version 2>&1))"
+
+if [ ! -d ".venv" ]; then
+    "$PYTHON_CMD" -m venv .venv
+fi
+
+# Resolusi script activate venv: Unix → bin/activate; Windows → Scripts/activate.
+if [ -f .venv/bin/activate ]; then
+    # shellcheck disable=SC1091
+    source .venv/bin/activate
+elif [ -f .venv/Scripts/activate ]; then
+    # Windows venv via Git Bash
+    # shellcheck disable=SC1091
+    source .venv/Scripts/activate
+else
+    echo "❌ Tidak menemukan script activate venv (.venv/bin/activate atau .venv/Scripts/activate)."
+    exit 1
+fi
+
 pip install --upgrade pip
 pip install -r requirements.txt
 
@@ -50,7 +83,11 @@ echo ""
 echo "✅ Setup selesai."
 echo ""
 echo "Untuk menjalankan dev server:"
-echo "  Terminal 1: cd backend && source .venv/bin/activate && uvicorn app.main:app --reload"
+if [ -f ../backend/.venv/Scripts/activate ]; then
+    echo "  Terminal 1: cd backend && source .venv/Scripts/activate && uvicorn app.main:app --reload"
+else
+    echo "  Terminal 1: cd backend && source .venv/bin/activate && uvicorn app.main:app --reload"
+fi
 echo "  Terminal 2: cd frontend && npm run dev"
 echo ""
 echo "Buka http://localhost:3000"

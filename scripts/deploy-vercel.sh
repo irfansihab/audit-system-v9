@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# Deployment script untuk Vercel
-# Jalankan dari folder audit-system-v7/
+# Deployment script untuk Vercel.
+# Jalankan dari folder audit-system-v7/.
+#
+# Cross-platform:
+#   - macOS / Linux:        bash scripts/deploy-vercel.sh
+#   - Windows (Git Bash):   bash scripts/deploy-vercel.sh
+#   - Windows (PowerShell): scripts\deploy-vercel.ps1
 
 set -euo pipefail
 

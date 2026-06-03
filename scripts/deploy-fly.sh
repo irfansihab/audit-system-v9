@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# Deployment script untuk Fly.io
-# Jalankan dari folder audit-system-v7/
+# Deployment script untuk Fly.io.
+# Jalankan dari folder audit-system-v7/.
+#
+# Cross-platform:
+#   - macOS / Linux:        bash scripts/deploy-fly.sh
+#   - Windows (Git Bash):   bash scripts/deploy-fly.sh
+#   - Windows (PowerShell): scripts\deploy-fly.ps1
 
 set -euo pipefail
 
