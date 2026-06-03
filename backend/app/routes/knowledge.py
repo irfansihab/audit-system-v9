@@ -7,6 +7,9 @@
 - W3 (tulis-balik penugasan ➝ vault): penugasan `LHP_DONE` ➝ generate draft
   `pengawasan-{kode}.md` + delta index/log ➝ review ➝ Download .md (opsi A,
   rekomendasi) atau Apply ke vault (opsi B). Lihat app.wiki_writeback.
+- W4 (browser pattern temuan): `/patterns/library` + `/patterns/library/{id}`
+  — semua role bisa jelajah 65+ pattern terkurasi lintas 12 skill. Read-only.
+  Lihat app.knowledge_browse.
 
 V6 read-only — promosi menulis ke folder wiki proyek, bukan ke V6.
 """
@@ -18,7 +21,7 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import wiki_promote, wiki_writeback
+from app import knowledge_browse, wiki_promote, wiki_writeback
 from app.auth import get_current_user
 from app.config import get_settings
 from app.database import get_db
@@ -408,3 +411,42 @@ async def writeback_reject(
     await db.commit()
     await db.refresh(p)
     return _proposal_to_dict(p)
+
+
+# =============================================================================
+# W4 — Pattern Library Browser
+#
+# Tujuan: 65+ pattern temuan terkurasi di `wiki/temuan-patterns/<skill>/` jadi
+# bisa dijelajah manual lewat web — semua role (bukan hanya agen). Sebelumnya
+# pattern hanya bisa dibaca agen via tool `list_temuan_patterns` / `get_temuan_pattern`.
+# =============================================================================
+
+
+@router.get("/patterns/library")
+async def patterns_library(
+    skill: str | None = Query(None, description="Filter skill folder (mis. 'reviu-pengadaan'). Kosong = semua skill."),
+    severity: str | None = Query(None, description="Filter severity: CRITICAL / HIGH / MEDIUM / LOW."),
+    search: str | None = Query(None, description="Substring case-insensitive di id/judul/kategori/kriteria_baku/tags."),
+    _current: tuple[User, Role] = Depends(get_current_user),
+) -> dict:
+    """Jelajah pattern temuan terkurasi. Semua role boleh baca."""
+    return knowledge_browse.list_pattern_library(
+        skill=skill or None,
+        severity=severity or None,
+        search=search or None,
+    )
+
+
+@router.get("/patterns/library/{pattern_id}")
+async def patterns_library_get(
+    pattern_id: str,
+    _current: tuple[User, Role] = Depends(get_current_user),
+) -> dict:
+    """Baca isi lengkap satu pattern (frontmatter + body markdown)."""
+    res = knowledge_browse.get_pattern_full(pattern_id)
+    if not res:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Pattern '{pattern_id}' tidak ditemukan. Cek /knowledge/patterns/library untuk daftar valid.",
+        )
+    return res

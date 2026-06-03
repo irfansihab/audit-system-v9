@@ -612,6 +612,46 @@ payload sebagai JSON.
 Tutup W1 checklist §10: W1.1 (sasaran setup) ✅, 10+ pattern wiki ✅, E2E RKA ✅.
 Sisa W1: production redeploy Fly.io (ops).
 
+### W4 — Knowledge Management pass (2 Juni 2026)
+
+Tiga concern auditor tentang fitur knowledge management ditutup dalam 1 commit:
+
+- **Concern 1 — Pattern temuan lebih visible.** Sebelumnya 65+ pattern terkurasi di
+  `knowledge/wiki/temuan-patterns/<skill>/` hanya bisa dibaca agen via tool
+  `list_temuan_patterns`/`get_temuan_pattern`. Sekarang ada panel "Pattern Temuan
+  (jelajah manual)" di `/knowledge` (paling atas, semua role). Filter skill/severity/
+  search; klik kartu → preview frontmatter (id, kategori, severity, kriteria_baku,
+  tags) + body markdown lengkap + tombol "salin ID" supaya bisa dipakai di Chat AT/KT
+  sebagai referensi.
+- **Concern 2 — Template setup penugasan paralel 3-sumber.** Button "⋆ Mulai dari
+  template" di tab Setup Penugasan membuka modal dengan 3 tab:
+  - **Penugasan lalu**: top-5 penugasan v7 dgn skill sama, di-rank by Jaccard
+    similarity atas obyek (tokenize lowercase, buang stopword ID kayak
+    "kementerian/ditjen/ta/tahun"). Toleran skema lama (`id`/`nama`) maupun baru
+    (`sasaran_id`/`deskripsi`). Preview sasaran lengkap; klik Pakai → prefill tabel.
+  - **Skeleton pattern**: 1 sasaran per kategori pattern dominan, langkah_kerja
+    merefer ID pattern severity tertinggi dalam kategori. Cocok untuk skill yg
+    belum punya penugasan historis.
+  - **Catatan vault**: `pengawasan-*.md` (W3 writeback) yg related — sbg konteks
+    pembelajaran (W3 menulis temuan, bukan sasaran).
+  - Strategy `replace` (ganti semua) atau `merge` (anti-dup by sasaran_id).
+- **Concern 3 — Klaritas UX.** Komponen `HowToUse` reusable: collapsible "▸ Cara
+  pakai & kapan dipakai" di tiap panel knowledge — 3-langkah + "kapan dipakai" +
+  contoh konkret. Diterapkan ke Pattern Library, Promosi Pattern, Graduasi Skill,
+  dan Tulis-balik Vault. Plus intro 4-bullet di header `/knowledge`.
+
+Backend: `app/knowledge_browse.py` (helper deterministik, no LLM). Endpoint baru
+`GET /knowledge/patterns/library` (filter skill/severity/search) + `/library/{id}`
+(read full) + `GET /penugasan/{id}/sasaran/templates?source=all|historis|patterns|writeback`.
+
+Verified backend (probe library + filter + get specific pattern + 404) + browser
+end-to-end: login PT → `/knowledge` → 4 panel + intro + 4 button "Cara pakai" →
+filter Pattern Library ke reviu-pengadaan → 9 pattern → klik RP-08 → detail CRITICAL +
+Perpres 16/2018 P26(5) + body lengkap. Lanjut buka penugasan reviu-pengadaan →
+Setup → "⋆ Mulai dari template" → 3 tab tampil (2 historis, 5 skeleton, 0 vault) →
+preview historis → Pakai → tabel sasaran ter-prefill dgn 4 baris (S-PBJ-01..04 +
+deskripsi panjang KAK/HPS/Traceability/Pemilihan).
+
 ---
 
 ## 14. Lihat Juga
@@ -627,4 +667,4 @@ Sisa W1: production redeploy Fly.io (ops).
 
 ---
 
-*Dokumen ini dibuat 20 Mei 2026, di-update setiap akhir minggu. Adendum §13 ditambah 22 Mei; direvisi 25 Mei 2026 (integrasi EWS SIRUP tim + W1; CACM C1a/C1b/C2; audit P1/P2 + penyederhanaan workflow + gate Generate Context); 26 Mei 2026 (P4 digest paralel + DocumentCache; perluasan skill pengawasan Fase A–C: skill engine, gate-based, LKE, bukti retrieval, format non-KKSA, graduasi; digestion dua-tingkat fallback LLM + deteksi gambar + fix config env kosong; selaras pattern temuan 12 skill); 28 Mei 2026 (W2 promosi pattern; W3 tulis-balik vault; W1.1 pivoted ke stub SIMWAS sasaran sync).*
+*Dokumen ini dibuat 20 Mei 2026, di-update setiap akhir minggu. Adendum §13 ditambah 22 Mei; direvisi 25 Mei 2026 (integrasi EWS SIRUP tim + W1; CACM C1a/C1b/C2; audit P1/P2 + penyederhanaan workflow + gate Generate Context); 26 Mei 2026 (P4 digest paralel + DocumentCache; perluasan skill pengawasan Fase A–C: skill engine, gate-based, LKE, bukti retrieval, format non-KKSA, graduasi; digestion dua-tingkat fallback LLM + deteksi gambar + fix config env kosong; selaras pattern temuan 12 skill); 28 Mei 2026 (W2 promosi pattern; W3 tulis-balik vault; W1.1 pivoted ke stub SIMWAS sasaran sync); 2 Juni 2026 (W4 Knowledge Management pass: browser pattern + template setup 3-sumber + klaritas UX).*

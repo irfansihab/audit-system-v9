@@ -71,3 +71,7 @@ digest-test-corpus/**/*.xls
 
 # Claude Code per-user (izin tool, dll. — jangan ikut ke repo)
 /.claude/
+
+# Draft skill hasil Graduasi (work-in-progress, di-promote ke knowledge/skills/<nama>/
+# setelah reviu PT/PM — bukan source repo)
+knowledge/skills/_draft/

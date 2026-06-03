@@ -440,6 +440,94 @@ export const api = {
       truncated?: boolean;
     }>(`/knowledge/wiki/page?name=${encodeURIComponent(name)}`),
 
+  // ===== Pattern Library Browser (W4) =====
+  // Jelajah 65+ pattern temuan terkurasi di knowledge/wiki/temuan-patterns/<skill>/.
+  // Semua role boleh baca (read-only). Lihat backend/app/knowledge_browse.py.
+
+  /** List pattern terkurasi. Filter opsional: skill, severity, search. */
+  listPatternLibrary: (params: { skill?: string; severity?: string; search?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.skill) qs.set('skill', params.skill);
+    if (params.severity) qs.set('severity', params.severity);
+    if (params.search) qs.set('search', params.search);
+    const tail = qs.toString() ? `?${qs.toString()}` : '';
+    return request<{
+      skills_available: string[];
+      severities_available: string[];
+      categories_available: string[];
+      total_all: number;
+      total_filtered: number;
+      items: Array<{
+        id: string;
+        skill: string;
+        kategori: string;
+        severity: string;
+        judul: string;
+        kriteria_baku: string;
+        tags: string[];
+        file: string;
+      }>;
+    }>(`/knowledge/patterns/library${tail}`);
+  },
+
+  /** Baca isi lengkap satu pattern (frontmatter + body markdown). */
+  getPattern: (patternId: string) =>
+    request<{
+      id: string;
+      skill: string;
+      kategori: string;
+      severity: string;
+      judul: string;
+      kriteria_baku: string;
+      tags: string[];
+      file: string;
+      body_md: string;
+    }>(`/knowledge/patterns/library/${encodeURIComponent(patternId)}`),
+
+  // ===== Sasaran Template Suggestions =====
+  // 3-sumber paralel untuk membantu KT setup penugasan tanpa start-from-zero.
+
+  /** Saran template setup dari penugasan historis / skeleton pattern / catatan W3 vault. */
+  getSasaranTemplates: (penugasanId: number, source: 'all' | 'historis' | 'patterns' | 'writeback' = 'all') =>
+    request<{
+      skill: string;
+      obyek: string;
+      historis?: Array<{
+        kode: string;
+        obyek: string;
+        skill: string;
+        status: string;
+        similarity: number;
+        total_sasaran: number;
+        sasaran: Array<{
+          sasaran_id: string;
+          deskripsi: string;
+          assigned_to: string[];
+          langkah_kerja: string[];
+        }>;
+      }>;
+      patterns?: {
+        skill: string;
+        total_patterns: number;
+        sasaran: Array<{
+          sasaran_id: string;
+          deskripsi: string;
+          langkah_kerja: string[];
+          assigned_to: string[];
+          kategori: string;
+          pattern_ids: string[];
+        }>;
+      };
+      writeback?: Array<{
+        nama_file: string;
+        judul: string;
+        skill_label: string;
+        obyek: string;
+        jumlah_temuan: number;
+        similarity: number;
+      }>;
+    }>(`/penugasan/${penugasanId}/sasaran/templates?source=${source}`),
+
   // ===== Promosi Pattern (W2) =====
 
   /** Agregasi usulan pattern dari feedback agen lintas penugasan (kandidat promosi). */

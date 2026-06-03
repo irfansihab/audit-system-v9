@@ -825,6 +825,7 @@ function SetupPenugasanTab({
   const [genCtx, setGenCtx] = useState(false); // generate context (AI) sedang berjalan
   const [ctxReady, setCtxReady] = useState<{ ready: boolean; reason: string } | null>(null);
   const [simwasOpen, setSimwasOpen] = useState(false); // W1.1 — modal Impor dari SIMWAS
+  const [templatesOpen, setTemplatesOpen] = useState(false); // Mulai dari template (3-sumber)
 
   const load = async () => {
     setLoading(true);
@@ -1268,6 +1269,13 @@ function SetupPenugasanTab({
               + Tambah Sasaran
             </button>
             <button
+              onClick={() => setTemplatesOpen(true)}
+              className="px-3 py-1.5 text-sm rounded border border-amber-500 text-amber-700 hover:bg-amber-600 hover:text-white transition"
+              title="Saran sasaran dari penugasan lalu, skeleton pattern wiki, & catatan W3 — KT tidak start-from-zero."
+            >
+              ⋆ Mulai dari template
+            </button>
+            <button
               onClick={() => setSimwasOpen(true)}
               className="px-3 py-1.5 text-sm rounded border border-indigo-500 text-indigo-600 hover:bg-indigo-600 hover:text-white transition"
               title="Import sasaran dari payload PKP SIMWAS (paste JSON / sample). Pull API SIMWAS langsung belum aktif."
@@ -1275,7 +1283,7 @@ function SetupPenugasanTab({
               ↘ Impor dari SIMWAS
             </button>
             <span className="text-[11px] text-gray-400">
-              SIMWAS PKP → sasaran-assignment.json (manual paste hari ini; live API menyusul setelah kontrak SIMWAS resmi).
+              3 cara mulai: form kosong, template dari penugasan lalu / pattern wiki, atau impor dari SIMWAS.
             </span>
           </div>
         )}
@@ -1286,6 +1294,18 @@ function SetupPenugasanTab({
           penugasanId={penugasanId}
           onClose={() => setSimwasOpen(false)}
           onSuccess={() => { setSimwasOpen(false); load(); }}
+        />
+      )}
+
+      {canEditSasaran && templatesOpen && (
+        <TemplateSetupModal
+          penugasanId={penugasanId}
+          existingSasaran={sasaran || []}
+          onApply={(newSasaran) => {
+            setSasaran(newSasaran);
+            setTemplatesOpen(false);
+          }}
+          onClose={() => setTemplatesOpen(false)}
         />
       )}
 
@@ -1766,6 +1786,295 @@ function SimwasImportModal({
               {busy ? 'Mengirim…' : 'Impor'}
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// Template Setup Modal — 3-sumber paralel
+// ====================================================================
+//  • Historis: penugasan v7 sebelumnya dgn skill sama (similarity obyek).
+//  • Pattern wiki skeleton: 1 sasaran per kategori pattern dominan.
+//  • Catatan W3 vault: pengawasan-*.md sebagai konteks (bukan sasaran langsung).
+// Auditor pilih sumber → preview → "Pakai" untuk replace atau merge.
+// ====================================================================
+
+type TemplateApiResp = {
+  skill: string;
+  obyek: string;
+  historis?: Array<{
+    kode: string; obyek: string; skill: string; status: string;
+    similarity: number; total_sasaran: number;
+    sasaran: Array<{ sasaran_id: string; deskripsi: string; assigned_to: string[]; langkah_kerja: string[] }>;
+  }>;
+  patterns?: {
+    skill: string; total_patterns: number;
+    sasaran: Array<{ sasaran_id: string; deskripsi: string; langkah_kerja: string[]; assigned_to: string[]; kategori: string; pattern_ids: string[] }>;
+  };
+  writeback?: Array<{ nama_file: string; judul: string; skill_label: string; obyek: string; jumlah_temuan: number; similarity: number }>;
+};
+
+function TemplateSetupModal({
+  penugasanId, existingSasaran, onApply, onClose,
+}: {
+  penugasanId: number;
+  existingSasaran: Sasaran[];
+  onApply: (newSasaran: Sasaran[]) => void;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<'historis' | 'patterns' | 'writeback'>('historis');
+  const [data, setData] = useState<TemplateApiResp | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [strategy, setStrategy] = useState<'replace' | 'merge'>('replace');
+  const [selectedHist, setSelectedHist] = useState<string | null>(null); // kode penugasan
+  const [selectedPatterns, setSelectedPatterns] = useState(true); // ambil semua skeleton
+
+  useEffect(() => {
+    setLoading(true); setErr(null);
+    api.getSasaranTemplates(penugasanId, 'all')
+      .then(setData)
+      .catch((e) => setErr(e.message))
+      .finally(() => setLoading(false));
+  }, [penugasanId]);
+
+  const applyHistoris = (kode: string) => {
+    const h = (data?.historis || []).find((x) => x.kode === kode);
+    if (!h) return;
+    const fromTemplate: Sasaran[] = h.sasaran.map((s) => ({
+      sasaran_id: s.sasaran_id,
+      deskripsi: s.deskripsi,
+      assigned_to: s.assigned_to,
+      langkah_kerja: s.langkah_kerja,
+      status: 'AKTIF',
+    }));
+    if (!confirm(strategy === 'replace'
+      ? `Replace ${existingSasaran.length} sasaran existing dengan ${fromTemplate.length} sasaran dari "${h.obyek}"?`
+      : `Tambahkan ${fromTemplate.length} sasaran dari "${h.obyek}" ke ${existingSasaran.length} existing? (anti-dup by sasaran_id)`)) return;
+    if (strategy === 'replace') {
+      onApply(fromTemplate);
+    } else {
+      const existingIds = new Set(existingSasaran.map((s) => s.sasaran_id));
+      const merged = [...existingSasaran, ...fromTemplate.filter((s) => !existingIds.has(s.sasaran_id))];
+      onApply(merged);
+    }
+  };
+
+  const applyPatterns = () => {
+    const fromTemplate: Sasaran[] = (data?.patterns?.sasaran || []).map((s) => ({
+      sasaran_id: s.sasaran_id,
+      deskripsi: s.deskripsi,
+      assigned_to: [],
+      langkah_kerja: s.langkah_kerja,
+      status: 'AKTIF',
+    }));
+    if (fromTemplate.length === 0) return;
+    if (!confirm(strategy === 'replace'
+      ? `Replace ${existingSasaran.length} sasaran dengan ${fromTemplate.length} skeleton dari pattern wiki?`
+      : `Tambahkan ${fromTemplate.length} skeleton dari pattern wiki ke ${existingSasaran.length} existing?`)) return;
+    if (strategy === 'replace') {
+      onApply(fromTemplate);
+    } else {
+      const existingIds = new Set(existingSasaran.map((s) => s.sasaran_id));
+      const merged = [...existingSasaran, ...fromTemplate.filter((s) => !existingIds.has(s.sasaran_id))];
+      onApply(merged);
+    }
+  };
+
+  const nHist = data?.historis?.length ?? 0;
+  const nPatterns = data?.patterns?.sasaran?.length ?? 0;
+  const nWriteback = data?.writeback?.length ?? 0;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+        <div className="px-5 py-3 border-b flex justify-between items-start">
+          <div>
+            <h3 className="font-semibold text-primary-dark">Mulai dari template</h3>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              3 sumber paralel: penugasan lalu (similarity obyek), skeleton pattern wiki, catatan vault W3.
+              Pilih satu → preview → Pakai.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
+        </div>
+
+        <div className="px-5 py-2 border-b flex items-center gap-3 flex-wrap">
+          <div className="flex gap-1 text-xs">
+            <button
+              onClick={() => setTab('historis')}
+              className={`px-2.5 py-1 rounded ${tab === 'historis' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+            >
+              Penugasan lalu ({nHist})
+            </button>
+            <button
+              onClick={() => setTab('patterns')}
+              className={`px-2.5 py-1 rounded ${tab === 'patterns' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+            >
+              Skeleton pattern ({nPatterns})
+            </button>
+            <button
+              onClick={() => setTab('writeback')}
+              className={`px-2.5 py-1 rounded ${tab === 'writeback' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+            >
+              Catatan vault ({nWriteback})
+            </button>
+          </div>
+          <div className="ml-auto flex items-center gap-2 text-xs">
+            <span className="text-gray-500">Strategy:</span>
+            <label className="flex items-center gap-1">
+              <input type="radio" checked={strategy === 'replace'} onChange={() => setStrategy('replace')} />
+              <span>Replace</span>
+            </label>
+            <label className="flex items-center gap-1">
+              <input type="radio" checked={strategy === 'merge'} onChange={() => setStrategy('merge')} />
+              <span>Merge</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="p-5 overflow-y-auto flex-1">
+          {loading && <div className="text-xs text-gray-400 italic">Memuat saran template…</div>}
+          {err && <div className="p-2 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{err}</div>}
+
+          {/* HISTORIS */}
+          {!loading && tab === 'historis' && (
+            <>
+              {nHist === 0 ? (
+                <p className="text-xs text-gray-400 italic">
+                  Belum ada penugasan v7 dengan skill <code>{data?.skill}</code> yang punya sasaran-assignment.json. Coba tab <b>Skeleton pattern</b>.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {data!.historis!.map((h) => (
+                    <div key={h.kode} className={`border rounded p-3 ${selectedHist === h.kode ? 'border-amber-400 bg-amber-50/40' : 'border-gray-200'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-medium text-gray-800">{h.obyek}</div>
+                          <div className="text-[11px] text-gray-400 mt-0.5">
+                            {h.kode} · {h.total_sasaran} sasaran · similarity <b>{(h.similarity * 100).toFixed(0)}%</b>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button
+                            onClick={() => setSelectedHist(selectedHist === h.kode ? null : h.kode)}
+                            className="text-[11px] px-2 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+                          >
+                            {selectedHist === h.kode ? 'tutup preview' : 'preview'}
+                          </button>
+                          <button
+                            onClick={() => applyHistoris(h.kode)}
+                            className="text-[11px] px-2 py-0.5 rounded bg-amber-500 text-white hover:bg-amber-600"
+                          >
+                            Pakai
+                          </button>
+                        </div>
+                      </div>
+                      {selectedHist === h.kode && (
+                        <div className="mt-2 pt-2 border-t border-amber-200 space-y-1.5">
+                          {h.sasaran.map((s, i) => (
+                            <div key={i} className="text-[11px]">
+                              <span className="font-mono text-gray-500">{s.sasaran_id}</span> — {s.deskripsi}
+                              {s.langkah_kerja.length > 0 && (
+                                <div className="text-gray-500 pl-3">• {s.langkah_kerja.join(' • ')}</div>
+                              )}
+                              {s.assigned_to.length > 0 && (
+                                <div className="text-gray-500 pl-3">→ {s.assigned_to.join(', ')}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* PATTERNS */}
+          {!loading && tab === 'patterns' && (
+            <>
+              {nPatterns === 0 ? (
+                <p className="text-xs text-gray-400 italic">
+                  Skill <code>{data?.skill}</code> tidak punya pattern di wiki (criteria-driven atau skill baru). Tidak ada skeleton.
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 mb-2">
+                    {data!.patterns!.total_patterns} pattern di skill <code>{data!.patterns!.skill}</code> di-cluster ke {nPatterns} kategori.
+                    1 sasaran per kategori, langkah_kerja merefer ID pattern dominan.
+                  </p>
+                  <div className="space-y-2 mb-3">
+                    {data!.patterns!.sasaran.map((s) => (
+                      <div key={s.sasaran_id} className="border border-gray-200 rounded p-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="font-mono text-[11px] text-gray-500">{s.sasaran_id}</span>
+                            <span className="text-[10px] ml-2 px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{s.kategori}</span>
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-800 mt-1">{s.deskripsi}</div>
+                        <ul className="text-[11px] text-gray-500 mt-1 list-disc list-inside">
+                          {s.langkah_kerja.map((l, i) => <li key={i}>{l}</li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={applyPatterns}
+                    className="px-3 py-1.5 text-sm rounded bg-amber-500 text-white hover:bg-amber-600"
+                  >
+                    Pakai {nPatterns} sasaran ini
+                  </button>
+                </>
+              )}
+            </>
+          )}
+
+          {/* WRITEBACK */}
+          {!loading && tab === 'writeback' && (
+            <>
+              <p className="text-xs text-gray-500 mb-2">
+                Catatan vault W3 (<code>pengawasan-*.md</code>) berisi <b>temuan</b> bukan <b>sasaran</b> — disuguhkan sbg konteks pembelajaran. Buka di tab Knowledge untuk baca penuh.
+              </p>
+              {nWriteback === 0 ? (
+                <p className="text-xs text-gray-400 italic">
+                  Belum ada catatan vault yang related dgn skill <code>{data?.skill}</code>. Vault juga mungkin tak dikonfigurasi (APP_VAULT_PATH).
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {data!.writeback!.map((w) => (
+                    <div key={w.nama_file} className="border border-gray-200 rounded p-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-medium text-gray-800">{w.judul}</div>
+                          <div className="text-[11px] text-gray-400">
+                            {w.nama_file} · {w.jumlah_temuan} temuan · similarity <b>{(w.similarity * 100).toFixed(0)}%</b>
+                          </div>
+                        </div>
+                        <a
+                          href={`/knowledge`}
+                          className="text-[11px] px-2 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 shrink-0"
+                          title="Buka tab Knowledge untuk Cari Wiki / baca catatan"
+                        >
+                          buka Knowledge →
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t flex justify-end">
+          <button onClick={onClose} className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-50">
+            Tutup
+          </button>
         </div>
       </div>
     </div>

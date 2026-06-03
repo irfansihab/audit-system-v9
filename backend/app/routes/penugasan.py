@@ -609,6 +609,85 @@ async def sync_sasaran_from_simwas(
     }
 
 
+# ============================================================
+# Setup template — saran sasaran dari penugasan lalu, skeleton pattern,
+# & catatan W3 writeback. Tujuan: KT tidak mulai dari nol.
+# ============================================================
+
+
+@router.get("/{penugasan_id}/sasaran/templates")
+async def get_sasaran_templates(
+    penugasan_id: int,
+    source: str = "all",  # all | historis | patterns | writeback
+    _current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Saran template setup penugasan dari 3 sumber paralel.
+
+    - `historis`: penugasan v7 dgn skill sama, di-rank by similarity obyek
+      (Jaccard atas token kata, stopword ID dibuang).
+    - `patterns`: sasaran skeleton dari kategori pattern wiki — 1 sasaran per
+      kategori, langkah_kerja merefer ID pattern dominan.
+    - `writeback`: catatan `pengawasan-*.md` di vault llm-wiki (W3) yg related;
+      ini KONTEKS, bukan sasaran (writeback tidak menyimpan sasaran eksplisit).
+
+    `source='all'` (default) kembalikan ketiganya. Auditor PT/KT yg setup di
+    UI memilih sumber + 1 entry, lalu pre-fill sasaran-assignment.json.
+    """
+    from app import knowledge_browse
+
+    p = await _get_penugasan_or_404(db, penugasan_id)
+    skill_value = p.skill if isinstance(p.skill, str) else p.skill.value
+    obyek = p.obyek or ""
+
+    result: dict[str, Any] = {
+        "skill": skill_value,
+        "obyek": obyek,
+    }
+
+    if source in ("all", "historis"):
+        # Tarik semua penugasan lain (exclude self) untuk di-scan
+        rows = (
+            await db.execute(
+                select(
+                    Penugasan.kode,
+                    Penugasan.obyek,
+                    Penugasan.skill,
+                    Penugasan.folder_path,
+                    Penugasan.status,
+                ).where(Penugasan.id != penugasan_id)
+            )
+        ).all()
+        candidates = [
+            {
+                "kode": r[0],
+                "obyek": r[1],
+                "skill": r[2] if isinstance(r[2], str) else getattr(r[2], "value", str(r[2])),
+                "folder_path": r[3],
+                "status": r[4] if isinstance(r[4], str) else getattr(r[4], "value", str(r[4])),
+            }
+            for r in rows
+        ]
+        result["historis"] = knowledge_browse.suggest_templates_from_history(
+            skill=skill_value,
+            obyek=obyek,
+            candidates=candidates,
+            top_n=5,
+        )
+
+    if source in ("all", "patterns"):
+        result["patterns"] = knowledge_browse.suggest_skeleton_from_patterns(skill_value)
+
+    if source in ("all", "writeback"):
+        result["writeback"] = knowledge_browse.suggest_context_from_writeback(
+            skill=skill_value,
+            obyek=obyek,
+            top_n=5,
+        )
+
+    return result
+
+
 @router.get("/{penugasan_id}/context-readiness")
 async def get_context_readiness(
     penugasan_id: int,

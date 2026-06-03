@@ -125,13 +125,27 @@ export default function KnowledgePage() {
 
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-2xl font-bold text-primary-dark mb-1">Knowledge / Wiki</h1>
-        <p className="text-sm text-gray-500 mb-5">
-          Cari di vault pengetahuan organisasi (dokumen resmi non-rahasia, hasil ingest). Agen juga
-          memakai pencarian ini untuk menarik konteks auditi/vendor/BPK saat analisis.
+        <p className="text-sm text-gray-500 mb-2">
+          Pusat pengetahuan tim Inspektorat II. Empat panel di bawah saling melengkapi:
         </p>
+        <ul className="text-xs text-gray-500 mb-5 space-y-0.5 list-disc list-inside">
+          <li><b>Pattern Temuan</b> — 65+ pattern terkurasi yang dipakai agen sebagai acuan menyusun temuan (semua role bisa baca).</li>
+          <li><b>Cari Wiki</b> — pencarian luas di vault organisasi (catatan BPK, profil auditi, dll).</li>
+          <li><b>Promosi Pattern</b> & <b>Graduasi Skill</b> — workflow PT/PM untuk memperkaya pengetahuan dari penugasan nyata.</li>
+          <li><b>Tulis-balik Vault</b> — saat penugasan selesai, hasilnya ditulis ke vault sebagai catatan operasional.</li>
+        </ul>
+
+        {/* ===== Pattern Library (semua role) — dinaikkan ke atas supaya tinggi visibility ===== */}
+        <PatternLibraryPanel />
 
         {/* ===== W1: Cari Wiki ===== */}
         <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+          <h2 className="font-semibold text-primary-dark mb-1">Cari Wiki (vault organisasi)</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Pencarian luas di catatan vault <code>llm-wiki</code> (ratusan dokumen non-rahasia hasil ingest: profil
+            auditi, riwayat BPK, vendor, regulasi). Beda dari <b>Pattern Temuan</b> di atas — pattern adalah
+            template terkurasi; vault ini sumber konteks bebas-format. Agen juga memanggil pencarian ini.
+          </p>
           <form onSubmit={runSearch} className="flex gap-2">
             <input
               value={q}
@@ -314,11 +328,24 @@ function PatternMonitorPanel() {
           + Pattern manual
         </button>
       </div>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-500 mb-2">
         Usulan pattern dari feedback agen lintas penugasan (90 hari). Yang <b>berulang</b> &amp;
         belum ada di wiki = kandidat kuat. Klik kandidat untuk menyunting lalu <b>Promote</b> jadi
         pattern resmi. {totalSug > 0 && <span className="text-gray-400">({totalSug} usulan mentah)</span>}
       </p>
+
+      <HowToUse
+        color="emerald"
+        when="Setelah beberapa penugasan jalan, agen meninggalkan pattern_suggestions di feedback. Anda sebagai PT/PM kurasi mana yg layak jadi pattern resmi (akan dipakai agen di penugasan berikutnya)."
+        steps={[
+          'Lihat daftar kandidat — sistem auto-group judul yang mirip dan menghitung frekuensi (×N) lintas penugasan.',
+          'Klik kandidat → form pre-filled (skill, judul, kondisi dari feedback). Lengkapi kriteria_baku (pasal/ayat WAJIB), akibat, rekomendasi standar.',
+          'Severity: CRITICAL untuk pelanggaran peraturan inti (Perpres/PMK/UU); HIGH = kepatuhan substantif; MEDIUM/LOW = best-practice.',
+          'Klik Promote → file pattern .md ditulis ke wiki/temuan-patterns/{skill}/; README index ter-update.',
+        ]}
+        example="3 penugasan terakhir feedback agen menyarankan pattern 'HPS tidak mencantumkan Perpres 12/2021' (×3, belum ada). Klik → isi kriteria_baku 'Perpres 16/2018 jo. Perpres 12/2021 Pasal 26' → severity MEDIUM → Promote."
+      />
+
       {msg && <div className="mb-3 p-2 rounded bg-emerald-50 text-emerald-800 text-xs">{msg}</div>}
 
       {form ? (
@@ -491,10 +518,23 @@ function GraduasiPanel() {
   return (
     <div className="mb-6 bg-white border border-violet-200 rounded-lg p-5">
       <h2 className="font-semibold text-primary-dark mb-1">Graduasi Skill (PT/PM)</h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-500 mb-2">
         Suling pola dari penugasan sejenis (skill sama) menjadi DRAFT skill spesifik. Generate = draft;
         Anda reviu lalu <b>Promote</b> agar terdaftar. Human-in-the-loop.
       </p>
+
+      <HowToUse
+        color="violet"
+        when="Setelah ≥2 penugasan dengan skill yang sama selesai dan punya temuan, pola berulang yang muncul lintas penugasan layak di-graduasi jadi skill turunan spesifik (mis. reviu-pengadaan → reviu-pengadaan-cloud)."
+        steps={[
+          'Lihat kandidat penugasan ber-temuan, di-group per skill induk.',
+          'Centang ≥2 penugasan dari skill induk yang sama (skill berbeda akan ditolak).',
+          'Klik ⚗ Graduasikan → algoritma deteksi domain term, konsolidasi kriteria, cluster temuan (Jaccard). Output: file DRAFT di knowledge/skills/_draft/<nama>/ (SKILL.md + regulasi.md + checklist.md).',
+          'Reviu draft di kolom kanan → Promote (skill aktif di registry, ikut muncul di dropdown jenis penugasan) atau Tolak.',
+        ]}
+        example="3 penugasan reviu-pengadaan terakhir semua tentang cloud (AWS/Azure/GCP). Centang ketiganya → ⚗ → draft 'reviu-pengadaan-cloud' dgn regulasi & checklist khusus cloud → Promote."
+      />
+
       {msg && <div className="mb-3 p-2 rounded bg-violet-50 text-violet-800 text-xs">{msg}</div>}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -660,11 +700,24 @@ function WritebackPanel({ role }: { role: string }) {
   return (
     <div className="mb-6 bg-white border border-sky-200 rounded-lg p-5">
       <h2 className="font-semibold text-primary-dark mb-1">Tulis-balik Vault (W3)</h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-500 mb-2">
         Penugasan yang sudah <b>LHP_DONE</b> bisa diringkas jadi catatan vault (format Karpathy +
         sitasi). Auditor PT/PM/KT generate draft, lalu pilih <b>Download .md</b> (rekomendasi —
         apply manual lewat Obsidian) atau <b>Apply ke vault</b> (app tulis langsung; PT/PM saja).
       </p>
+
+      <HowToUse
+        color="sky"
+        when="LHP penugasan terbit. Anda ingin pengetahuan operasional (siapa diaudit, ditemukan apa, dasar hukum mana) terakumulasi di vault organisasi, supaya bisa di-cite agen pada penugasan berikutnya via Cari Wiki."
+        steps={[
+          'Lihat daftar kandidat di kiri (penugasan LHP_DONE) — badge status: belum digenerate / draft / applied / rejected.',
+          'Klik kandidat → kalau belum, tombol Generate draft (PT/PM/KT) menyusun pengawasan-{kode}.md deterministik dari temuan.json + rekomendasi.json.',
+          'Preview 3 tab: file .md, delta index.md, delta log.md.',
+          'Pilih jalur apply: Download .md (auditor curate manual via Obsidian, REKOMENDASI) atau Apply ke vault (PT/PM, app tulis langsung).',
+        ]}
+        example="Reviu RKA-K/L Dit. Pengembangan Ekosdig selesai. Generate → 4 temuan masuk catatan dgn cite Surat Tugas + KKP. Apply → file pengawasan-2026-05-reviurkakl-xxx.md tambah di vault, otomatis ter-index."
+      />
+
       {msg && <div className="mb-3 p-2 rounded bg-sky-50 text-sky-800 text-xs">{msg}</div>}
 
       <div className="grid md:grid-cols-2 gap-3">
@@ -765,6 +818,261 @@ function WritebackPanel({ role }: { role: string }) {
                   </div>
                 </>
               )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// HowToUse — collapsible "Cara pakai" block, dipakai semua panel agar UX jelas.
+// =============================================================================
+
+function HowToUse({
+  steps,
+  when,
+  example,
+  color = 'sky',
+}: {
+  steps: string[];
+  when: string;
+  example?: string;
+  color?: 'sky' | 'emerald' | 'violet' | 'amber';
+}) {
+  const [open, setOpen] = useState(false);
+  const cls =
+    color === 'emerald' ? 'border-emerald-200 bg-emerald-50/50 text-emerald-900' :
+    color === 'violet'  ? 'border-violet-200 bg-violet-50/50 text-violet-900' :
+    color === 'amber'   ? 'border-amber-200 bg-amber-50/50 text-amber-900' :
+                          'border-sky-200 bg-sky-50/50 text-sky-900';
+  return (
+    <div className={`text-[11px] border rounded mb-3 ${cls}`}>
+      <button onClick={() => setOpen(!open)} className="w-full px-2.5 py-1.5 flex items-center justify-between text-left">
+        <span className="font-semibold">▸ Cara pakai &amp; kapan dipakai</span>
+        <span className="opacity-60">{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="px-3 pb-2.5 space-y-2">
+          <div>
+            <div className="font-semibold mb-0.5">Kapan dipakai</div>
+            <p className="opacity-90">{when}</p>
+          </div>
+          <div>
+            <div className="font-semibold mb-0.5">Langkah</div>
+            <ol className="list-decimal list-inside space-y-0.5 opacity-90">
+              {steps.map((s, i) => <li key={i}>{s}</li>)}
+            </ol>
+          </div>
+          {example && (
+            <div>
+              <div className="font-semibold mb-0.5">Contoh</div>
+              <p className="opacity-90 italic">{example}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// PatternLibraryPanel — browser pattern temuan terkurasi (semua role).
+// 65+ pattern lintas 12 skill, dgn filter skill / severity / search dan
+// modal preview frontmatter + body markdown.
+// =============================================================================
+
+type PatternLibItem = {
+  id: string;
+  skill: string;
+  kategori: string;
+  severity: string;
+  judul: string;
+  kriteria_baku: string;
+  tags: string[];
+  file: string;
+};
+
+type PatternLibResp = {
+  skills_available: string[];
+  severities_available: string[];
+  categories_available: string[];
+  total_all: number;
+  total_filtered: number;
+  items: PatternLibItem[];
+};
+
+const SEV_COLOR: Record<string, string> = {
+  CRITICAL: 'bg-red-100 text-red-800 border-red-300',
+  HIGH:     'bg-orange-100 text-orange-800 border-orange-300',
+  MEDIUM:   'bg-yellow-100 text-yellow-800 border-yellow-300',
+  LOW:      'bg-gray-100 text-gray-600 border-gray-300',
+};
+
+function PatternLibraryPanel() {
+  const [resp, setResp] = useState<PatternLibResp | null>(null);
+  const [skill, setSkill] = useState('');
+  const [severity, setSeverity] = useState('');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [detail, setDetail] = useState<{ frontmatter: PatternLibItem; body: string } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const refresh = async () => {
+    setLoading(true); setErr(null);
+    try {
+      const r = await api.listPatternLibrary({
+        skill: skill || undefined,
+        severity: severity || undefined,
+        search: search || undefined,
+      });
+      setResp(r);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    const t = setTimeout(() => { refresh(); }, 200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [skill, severity, search]);
+
+  const openDetail = async (id: string) => {
+    setSelected(id); setDetail(null); setDetailLoading(true);
+    try {
+      const r = await api.getPattern(id);
+      const fm: PatternLibItem = {
+        id: r.id, skill: r.skill, kategori: r.kategori, severity: r.severity,
+        judul: r.judul, kriteria_baku: r.kriteria_baku, tags: r.tags, file: r.file,
+      };
+      setDetail({ frontmatter: fm, body: r.body_md });
+    } catch (e: any) {
+      setDetail({ frontmatter: null as any, body: `Gagal memuat: ${e.message}` });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  return (
+    <div className="mb-6 bg-white border border-sky-200 rounded-lg p-5">
+      <div className="flex items-start justify-between mb-1 flex-wrap gap-2">
+        <h2 className="font-semibold text-primary-dark">Pattern Temuan (jelajah manual)</h2>
+        {resp && (
+          <span className="text-[11px] text-gray-500">
+            menampilkan <b>{resp.total_filtered}</b> / {resp.total_all} pattern
+            {resp.skills_available.length > 0 && ` di ${resp.skills_available.length} skill`}
+          </span>
+        )}
+      </div>
+      <p className="text-xs text-gray-500 mb-2">
+        Daftar pattern temuan terkurasi yang dipakai agen sebagai acuan. Pelajari pola yang umum di
+        organisasi sebelum/sesudah penugasan, atau jadikan referensi saat reviu KKP manual.
+      </p>
+
+      <HowToUse
+        color="sky"
+        when="Mau memahami pola temuan yang dipakai agen — atau cek apakah pola yang ada di pikiran kamu sudah pernah dirumuskan tim."
+        steps={[
+          'Pilih skill (mis. reviu-pengadaan) atau biarkan kosong untuk lihat semua.',
+          'Filter severity (CRITICAL/HIGH/MEDIUM/LOW) bila ingin fokus risiko tertentu.',
+          'Ketik kata kunci di Search (id, judul, kategori, regulasi, tag).',
+          'Klik kartu untuk baca detail lengkap (kondisi, kriteria, akibat, rekomendasi, bukti).',
+        ]}
+        example="Cari 'hps' di skill reviu-pengadaan → muncul RP-08 (CRITICAL: HPS tidak didukung 2 sumber harga independen)."
+      />
+
+      <div className="grid sm:grid-cols-3 gap-2 mb-3">
+        <select value={skill} onChange={(e) => setSkill(e.target.value)} className="border border-gray-300 rounded px-2 py-1.5 text-xs">
+          <option value="">Semua skill ({resp?.skills_available.length ?? '…'})</option>
+          {resp?.skills_available.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={severity} onChange={(e) => setSeverity(e.target.value)} className="border border-gray-300 rounded px-2 py-1.5 text-xs">
+          <option value="">Semua severity</option>
+          {resp?.severities_available.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="cari id/judul/regulasi/tag…" className="border border-gray-300 rounded px-2 py-1.5 text-xs" />
+      </div>
+
+      {err && <div className="mb-2 p-2 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{err}</div>}
+
+      <div className="grid md:grid-cols-2 gap-3">
+        {/* List */}
+        <div className="border border-gray-200 rounded max-h-[480px] overflow-y-auto divide-y">
+          {loading ? (
+            <div className="p-3 text-xs text-gray-400 italic">Memuat pattern…</div>
+          ) : (resp?.items.length ?? 0) === 0 ? (
+            <div className="p-3 text-xs text-gray-400 italic">
+              Tidak ada pattern yg cocok. Coba longgarkan filter atau cek folder <code>knowledge/wiki/temuan-patterns/</code>.
+            </div>
+          ) : resp!.items.map((p) => (
+            <button
+              key={`${p.skill}/${p.id}`}
+              onClick={() => openDetail(p.id)}
+              className={`w-full text-left p-2.5 hover:bg-sky-50/40 transition ${selected === p.id ? 'bg-sky-50' : ''}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-mono text-[11px] text-gray-500 shrink-0">{p.id}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${SEV_COLOR[p.severity] ?? 'bg-gray-100 text-gray-500 border-gray-300'}`}>
+                  {p.severity || '—'}
+                </span>
+              </div>
+              <div className="text-xs font-medium text-gray-800 mt-0.5">{p.judul || '(tanpa judul)'}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">
+                <span className="uppercase">{p.skill}</span>
+                {p.kategori && <span> · {p.kategori}</span>}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Preview */}
+        <div className="border border-gray-200 rounded p-3 bg-gray-50 min-h-[300px] max-h-[480px] overflow-y-auto">
+          {!selected ? (
+            <p className="text-xs text-gray-400 italic">Klik salah satu pattern di kiri untuk baca detail.</p>
+          ) : detailLoading ? (
+            <p className="text-xs text-gray-400 italic">Memuat {selected}…</p>
+          ) : !detail ? (
+            <p className="text-xs text-gray-400 italic">Tidak ada detail.</p>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div>
+                  <span className="font-mono text-[11px] text-gray-500">{detail.frontmatter?.id}</span>
+                  <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded border ${SEV_COLOR[detail.frontmatter?.severity ?? ''] ?? 'bg-gray-100 text-gray-500 border-gray-300'}`}>
+                    {detail.frontmatter?.severity || '—'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => navigator.clipboard.writeText(detail.frontmatter?.id || '')}
+                  className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+                  title="Salin ID — pakai di Chat KT/AT sebagai referensi pattern"
+                >
+                  ⧉ salin ID
+                </button>
+              </div>
+              {detail.frontmatter && (
+                <>
+                  <div className="text-sm font-semibold text-gray-800 mb-1">{detail.frontmatter.judul}</div>
+                  <div className="text-[11px] text-gray-500 mb-1">
+                    <b>Skill:</b> {detail.frontmatter.skill} · <b>Kategori:</b> {detail.frontmatter.kategori || '—'}
+                  </div>
+                  <div className="text-[11px] text-gray-500 mb-2">
+                    <b>Kriteria baku:</b> {detail.frontmatter.kriteria_baku || '—'}
+                  </div>
+                  {detail.frontmatter.tags.length > 0 && (
+                    <div className="text-[10px] text-gray-400 mb-2">
+                      tags: {detail.frontmatter.tags.map(t => `#${t}`).join(' · ')}
+                    </div>
+                  )}
+                </>
+              )}
+              <pre className="text-[11px] whitespace-pre-wrap font-sans text-gray-800 leading-relaxed">{detail.body}</pre>
             </>
           )}
         </div>
