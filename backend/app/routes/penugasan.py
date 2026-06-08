@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import Dokumen, DokumenStatus, Penugasan, PenugasanStatus, Role, User
+from app.models import Dokumen, DokumenStatus, Penugasan, PenugasanStatus, Role, TemuanReview, User
 from app.schemas import PenugasanCreate, PenugasanOut
 from app.storage import (
     INPUT_JENIS,
@@ -810,4 +810,260 @@ async def put_context_md(
         "ok": True,
         "size_bytes": len(payload.content.encode("utf-8")),
         "path": "context.md",
+    }
+
+
+# ============================================================
+# Preload Context Bundle (Prioritas 1 — peningkatan kualitas)
+# Bangun konteks 4-sumber sebelum agen jalan supaya agen mulai dgn tangan penuh.
+# ============================================================
+
+
+@router.post("/{penugasan_id}/preload-context")
+async def build_preload_context(
+    penugasan_id: int,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Bangun/rebuild bundle konteks pra-loaded utk satu penugasan.
+
+    Sumber: vault llm-wiki + pattern wiki + konteks pendukung + riwayat W3.
+    Bundle disimpan sbg `_PRELOAD/context-bundle.md`. Agen baca via tool
+    `read_preload_context`.
+    """
+    from app import preload_context
+
+    _, role = current
+    if role not in (Role.PT, Role.KT, Role.AT):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Build konteks pra-loaded hanya untuk PT/KT/AT. Role: {role.value}.",
+        )
+    p = await _get_penugasan_or_404(db, penugasan_id)
+    skill_value = p.skill if isinstance(p.skill, str) else p.skill.value
+    result = preload_context.build_preload_bundle(
+        penugasan_kode=p.kode,
+        obyek=p.obyek or "",
+        skill=skill_value,
+    )
+    folder = Path(p.folder_path)
+    target = preload_context.save_preload_bundle(folder, result["markdown"])
+    return {
+        "ok": True,
+        "path": str(target.relative_to(folder)),
+        "stats": result["stats"],
+    }
+
+
+@router.get("/{penugasan_id}/preload-context/status")
+async def get_preload_context_status(
+    penugasan_id: int,
+    _current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Cek apakah bundle sudah dibangun + statistik singkat."""
+    p = await _get_penugasan_or_404(db, penugasan_id)
+    folder = Path(p.folder_path)
+    bundle = folder / "_PRELOAD" / "context-bundle.md"
+    if not bundle.exists():
+        return {"exists": False}
+    stat = bundle.stat()
+    text = bundle.read_text(encoding="utf-8")
+    return {
+        "exists": True,
+        "size_bytes": stat.st_size,
+        "modified_at": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z",
+        "char_count": len(text),
+        "preview_head": text[:500],
+    }
+
+
+# ============================================================
+# Per-Temuan Review (Prioritas 2 — HITL per-temuan)
+# Auditor approve/reject tiap temuan sebelum render KKP final.
+# ============================================================
+
+
+def _load_temuan_json(folder: Path) -> list[dict]:
+    """Baca `_KKP/temuan.json` → list temuan dict. Return [] kalau tidak ada."""
+    p = folder / "_KKP" / "temuan.json"
+    if not p.exists():
+        return []
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    out = data.get("temuan") if isinstance(data, dict) else []
+    return out if isinstance(out, list) else []
+
+
+@router.get("/{penugasan_id}/temuan-review")
+async def list_temuan_review(
+    penugasan_id: int,
+    _current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List semua temuan + status review (semua role bisa baca)."""
+    p = await _get_penugasan_or_404(db, penugasan_id)
+    folder = Path(p.folder_path)
+    temuan_list = _load_temuan_json(folder)
+
+    # Ambil semua review row utk penugasan ini
+    rows = (
+        await db.execute(select(TemuanReview).where(TemuanReview.penugasan_id == penugasan_id))
+    ).scalars().all()
+    by_temuan_id: dict[str, TemuanReview] = {r.temuan_id: r for r in rows}
+
+    items: list[dict] = []
+    for t in temuan_list:
+        if not isinstance(t, dict):
+            continue
+        tid = str(t.get("id_temuan") or "").strip()
+        if not tid:
+            continue
+        rev = by_temuan_id.get(tid)
+        items.append({
+            "id_temuan": tid,
+            "judul": t.get("judul_temuan") or "",
+            "sasaran_id": t.get("sasaran_id") or "",
+            "kondisi": (t.get("kondisi") or "")[:400],
+            "kriteria": (t.get("kriteria") or "")[:400],
+            "akibat": (t.get("akibat") or "")[:400],
+            "anggota": ((t.get("anggota_tim") or {}).get("nama_lengkap") or "") if isinstance(t.get("anggota_tim"), dict) else "",
+            "dokumen_sumber_count": len(t.get("dokumen_sumber") or []) if isinstance(t.get("dokumen_sumber"), list) else 0,
+            "status": rev.status if rev else "PENDING",
+            "note": rev.note if rev else None,
+            "reviewed_at": rev.reviewed_at.isoformat() + "Z" if rev and rev.reviewed_at else None,
+            "reviewed_by_user_id": rev.reviewed_by_user_id if rev else None,
+        })
+
+    counts = {"PENDING": 0, "APPROVED": 0, "REJECTED": 0, "EDITED": 0}
+    for i in items:
+        counts[i["status"]] = counts.get(i["status"], 0) + 1
+    return {"total": len(items), "counts": counts, "items": items}
+
+
+class TemuanReviewAction(BaseModel):
+    note: str | None = None
+
+
+@router.post("/{penugasan_id}/temuan-review/{temuan_id}/approve")
+async def approve_temuan(
+    penugasan_id: int,
+    temuan_id: str,
+    payload: TemuanReviewAction = Body(default_factory=TemuanReviewAction),
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Setujui temuan — masuk ke KKP/LHR final. AT/KT/PT boleh."""
+    user, role = current
+    if role not in (Role.AT, Role.KT, Role.PT, Role.PM):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Role {role.value} tidak bisa approve.")
+    await _get_penugasan_or_404(db, penugasan_id)
+    return await _upsert_review(db, penugasan_id, temuan_id, "APPROVED", payload.note, user.id)
+
+
+@router.post("/{penugasan_id}/temuan-review/{temuan_id}/reject")
+async def reject_temuan(
+    penugasan_id: int,
+    temuan_id: str,
+    payload: TemuanReviewAction = Body(default_factory=TemuanReviewAction),
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Tolak temuan — tidak masuk KKP/LHR. KT/PT/PM only."""
+    user, role = current
+    if role not in (Role.KT, Role.PT, Role.PM):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Tolak temuan hanya untuk KT/PT/PM. Role: {role.value}.",
+        )
+    await _get_penugasan_or_404(db, penugasan_id)
+    return await _upsert_review(db, penugasan_id, temuan_id, "REJECTED", payload.note, user.id)
+
+
+@router.post("/{penugasan_id}/temuan-review/bulk-approve")
+async def bulk_approve_temuan(
+    penugasan_id: int,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Setujui SEMUA temuan PENDING sekaligus — efisiensi auditor senior."""
+    user, role = current
+    if role not in (Role.KT, Role.PT, Role.PM):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Bulk approve hanya untuk KT/PT/PM. Role: {role.value}.",
+        )
+    p = await _get_penugasan_or_404(db, penugasan_id)
+    folder = Path(p.folder_path)
+    temuan_list = _load_temuan_json(folder)
+    rows = (
+        await db.execute(select(TemuanReview).where(TemuanReview.penugasan_id == penugasan_id))
+    ).scalars().all()
+    by_temuan_id = {r.temuan_id: r for r in rows}
+
+    n_approved = 0
+    for t in temuan_list:
+        tid = str(t.get("id_temuan") or "").strip()
+        if not tid:
+            continue
+        existing = by_temuan_id.get(tid)
+        if existing and existing.status == "APPROVED":
+            continue  # already approved
+        if existing:
+            existing.status = "APPROVED"
+            existing.reviewed_by_user_id = user.id
+            existing.reviewed_at = datetime.utcnow()
+        else:
+            db.add(TemuanReview(
+                penugasan_id=penugasan_id,
+                temuan_id=tid,
+                status="APPROVED",
+                reviewed_by_user_id=user.id,
+                reviewed_at=datetime.utcnow(),
+            ))
+        n_approved += 1
+    await db.commit()
+    return {"ok": True, "approved_count": n_approved, "total_temuan": len(temuan_list)}
+
+
+async def _upsert_review(
+    db: AsyncSession,
+    penugasan_id: int,
+    temuan_id: str,
+    status_new: str,
+    note: str | None,
+    user_id: int,
+) -> dict[str, Any]:
+    """Upsert TemuanReview row + commit."""
+    existing = (
+        await db.execute(
+            select(TemuanReview).where(
+                TemuanReview.penugasan_id == penugasan_id,
+                TemuanReview.temuan_id == temuan_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing:
+        existing.status = status_new
+        existing.note = note
+        existing.reviewed_by_user_id = user_id
+        existing.reviewed_at = datetime.utcnow()
+    else:
+        existing = TemuanReview(
+            penugasan_id=penugasan_id,
+            temuan_id=temuan_id,
+            status=status_new,
+            note=note,
+            reviewed_by_user_id=user_id,
+            reviewed_at=datetime.utcnow(),
+        )
+        db.add(existing)
+    await db.commit()
+    return {
+        "ok": True,
+        "id_temuan": temuan_id,
+        "status": status_new,
+        "reviewed_at": existing.reviewed_at.isoformat() + "Z" if existing.reviewed_at else None,
     }

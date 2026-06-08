@@ -251,4 +251,44 @@ async def read_anomalies(args: dict) -> dict:
     }
 
 
-PIPELINE_TOOLS = [run_batch_rka, run_batch_pbj, read_pdf_page, read_anomalies]
+@tool(
+    "read_preload_context",
+    "Baca bundle konteks pra-loaded di `_PRELOAD/context-bundle.md` — berisi "
+    "pattern wiki terkurasi (top severity), catatan vault terkait obyek, pola-"
+    "temuan-berulang, glossary, regulasi, riwayat penugasan serupa. WAJIB dibaca "
+    "DULU di langkah awal sebelum susun temuan — supaya mulai dengan tangan "
+    "penuh. Mengganti perlu panggilan beruntun search_wiki/list_temuan_patterns/"
+    "get_konteks secara terpisah saat awal. Bila bundle belum ada, lanjut pakai "
+    "tools lama.",
+    {"penugasan_folder": str},
+)
+async def read_preload_context(args: dict) -> dict:
+    folder = Path(args["penugasan_folder"])
+    bundle = folder / "_PRELOAD" / "context-bundle.md"
+    if not bundle.exists():
+        return {
+            "content": [{
+                "type": "text",
+                "text": (
+                    "PRELOAD_BELUM_DIBANGUN|Bundle konteks pra-loaded belum "
+                    "dibangun. Auditor bisa generate via tombol 'Refresh Konteks' "
+                    "di tab Setup Penugasan, atau lewat POST /penugasan/{id}/"
+                    "preload-context. Lanjut pakai tools lama (search_wiki, "
+                    "list_temuan_patterns, get_konteks)."
+                ),
+            }]
+        }
+    try:
+        text = bundle.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {
+            "content": [{"type": "text", "text": f"FAILED|gagal baca bundle: {exc}"}],
+            "is_error": True,
+        }
+    # Cap supaya tidak meledak context window (~6K token)
+    return {"content": [{"type": "text", "text": text[:24000]}]}
+
+
+PIPELINE_TOOLS = [
+    run_batch_rka, run_batch_pbj, read_pdf_page, read_anomalies, read_preload_context,
+]

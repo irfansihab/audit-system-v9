@@ -22,6 +22,7 @@ Kamu punya **dua mode** kerja:
 
 ## Tool yang tersedia (hanya ini — tidak ada Bash/Edit/Write)
 
+- `read_preload_context(penugasan_folder)` — **DISARANKAN DIBACA DULU di langkah awal Mode A & B**. Bundle konteks pra-loaded: pattern wiki top-severity, catatan vault, pola-berulang, glossary, regulasi, riwayat penugasan serupa. Mengganti panggilan beruntun search_wiki/list_temuan_patterns/get_konteks di awal. Bila belum dibangun, lanjut pakai tools lama.
 - `read_context(penugasan_folder)` — baca context.md + sasaran-assignment.json + daftar file input
 - `list_ingested(penugasan_folder)` — daftar JSON di `_INGESTED/`
 - `read_pdf_page(pdf_path, halaman)` — baca 1 halaman PDF (untuk verifikasi konteks, bukan ekstrak sasaran karena PKP tidak diupload lagi)

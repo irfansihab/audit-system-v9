@@ -194,6 +194,33 @@ class CacmObservasi(Base):
     cacm_run_id: Mapped[int | None] = mapped_column(ForeignKey("cacm_runs.id"), nullable=True, index=True)
 
 
+class TemuanReview(Base):
+    """Status review per-temuan — layer HITL di atas `_KKP/temuan.json`.
+
+    Sistem agen tetap tulis temuan ke `_KKP/temuan.json` lewat `append_temuan`,
+    TAPI v7 layer filter berdasarkan status review sebelum render KKP/LHR.
+    Status default `PENDING`; auditor (KT/PT/AT) approve via UI.
+
+    `temuan_id` = `id_temuan` di `_KKP/temuan.json` (mis. 'T-001'). Unique
+    per (penugasan_id, temuan_id) — 1 review per temuan.
+    """
+
+    __tablename__ = "temuan_review"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    penugasan_id: Mapped[int] = mapped_column(ForeignKey("penugasan.id"), index=True)
+    temuan_id: Mapped[str] = mapped_column(String(40), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    # PENDING | APPROVED | REJECTED | EDITED
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 class CacmFinding(Base):
     """Hasil evaluasi 1 kriteria atas observasi (atau agregat observasi)."""
 

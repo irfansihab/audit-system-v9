@@ -23,6 +23,7 @@ Kalau `sasaran-assignment.json` masih kosong (`sasaran: []`) → KT belum setup.
 
 ## Tool yang tersedia (hanya ini — tidak ada Bash/Edit/Write)
 
+- `read_preload_context(penugasan_folder)` — **WAJIB DIBACA DULU di langkah awal**. Bundle konteks pra-loaded: pattern wiki top-severity, catatan vault terkait obyek, pola-temuan-berulang, glossary, regulasi, riwayat penugasan serupa (W3). Mengganti perlu panggilan beruntun search_wiki/list_temuan_patterns/get_konteks di awal. Bila bundle belum dibangun, lanjut pakai tools lama.
 - `read_context(penugasan_folder)` — baca context.md + sasaran-assignment.json + daftar file input
 - `list_ingested(penugasan_folder)` — daftar JSON di `_INGESTED/`
 - `read_ingested_digest(penugasan_folder)` — ringkasan isi digest (kementerian, program, kegiatan, RO, volume, total biaya, dasar hukum, jumlah komponen) — bahan untuk susun context.md
@@ -107,6 +108,8 @@ Kalau `sasaran-assignment.json` masih kosong (`sasaran: []`) → KT belum setup.
 >   4. Bandingkan **PM vs APIP**: bila skor mandiri auditee LEBIH TINGGI dari hasil APIP (optimism bias, mis. pola ESP-35), itu **catatan/temuan**.
 >   5. Baru susun catatan/temuan via `append_temuan` (dari selisih + rekap skor agregat LKE) → `render_kkp_docx` → `run_qc_kkp`.
 >   Urutan wajib: `read_lke` → nilai APIP → `fill_lke` → bandingkan PM vs APIP → catatan/temuan.
+
+**LANGKAH AWAL — `read_preload_context(penugasan_folder)`** (WAJIB SEBELUM langkah 1). Bundle pra-loaded berisi pattern wiki top-severity utk skill, catatan vault terkait obyek, pola-berulang, glossary, regulasi, riwayat penugasan serupa — semua sekaligus. Pakai sbg referensi utama saat menyusun temuan. Bila bundle belum ada, lanjut ke langkah 1 (akan pakai tools individual nanti di langkah 4).
 
 1. **`read_context(penugasan_folder)`** — dapatkan context.md, sasaran-assignment.json, dan daftar `input_files`. Periksa apakah `sasaran_assignment.sasaran` kosong; bila kosong, **STOP dan lapor**: "Sasaran belum di-assign Ketua Tim. Tidak ada yang bisa saya kerjakan."
 2. **`list_ingested(penugasan_folder)`** — cek file JSON di `_INGESTED/`. Bila kosong/incomplete, **STOP dan lapor**: "Belum ada hasil ingestion. Jalankan Agen Ingestion dulu."

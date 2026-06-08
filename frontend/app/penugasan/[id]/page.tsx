@@ -1018,6 +1018,9 @@ function SetupPenugasanTab({
         </div>
       )}
 
+      {/* === KONTEKS PRA-LOADED (Prioritas 1 — peningkatan kualitas output agen) === */}
+      <PreloadContextPanel penugasanId={penugasanId} />
+
       {/* === CONTEXT.MD === */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
@@ -1394,6 +1397,9 @@ function OutputTab({ penugasan }: { penugasan: Penugasan }) {
           {error}
         </div>
       )}
+
+      {/* Review Temuan (Prioritas 2 — HITL per-temuan) */}
+      <TemuanReviewPanel penugasanId={penugasan.id} />
 
       {loading && (
         <div className="bg-white border border-gray-200 rounded-lg p-5 text-sm text-gray-500">
@@ -2076,6 +2082,242 @@ function TemplateSetupModal({
             Tutup
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// PreloadContextPanel (Prioritas 1) — bangun bundle konteks pra-loaded
+// supaya agen mulai dgn tangan penuh. Pattern wiki + vault + glossary + W3.
+// ====================================================================
+
+function PreloadContextPanel({ penugasanId }: { penugasanId: number }) {
+  const [status, setStatus] = useState<{ exists: boolean; size_bytes?: number; modified_at?: string; char_count?: number; preview_head?: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [stats, setStats] = useState<any>(null);
+
+  const refresh = async () => {
+    try {
+      const r = await api.getPreloadContextStatus(penugasanId);
+      setStatus(r);
+    } catch { /* silent */ }
+  };
+  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [penugasanId]);
+
+  const build = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await api.buildPreloadContext(penugasanId);
+      setStats(r.stats);
+      setMsg(`Konteks dibangun: ${r.stats.n_patterns} pattern + ${r.stats.n_vault_notes} catatan vault + ${r.stats.n_konteks} konteks + ${r.stats.n_writeback_history} riwayat. ${(r.stats.char_count / 1024).toFixed(1)} KB.`);
+      refresh();
+    } catch (e: any) { setMsg(`Gagal: ${e.message}`); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="bg-amber-50/40 border border-amber-200 rounded-lg p-4 mb-4">
+      <div className="flex justify-between items-start gap-3 flex-wrap">
+        <div className="flex-1 min-w-[300px]">
+          <h3 className="font-semibold text-primary-dark">
+            ⚡ Konteks Pra-Loaded <span className="text-xs font-normal text-amber-700">· peningkatan kualitas AI</span>
+          </h3>
+          <p className="text-xs text-gray-600 mt-1">
+            Sebelum agen jalan, sistem bisa siapkan <strong>bundle konteks</strong> dari 4 sumber:
+            pattern wiki top-severity utk skill, catatan vault terkait obyek, pola-temuan-berulang +
+            glossary + regulasi, dan riwayat penugasan serupa (W3). Agen mulai dgn tangan penuh —
+            output lebih konsisten & substantif.
+          </p>
+          {status && (
+            <div className="mt-2 text-xs">
+              {status.exists ? (
+                <span className="text-green-700">
+                  ✓ Bundle ada: <b>{((status.char_count || 0) / 1024).toFixed(1)} KB</b>
+                  {status.modified_at && <span className="text-gray-500"> · update terakhir {status.modified_at.slice(0, 19).replace('T', ' ')}</span>}
+                </span>
+              ) : (
+                <span className="text-amber-700">⚠ Bundle belum dibangun. Bangun dulu sebelum mulai chat AT/KT.</span>
+              )}
+            </div>
+          )}
+          {stats && (
+            <div className="mt-1 text-[11px] text-gray-500">
+              keywords vault: {stats.vault_keywords?.join(', ') || '—'}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={build}
+          disabled={busy}
+          className="px-3 py-1.5 text-sm rounded bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 whitespace-nowrap"
+        >
+          {busy ? 'Membangun…' : (status?.exists ? '↻ Refresh Konteks' : '⚡ Bangun Konteks')}
+        </button>
+      </div>
+      {msg && <div className="mt-2 p-2 text-xs rounded bg-white border border-amber-200 text-gray-700">{msg}</div>}
+    </div>
+  );
+}
+
+// ====================================================================
+// TemuanReviewPanel (Prioritas 2) — HITL per-temuan. AT/KT/PT setujui /
+// tolak tiap temuan sebelum render KKP/LHR final.
+// ====================================================================
+
+type TemuanReviewItem = Awaited<ReturnType<typeof api.listTemuanReview>>['items'][number];
+
+const REVIEW_STATUS_COLOR: Record<string, string> = {
+  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  APPROVED: 'bg-green-100 text-green-800 border-green-300',
+  REJECTED: 'bg-red-100 text-red-800 border-red-300',
+  EDITED: 'bg-blue-100 text-blue-800 border-blue-300',
+};
+
+function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
+  const session = getSession();
+  const canApprove = ['AT', 'KT', 'PT', 'PM'].includes(session?.role_aktif || '');
+  const canReject = ['KT', 'PT', 'PM'].includes(session?.role_aktif || '');
+  const canBulk = ['KT', 'PT', 'PM'].includes(session?.role_aktif || '');
+
+  const [items, setItems] = useState<TemuanReviewItem[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const r = await api.listTemuanReview(penugasanId);
+      setItems(r.items);
+      setCounts(r.counts);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [penugasanId]);
+
+  const doApprove = async (tid: string) => {
+    setBusy(tid); setMsg(null);
+    try { await api.approveTemuan(penugasanId, tid); refresh(); }
+    catch (e: any) { setMsg(`Gagal approve ${tid}: ${e.message}`); }
+    finally { setBusy(null); }
+  };
+  const doReject = async (tid: string) => {
+    if (!confirm(`Tolak temuan ${tid}? Tidak akan masuk KKP/LHR final.`)) return;
+    setBusy(tid); setMsg(null);
+    try { await api.rejectTemuan(penugasanId, tid); refresh(); }
+    catch (e: any) { setMsg(`Gagal reject ${tid}: ${e.message}`); }
+    finally { setBusy(null); }
+  };
+  const doBulkApprove = async () => {
+    const pending = counts['PENDING'] || 0;
+    if (!pending) return;
+    if (!confirm(`Setujui ${pending} temuan PENDING sekaligus?`)) return;
+    setBusy('bulk'); setMsg(null);
+    try {
+      const r = await api.bulkApproveTemuan(penugasanId);
+      setMsg(`${r.approved_count} temuan disetujui.`);
+      refresh();
+    } catch (e: any) { setMsg(`Gagal bulk approve: ${e.message}`); }
+    finally { setBusy(null); }
+  };
+
+  if (loading) {
+    return <div className="mb-4 p-3 text-xs text-gray-400 italic">Memuat status review temuan…</div>;
+  }
+  if (items.length === 0) {
+    return null; // hide panel jika tidak ada temuan
+  }
+
+  return (
+    <div className="mb-4 bg-white border border-emerald-200 rounded-lg p-4">
+      <div className="flex justify-between items-start mb-2 gap-2 flex-wrap">
+        <div>
+          <h3 className="font-semibold text-primary-dark">
+            ✓ Review Temuan <span className="text-xs font-normal text-emerald-700">· {items.length} temuan · HITL per-temuan</span>
+          </h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Setujui/tolak tiap temuan sebelum render KKP & LHR final. Default <code>PENDING</code> saat agen baru tulis.
+          </p>
+        </div>
+        {canBulk && (counts['PENDING'] || 0) > 0 && (
+          <button
+            onClick={doBulkApprove}
+            disabled={busy !== null}
+            className="px-3 py-1.5 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 whitespace-nowrap"
+          >
+            {busy === 'bulk' ? 'Memproses…' : `✓ Setujui semua ${counts['PENDING']} pending`}
+          </button>
+        )}
+      </div>
+
+      <div className="text-xs text-gray-600 mb-2 flex gap-3 flex-wrap">
+        {Object.entries(counts).map(([s, n]) =>
+          n > 0 ? (
+            <span key={s} className={`px-1.5 py-0.5 rounded border ${REVIEW_STATUS_COLOR[s] || 'bg-gray-100'}`}>
+              {s}: {n}
+            </span>
+          ) : null
+        )}
+      </div>
+
+      {msg && <div className="mb-2 p-2 text-xs rounded bg-emerald-50 border border-emerald-200 text-emerald-800">{msg}</div>}
+
+      <div className="space-y-1.5">
+        {items.map((t) => (
+          <div key={t.id_temuan} className="border border-gray-200 rounded">
+            <div className="px-3 py-2 flex justify-between items-start gap-2 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-[11px] text-gray-500">{t.id_temuan}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded border ${REVIEW_STATUS_COLOR[t.status] || 'bg-gray-100'}`}>
+                    {t.status}
+                  </span>
+                  {t.sasaran_id && <span className="text-[10px] text-gray-400">{t.sasaran_id}</span>}
+                  {t.anggota && <span className="text-[10px] text-gray-400">· {t.anggota}</span>}
+                  <span className="text-[10px] text-gray-400">· {t.dokumen_sumber_count} sumber</span>
+                </div>
+                <div className="text-xs text-gray-800 mt-0.5">{t.judul}</div>
+                {expanded[t.id_temuan] && (
+                  <div className="text-[11px] text-gray-600 mt-2 space-y-1 pl-3 border-l-2 border-gray-200">
+                    {t.kondisi && <div><b>Kondisi:</b> {t.kondisi}</div>}
+                    {t.kriteria && <div><b>Kriteria:</b> {t.kriteria}</div>}
+                    {t.akibat && <div><b>Akibat:</b> {t.akibat}</div>}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <button
+                  onClick={() => setExpanded((p) => ({ ...p, [t.id_temuan]: !p[t.id_temuan] }))}
+                  className="text-[11px] px-2 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+                >
+                  {expanded[t.id_temuan] ? 'tutup' : 'detail'}
+                </button>
+                {canApprove && t.status !== 'APPROVED' && (
+                  <button
+                    onClick={() => doApprove(t.id_temuan)}
+                    disabled={busy !== null}
+                    className="text-[11px] px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {busy === t.id_temuan ? '…' : '✓ Setujui'}
+                  </button>
+                )}
+                {canReject && t.status !== 'REJECTED' && (
+                  <button
+                    onClick={() => doReject(t.id_temuan)}
+                    disabled={busy !== null}
+                    className="text-[11px] px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                  >
+                    ✗ Tolak
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

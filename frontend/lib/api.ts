@@ -362,6 +362,75 @@ export const api = {
       { method: 'PUT', body: JSON.stringify({ sasaran }) }
     ),
 
+  // ===== Preload Context Bundle (Prioritas 1 — peningkatan kualitas output agen) =====
+  /** Bangun bundle konteks pra-loaded (vault + pattern + glossary + riwayat W3) */
+  buildPreloadContext: (penugasanId: number) =>
+    request<{
+      ok: boolean;
+      path: string;
+      stats: {
+        char_count: number;
+        n_vault_notes: number;
+        n_patterns: number;
+        n_konteks: number;
+        n_writeback_history: number;
+        vault_keywords: string[];
+      };
+    }>(`/penugasan/${penugasanId}/preload-context`, { method: 'POST' }),
+
+  /** Cek status bundle (apakah sudah dibangun + statistik). */
+  getPreloadContextStatus: (penugasanId: number) =>
+    request<{
+      exists: boolean;
+      size_bytes?: number;
+      modified_at?: string;
+      char_count?: number;
+      preview_head?: string;
+    }>(`/penugasan/${penugasanId}/preload-context/status`),
+
+  // ===== Per-Temuan Review (Prioritas 2 — HITL per-temuan) =====
+  /** List semua temuan + status review-nya. */
+  listTemuanReview: (penugasanId: number) =>
+    request<{
+      total: number;
+      counts: Record<string, number>;
+      items: Array<{
+        id_temuan: string;
+        judul: string;
+        sasaran_id: string;
+        kondisi: string;
+        kriteria: string;
+        akibat: string;
+        anggota: string;
+        dokumen_sumber_count: number;
+        status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EDITED';
+        note: string | null;
+        reviewed_at: string | null;
+        reviewed_by_user_id: number | null;
+      }>;
+    }>(`/penugasan/${penugasanId}/temuan-review`),
+
+  /** Setujui 1 temuan (AT/KT/PT/PM). */
+  approveTemuan: (penugasanId: number, temuanId: string, note?: string) =>
+    request<{ ok: boolean; id_temuan: string; status: string; reviewed_at: string | null }>(
+      `/penugasan/${penugasanId}/temuan-review/${encodeURIComponent(temuanId)}/approve`,
+      { method: 'POST', body: JSON.stringify({ note: note ?? null }) }
+    ),
+
+  /** Tolak 1 temuan (KT/PT/PM). */
+  rejectTemuan: (penugasanId: number, temuanId: string, note?: string) =>
+    request<{ ok: boolean; id_temuan: string; status: string; reviewed_at: string | null }>(
+      `/penugasan/${penugasanId}/temuan-review/${encodeURIComponent(temuanId)}/reject`,
+      { method: 'POST', body: JSON.stringify({ note: note ?? null }) }
+    ),
+
+  /** Bulk approve semua temuan PENDING (KT/PT/PM). */
+  bulkApproveTemuan: (penugasanId: number) =>
+    request<{ ok: boolean; approved_count: number; total_temuan: number }>(
+      `/penugasan/${penugasanId}/temuan-review/bulk-approve`,
+      { method: 'POST' }
+    ),
+
   /** W1.1 — sync sasaran dari payload PKP SIMWAS (manual paste/upload hari ini;
    * source='api' placeholder 501 sampai kontrak API + SSO SIMWAS resmi). PT/KT. */
   syncSasaranFromSimwas: (

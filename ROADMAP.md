@@ -850,6 +850,79 @@ engine sebelum integrasi.
 V6 read-only — semua menulis di v7 (`app/cacm_*.py`, `knowledge/cacm/`,
 model paralel dgn EwsFinding existing).
 
+### Peningkatan Kualitas Output Agen (8 Juni 2026) — Prioritas 1+2
+
+Atas feedback tim "output Cowork sering lebih bagus dari agen v7", dieksekusi
+2 perbaikan: pre-load konteks + per-temuan HITL approve. Setelah inventaris
+HITL existing, ternyata sistem sudah punya 15 titik HITL (workflow gating,
+gate-based, chat, curation knowledge) — hanya **per-temuan preview**
+yang belum ada.
+
+**Prioritas 1 — Pre-load Konteks Bundle:**
+
+Sebelum agen jalan, sistem otomatis tarik konteks dari 4 sumber + susun
+jadi 1 file markdown `_PRELOAD/context-bundle.md`. Agen baca via tool
+`read_preload_context` di langkah awal supaya mulai dengan **tangan penuh**.
+
+- `backend/app/preload_context.py` — deterministic builder (no LLM):
+  * Sumber 1: **vault llm-wiki** — `vault_search` dgn keyword obyek
+    penugasan (stopword Indonesia di-skip) → top 4 catatan dgn isi penuh
+  * Sumber 2: **pattern wiki** untuk skill — top 8 by severity
+    (CRITICAL > HIGH > MEDIUM > LOW)
+  * Sumber 3: **konteks pendukung** — `pola-temuan-berulang.md` +
+    `glossary-komdigi.md` + `regulasi-kunci.md`
+  * Sumber 4: **riwayat W3 writeback** — `pengawasan-*.md` di vault yg
+    related skill+obyek (top 3)
+- Endpoint `POST /penugasan/{id}/preload-context` (PT/KT/AT) — build/rebuild
+- Endpoint `GET /penugasan/{id}/preload-context/status` — cek status
+- Tool baru `read_preload_context(penugasan_folder)` di pipeline_tools,
+  cap 24K chars (~6K tokens)
+- Prompt AT/KT update — langkah awal WAJIB/disarankan baca preload
+- UI panel "⚡ Konteks Pra-Loaded" di tab Setup Penugasan (warna amber,
+  tombol Bangun/Refresh)
+
+**Prioritas 2 — Per-Temuan HITL Approve:**
+
+Layer baru di atas `_KKP/temuan.json`: setiap temuan punya status review
+(`PENDING/APPROVED/REJECTED/EDITED`). Auditor approve/tolak per-temuan
+sebelum masuk KKP/LHR final. Schema temuan.json tidak diubah (V6 read-only).
+
+- Model baru `TemuanReview` (penugasan_id, temuan_id, status, note,
+  reviewed_by_user_id, reviewed_at). Layer terpisah; V6 ignore.
+- Endpoint `GET /penugasan/{id}/temuan-review` — list semua temuan + status
+  + counts per status. Semua role.
+- Endpoint `POST /penugasan/{id}/temuan-review/{temuan_id}/approve` —
+  AT/KT/PT/PM.
+- Endpoint `POST /penugasan/{id}/temuan-review/{temuan_id}/reject` —
+  KT/PT/PM only.
+- Endpoint `POST /penugasan/{id}/temuan-review/bulk-approve` — KT/PT/PM
+  utk efisiensi auditor senior (setujui semua PENDING sekaligus).
+- UI panel "✓ Review Temuan" di tab Output & QC (warna emerald):
+  list temuan dgn badge status, tombol detail/Setujui/Tolak per-temuan,
+  bulk approve button bila ada PENDING. Auto-hide bila tidak ada temuan.
+
+**Verifikasi end-to-end:**
+- Backend probe: build preload bundle untuk reviu-pengadaan → 48 KB bundle
+  (8 pattern + 4 catatan vault + 3 konteks + 0 riwayat).
+- Backend probe: list 4 temuan untuk reviu-rka-kl → approve T-001 individual
+  + bulk-approve sisa 3 → semua APPROVED.
+- Browser E2E: login PT → /penugasan/4 → Setup tab → panel "⚡ Konteks
+  Pra-Loaded" tampil dgn status "Bundle belum dibangun" → klik
+  "⚡ Bangun Konteks" → bundle 45.2 KB dibangun (7 pattern + 4 vault +
+  3 konteks). Lanjut tab Output & QC → panel "✓ Review Temuan (4 temuan)"
+  tampil di atas list file dgn 4 baris APPROVED + tombol detail/Tolak.
+
+**Yang TIDAK termasuk commit ini (bisa next):**
+- Filter `render_kkp_docx` agar hanya pakai temuan APPROVED (saat ini V6
+  render dgn semua temuan; layer filter v7 perlu wrapper)
+- Auto-build preload-context saat penugasan baru dibuat (saat ini manual
+  trigger)
+- Edit temuan via UI (saat ini cuma approve/reject; edit minor harus via
+  AT REFINE mode di Chat)
+
+V6 read-only — semua perubahan di v7 (`app/preload_context.py`,
+`app/models.py:TemuanReview`, route + frontend).
+
 ### Fase 1 commit-2 — Wire-up + endpoint + UI (3-7 Juni 2026) — IMPLEMENTED
 
 Tutup loop CACM Fase 1: evaluator yang sudah dibangun di commit sebelumnya
