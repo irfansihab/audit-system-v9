@@ -1,5 +1,6 @@
 ---
 name: reviu-umum
+format_laporan: kksa
 version: 1.0
 jenis: Reviu (umum — kriteria fleksibel)
 fungsi: Assurance — Keyakinan Terbatas

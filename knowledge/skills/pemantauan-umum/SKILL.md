@@ -1,5 +1,6 @@
 ---
 name: pemantauan-umum
+format_laporan: kksa
 version: 1.0
 jenis: Pemantauan (umum — kriteria fleksibel)
 fungsi: Assurance — Status & Progres

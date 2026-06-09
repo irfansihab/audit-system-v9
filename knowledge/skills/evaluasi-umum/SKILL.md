@@ -1,5 +1,6 @@
 ---
 name: evaluasi-umum
+format_laporan: kksa
 version: 1.0
 jenis: Evaluasi (umum — kriteria fleksibel)
 fungsi: Assurance — Penilaian Efektivitas/Sistem

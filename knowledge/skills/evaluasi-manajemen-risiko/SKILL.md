@@ -1,5 +1,6 @@
 ---
 name: evaluasi-manajemen-risiko
+format_laporan: kksa
 version: 2.0
 jenis: Evaluasi Manajemen Risiko
 dasar-hukum: Pedoman Menkomdigi 6/2017, ISO 31000:2018

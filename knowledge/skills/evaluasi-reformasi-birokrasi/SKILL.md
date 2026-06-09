@@ -1,5 +1,6 @@
 ---
 name: evaluasi-reformasi-birokrasi
+format_laporan: rb-4dim
 version: 2.0
 jenis: Evaluasi Internal Reformasi Birokrasi (Ex-Ante dan On-Going)
 dasar-hukum: PermenPAN-RB 9/2023, KepmenPAN-RB 182/2024, SE MenPAN-RB 6/2025

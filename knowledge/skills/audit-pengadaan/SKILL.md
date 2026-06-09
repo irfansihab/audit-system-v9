@@ -1,5 +1,6 @@
 ---
 name: audit-pengadaan
+format_laporan: kksa
 version: 2.1
 jenis: Audit Kepatuhan Pengadaan Barang/Jasa
 dasar-hukum: Perpres 16/2018 jo. Perpres 12/2021, Perlem LKPP 12/2021, Perlem LKPP 4/2024, Perpres 46/2025
