@@ -1,5 +1,6 @@
 ---
 name: konsultansi-umum
+format_laporan: memo
 version: 1.0
 jenis: Konsultansi (umum — kriteria fleksibel)
 fungsi: Consulting — Pendapat / Saran (Tanpa Keyakinan)

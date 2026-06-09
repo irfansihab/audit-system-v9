@@ -1,5 +1,6 @@
 ---
 name: audit-umum
+format_laporan: kksa
 version: 1.0
 jenis: Audit (umum — kriteria fleksibel)
 fungsi: Assurance — Keyakinan Memadai

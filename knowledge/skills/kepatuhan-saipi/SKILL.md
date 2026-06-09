@@ -1,13 +1,29 @@
 ---
 name: kepatuhan-saipi
-version: 1.0
-jenis: Kepatuhan Standar Audit Intern Pemerintah Indonesia (SAIPI)
+format_laporan: kksa
+version: 1.1
+jenis: Kepatuhan Standar Audit Intern Pemerintah Indonesia (SAIPI) — META-SKILL QA
 dasar-hukum: Peraturan Menteri PANRB & PER-01/AAIPI/DPN/2021 (SAIPI)
 model: claude-sonnet-4-6
 output: Laporan Quality Assurance + Audit Trail
+is_meta_skill: true
+auto_run_after: ["render_kkp_docx", "render_report", "render_lhp"]
 ---
 
 # Skill — Kepatuhan SAIPI (Quality Assurance per-penugasan)
+
+## ⚠️ INI META-SKILL — BUKAN PENUGASAN AT-DRIVEN
+
+**JANGAN buat penugasan baru dengan skill `kepatuhan-saipi`.** Skill ini adalah **meta-skill Quality Assurance** yang berjalan **OTOMATIS** setelah:
+- AT selesai `render_kkp_docx` → trigger `run_qc_kkp` (jalankan `qc_saipi.py --stage kkp`)
+- KT selesai `render_report` / `render_lhp` → trigger `run_qc_lhp` (jalankan `qc_saipi.py --stage lhp`)
+
+**Pemetaan ke workflow biasa:**
+- AT/KT TIDAK perlu manual panggil skill `kepatuhan-saipi` — sistem yg jalankan
+- Output QC SAIPI (laporan kepatuhan) di-attach ke folder `_QA-SAIPI/` masing-masing penugasan
+- Bila ada GAP KRITIS, AT/KT diberitahu via `run_qc_kkp`/`run_qc_lhp` return value → wajib perbaiki sebelum LHP final
+
+**Bila skill ini muncul sebagai pilihan dropdown penugasan, itu kesalahan UI** — abaikan dan pilih skill substantif (reviu/audit/evaluasi/dst).
 
 > **Sumber otoritatif**: PER-01/AAIPI/DPN/2021 — Standar Audit Intern Pemerintah Indonesia (SAIPI), terbit DPN AAIPI, 2021. PDF: `wiki/raw/SAIPI-PER-01-AAIPI-DPN-2021.pdf`.
 

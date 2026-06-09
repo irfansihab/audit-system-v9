@@ -1,5 +1,6 @@
 ---
 name: evaluasi-spip
+format_laporan: kksa
 version: 1.5
 jenis: Penjaminan Kualitas Penilaian Maturitas Penyelenggaraan SPIP Terintegrasi
 dasar-hukum: Peraturan BPKP Nomor 5 Tahun 2021

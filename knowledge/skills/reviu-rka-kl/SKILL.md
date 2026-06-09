@@ -1,5 +1,6 @@
 ---
 name: reviu-rka-kl
+format_laporan: kksa
 version: 3.0
 jenis: Reviu Rencana Kerja dan Anggaran Kementerian/Lembaga
 dasar-hukum: PMK 107/2024 (perubahan PMK 62/PMK.02/2023), Pasal 61

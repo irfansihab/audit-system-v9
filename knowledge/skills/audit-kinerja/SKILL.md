@@ -1,5 +1,6 @@
 ---
 name: audit-kinerja
+format_laporan: kksa
 version: 2.2
 jenis: Audit Kinerja — Efektivitas dan Efisiensi Program/Kegiatan
 dasar-hukum: PP 60/2008, Perpres 29/2014, Standar Audit APIP (AAIPI)

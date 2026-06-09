@@ -1,5 +1,6 @@
 ---
 name: pemantauan-tindak-lanjut
+format_laporan: kksa
 version: 0.1
 jenis: Pemantauan Tindak Lanjut Hasil Pengawasan (TLHP)
 dasar-hukum: PP 60/2008 Pasal 50, Permenpan 5/2008

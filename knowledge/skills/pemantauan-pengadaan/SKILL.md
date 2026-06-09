@@ -1,5 +1,6 @@
 ---
 name: pemantauan-pengadaan
+format_laporan: kksa
 version: 2.1
 jenis: Pemantauan Pelaksanaan Pengadaan Barang/Jasa
 dasar-hukum: Perpres 16/2018 jo. Perpres 12/2021, Perpres 46/2025

@@ -1,5 +1,6 @@
 ---
 name: evaluasi-sakip
+format_laporan: kksa
 version: 5.1
 jenis: Evaluasi Akuntabilitas Kinerja Instansi Pemerintah (AKIP)
 dasar-hukum: PermenPAN-RB 88/2021, Perpres 29/2014, PP 8/2006

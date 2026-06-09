@@ -1,5 +1,6 @@
 ---
 name: reviu-pengadaan
+format_laporan: kksa
 version: 1.3
 jenis: Reviu Perencanaan dan Pemilihan Pengadaan Barang/Jasa
 dasar-hukum: Perpres 16/2018 jo. Perpres 12/2021, Perlem LKPP 12/2021
