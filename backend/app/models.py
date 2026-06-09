@@ -278,6 +278,26 @@ class AgentRun(Base):
     penugasan: Mapped["Penugasan"] = relationship(back_populates="agent_runs")
 
 
+class LhpReview(Base):
+    """Reviu Konsep LHP oleh Pengendali Teknis / Pengendali Mutu (tahapan 6 — LRS LHP).
+
+    Satu baris per aksi reviu (history terjaga). UI menampilkan baris terbaru.
+    `status`:
+      - APPROVED        — PT/PM menyetujui konsep LHP → tahapan 6 selesai.
+      - NEEDS_REVISION  — PT/PM minta revisi; `catatan` memuat arahan perbaikan.
+    """
+
+    __tablename__ = "lhp_review"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    penugasan_id: Mapped[int] = mapped_column(ForeignKey("penugasan.id"), index=True)
+    reviewer_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewer_role: Mapped[str | None] = mapped_column(String(4), nullable=True)  # PT | PM
+    status: Mapped[str] = mapped_column(String(20))  # APPROVED | NEEDS_REVISION
+    catatan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class WikiProposalStatus(str, Enum):
     """Daur hidup usulan catatan vault dari penugasan selesai (W3)."""
 

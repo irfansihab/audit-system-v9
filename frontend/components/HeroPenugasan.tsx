@@ -53,7 +53,11 @@ const SKILL_GROUP: Record<string, 'audit' | 'reviu' | 'evaluasi' | 'pemantauan' 
 
 // Map status penugasan v7 → status tahapan workflow INTEGRAL.
 // Heuristic: bila penugasan ada di status KKP_*, tahapan 3 in_progress; LHP_* tahapan 5 dst.
-function deriveStageStatus(penugasan: Penugasan, stageNum: number): StageStatus {
+function deriveStageStatus(
+  penugasan: Penugasan,
+  stageNum: number,
+  lhpReviewStatus?: 'APPROVED' | 'NEEDS_REVISION' | null,
+): StageStatus {
   const status = penugasan.status as string;
   // Tahapan progression sederhana berbasis status:
   //   DRAFT → semua kecuali KP locked (KP pending)
@@ -100,35 +104,46 @@ function deriveStageStatus(penugasan: Penugasan, stageNum: number): StageStatus 
     return idx >= 4 ? 'pending' : 'locked';
   }
 
-  // Stage 6 LRS LHP — locked sampai LHP_DONE
+  // Stage 6 LRS LHP — reviu PT/PM atas konsep LHP.
+  //   APPROVED → done; NEEDS_REVISION → in_progress (revisi diminta);
+  //   belum direviu tapi LHP_DONE → in_progress (menunggu reviu); else locked.
   if (stageNum === 6) {
+    if (lhpReviewStatus === 'APPROVED') return 'done';
+    if (lhpReviewStatus === 'NEEDS_REVISION') return 'in_progress';
     return status === 'LHP_DONE' ? 'in_progress' : 'locked';
   }
 
-  // Stage 7 Laporan Hasil
+  // Stage 7 Laporan Hasil — siap (pending) hanya setelah konsep LHP disetujui PT/PM.
   if (stageNum === 7) {
-    return status === 'LHP_DONE' ? 'pending' : 'locked';
+    return lhpReviewStatus === 'APPROVED' ? 'pending' : 'locked';
   }
 
   return 'pending';
 }
 
-export function HeroPenugasan({ penugasan }: { penugasan: Penugasan }) {
+export function HeroPenugasan({
+  penugasan,
+  lhpReviewStatus,
+}: {
+  penugasan: Penugasan;
+  lhpReviewStatus?: 'APPROVED' | 'NEEDS_REVISION' | null;
+}) {
   const skillGroup = SKILL_GROUP[penugasan.skill];
   const showSurvey = skillGroup === 'audit';
   const skillLabel = SKILL_LABEL[penugasan.skill] || penugasan.skill;
+  const st = (n: number) => deriveStageStatus(penugasan, n, lhpReviewStatus);
 
   // Progress % berbasis tahapan done
   const totalStages = showSurvey ? 8 : 7;
   const stages: StageInfo[] = [
-    { num: 0, label: 'Survey Pendahuluan', hint: 'Hanya audit-*', status: deriveStageStatus(penugasan, 0) },
-    { num: 1, label: 'Kartu Penugasan', hint: 'PT · template wiki', status: deriveStageStatus(penugasan, 1) },
-    { num: 2, label: 'PKP', hint: 'KT · detail dari KP', status: deriveStageStatus(penugasan, 2) },
-    { num: 3, label: 'KKP', hint: 'AT · AI + HITL', status: deriveStageStatus(penugasan, 3) },
-    { num: 4, label: 'LRS KK', hint: 'auto dari approval', status: deriveStageStatus(penugasan, 4) },
-    { num: 5, label: 'Konsep Laporan', hint: 'KT · LHP draft', status: deriveStageStatus(penugasan, 5) },
-    { num: 6, label: 'LRS LHP', hint: 'PT/PM review', status: deriveStageStatus(penugasan, 6) },
-    { num: 7, label: 'Laporan Hasil', hint: 'Inspektur', status: deriveStageStatus(penugasan, 7) },
+    { num: 0, label: 'Survey Pendahuluan', hint: 'Hanya audit-*', status: st(0) },
+    { num: 1, label: 'Kartu Penugasan', hint: 'PT · template wiki', status: st(1) },
+    { num: 2, label: 'PKP', hint: 'KT · detail dari KP', status: st(2) },
+    { num: 3, label: 'KKP', hint: 'AT · AI + HITL', status: st(3) },
+    { num: 4, label: 'LRS KK', hint: 'auto dari approval', status: st(4) },
+    { num: 5, label: 'Konsep Laporan', hint: 'KT · LHP draft', status: st(5) },
+    { num: 6, label: 'LRS LHP', hint: 'PT/PM review', status: st(6) },
+    { num: 7, label: 'Laporan Hasil', hint: 'Inspektur', status: st(7) },
   ];
 
   const doneCount = stages.filter((s, i) => (i > 0 || showSurvey) && s.status === 'done').length;

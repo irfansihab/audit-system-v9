@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, clearToken, getSession, Session, SkillInfo } from '@/lib/api';
 import { AppShell } from '@/components/AppShell';
+import { TemplatePickerKpPkp } from '@/components/TemplatePickerKpPkp';
 
 type SearchResult = {
   name: string;
@@ -57,6 +58,33 @@ export default function KnowledgePage() {
     setSession(s);
     if (!s) router.push('/login');
   }, [router]);
+
+  // Scroll ke anchor dari menu sidebar (mis. /knowledge#kriteria-cacm). Hash
+  // routing client Next.js tidak auto-scroll untuk konten yang baru ter-render,
+  // jadi kita lakukan manual setelah mount + saat hash berubah (hashchange).
+  useEffect(() => {
+    if (!mounted) return;
+    let timers: ReturnType<typeof setTimeout>[] = [];
+    const scrollToHash = () => {
+      const id = window.location.hash.replace('#', '');
+      if (!id) return;
+      // Panel (Pattern/Kriteria) memuat data async lalu tumbuh tinggi setelah mount,
+      // menggeser posisi anchor. Scroll ulang beberapa kali supaya berhenti di posisi
+      // akhir, bukan posisi sebelum konten ter-render.
+      timers.forEach(clearTimeout);
+      timers = [0, 200, 500, 900, 1400].map((d) =>
+        setTimeout(() => {
+          document.getElementById(id)?.scrollIntoView({ behavior: d === 0 ? 'auto' : 'smooth', block: 'start' });
+        }, d)
+      );
+    };
+    scrollToHash();
+    window.addEventListener('hashchange', scrollToHash);
+    return () => {
+      timers.forEach(clearTimeout);
+      window.removeEventListener('hashchange', scrollToHash);
+    };
+  }, [mounted]);
 
   const handleLogout = () => {
     clearToken();
@@ -120,10 +148,19 @@ export default function KnowledgePage() {
         </ul>
 
         {/* ===== Pattern Library (semua role) — dinaikkan ke atas supaya tinggi visibility ===== */}
-        <PatternLibraryPanel />
+        <section id="pattern" className="scroll-mt-24">
+          <PatternLibraryPanel />
+        </section>
 
         {/* ===== Kriteria CACM (semua role baca) ===== */}
-        <CacmKriteriaPanel />
+        <section id="kriteria-cacm" className="scroll-mt-24">
+          <CacmKriteriaPanel />
+        </section>
+
+        {/* ===== Template KP/PKP (semua role baca) ===== */}
+        <section id="template-kp" className="scroll-mt-24">
+          <TemplateKpPkpPanel />
+        </section>
 
         {/* ===== W1: Cari Wiki ===== */}
         <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
@@ -212,9 +249,75 @@ export default function KnowledgePage() {
         {(session.role_aktif === 'PT' || session.role_aktif === 'PM') && <GraduasiPanel />}
 
         {/* ===== W3: Tulis-balik Vault (semua role bisa lihat; aksi tergantung role) ===== */}
-        <WritebackPanel role={session.role_aktif} />
+        <section id="writeback" className="scroll-mt-24">
+          <WritebackPanel role={session.role_aktif} />
+        </section>
       </div>
     </AppShell>
+  );
+}
+
+// Panel Template KP/PKP (semua role baca) — jelajah template Kartu Penugasan &
+// Program Kerja Pengawasan terkurasi per skill. Read-only di sini (tanpa onUse):
+// pengisian sebenarnya dilakukan di tab Setup penugasan.
+function TemplateKpPkpPanel() {
+  const [skills, setSkills] = useState<SkillInfo[]>([]);
+  const [skill, setSkill] = useState('');
+  const [kind, setKind] = useState<'kp' | 'pkp'>('kp');
+
+  useEffect(() => {
+    api
+      .getSkills()
+      .then((rows) => {
+        setSkills(rows);
+        if (rows.length) setSkill(rows[0].slug);
+      })
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+      <h2 className="font-semibold text-primary-dark mb-1">Template KP / PKP</h2>
+      <p className="text-xs text-gray-500 mb-3">
+        Template <b>Kartu Penugasan</b> dan <b>Program Kerja Pengawasan</b> terkurasi per skill
+        (sumber: wiki tim). Dipakai di tab <b>Setup</b> penugasan untuk memulai tanpa dari nol.
+      </p>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <select
+          value={skill}
+          onChange={(e) => setSkill(e.target.value)}
+          className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+        >
+          {skills.length === 0 ? (
+            <option value="">(memuat skill…)</option>
+          ) : (
+            skills.map((s) => (
+              <option key={s.slug} value={s.slug}>
+                {s.jenis || s.name}
+              </option>
+            ))
+          )}
+        </select>
+        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+          {(['kp', 'pkp'] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setKind(k)}
+              className={`px-3 py-1.5 text-sm transition ${
+                kind === k ? 'bg-primary text-white font-semibold' : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {k.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+      {skill ? (
+        <TemplatePickerKpPkp key={`${kind}-${skill}`} kind={kind} skill={skill} />
+      ) : (
+        <div className="text-sm text-gray-400 italic">Memuat daftar skill…</div>
+      )}
+    </div>
   );
 }
 

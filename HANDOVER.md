@@ -30,31 +30,37 @@ Visual rebrand: **"INTEGRAL AI Workspace · Powered by Audit AI v7"** dengan pal
 
 ---
 
-## ⏸ Sprint 3-4 BELUM (sisa ~30 jam)
+## ✅ Sprint 3 SELESAI (branch `feat/integral-sprint3`)
 
-### S3.1 — Survey Pendahuluan section conditional (3 jam)
-- Hanya muncul untuk skill `audit-pengadaan`, `audit-kinerja`, `audit-umum`
-- UI: tahapan 0 di detail page → click → modal/section upload dokumen survey
-- Backend: tool `read_survey_pendahuluan(folder)` + ekstensi prompt agen KT untuk extract risk profile
-- Komponen: integrate dengan existing `HeroPenugasan.tsx`
+Semua S3.1–S3.4 selesai + diverifikasi (backend smoke test + browser preview + `next build` hijau).
 
-### S3.2 — LRS LHP workflow (3 jam)
-- DB model baru: `LhpReview(id, penugasan_id, reviewer_user_id, status: APPROVED|NEEDS_REVISION, catatan, reviewed_at)`
-- Endpoint: `POST /penugasan/{id}/lhp-review` (PT/PM only)
-- UI: panel di tab "Konsep Laporan" — tombol "Setujui sebagai PT" + "Minta Revisi" + textarea catatan
-- Update HeroPenugasan `deriveStageStatus` untuk tahapan 6 (LRS LHP)
+### S3.1 — Survey Pendahuluan section conditional ✅
+- Jenis dokumen baru `SURVEY` di `storage.py` (INPUT_JENIS + classify `survey-`/`sp` + subfolder `00-survey/`).
+- Tool `read_survey_pendahuluan(penugasan_folder)` di `tools/kkp_tools.py` → di-wire ke agen KT (`agents/ketua_tim.py`).
+- Prompt KT (`prompts/ketua_tim.md`): langkah Mode A baru → ekstrak PROFIL RISIKO 3E dari survey untuk audit-*.
+- UI: banner "Tahapan 0 — Survey Pendahuluan" + opsi SURVEY di dropdown jenis (hanya `audit-pengadaan/kinerja/umum`).
 
-### S3.3 — Daftar Penugasan DataTable SIMWAS-style (4 jam)
-- Install: `npm install @tanstack/react-table`
-- Filter bar: Tahun (2026/2025/...) + Bulan + Pelaksana (multi) + tombol Export CSV
-- Kolom: NO | JUDUL | PELAKSANA | JENIS | TANGGAL | (status per-tahapan ✓ icon)
-- Search box + sort columns + pagination ("Show N entries")
-- Title format SIMWAS: `Melakukan {jenis} atas {obyek} di Lingkungan {unit} TA {tahun} terhitung mulai tanggal {start} s.d. {end}`
+### S3.2 — LRS LHP workflow ✅
+- Model `LhpReview` (`models.py`) — auto-create via `create_all`.
+- Endpoint `GET/POST /penugasan/{id}/lhp-review` (PT/PM only; 422 bila NEEDS_REVISION tanpa catatan) di `routes/penugasan.py`.
+- API client: `api.listLhpReview` / `api.createLhpReview`.
+- UI: `LhpReviewPanel` di tab Konsep Laporan (Setujui sebagai PT/PM + Minta Revisi + catatan + riwayat).
+- `HeroPenugasan.deriveStageStatus` tahapan 6 (APPROVED→done, NEEDS_REVISION→in_progress) + tahapan 7 unlock saat APPROVED.
 
-### S3.4 — Menu CACM + Knowledge restructure (2 jam)
-Sebagian sudah ke-handle di `Sidebar.tsx`. Sisa:
-- Pisah `/knowledge` jadi 4 anchor: `#pattern`, `#kriteria-cacm`, `#template-kp`, `#writeback`
-- Atau pisah jadi page baru: `/cacm/kriteria`, `/knowledge/templates`
+### S3.3 — Daftar Penugasan DataTable SIMWAS-style ✅
+- `@tanstack/react-table@8` terpasang. `app/penugasan/page.tsx` → komponen `PenugasanTable`.
+- Filter Tahun + Bulan + search global + Export CSV (BOM UTF-8). Sort kolom + pagination ("Tampilkan N entri").
+- Kolom: NO | JUDUL (judul SIMWAS-style) | JENIS | TANGGAL | STATUS+indikator 7-tahapan | AKSI.
+- ⚠️ PELAKSANA & rentang tanggal mulai–selesai BELUM ada di data v7 (judul SIMWAS dibangun dari field tersedia; lengkap saat sync ST SIMWAS — S4.1).
+
+### S3.4 — Menu CACM + Knowledge restructure ✅
+- `/knowledge` punya anchor `#pattern`, `#kriteria-cacm`, `#template-kp`, `#writeback` + auto-scroll (retry karena panel async).
+- Panel baru `TemplateKpPkpPanel` (browse template KP/PKP per skill, read-only).
+- Sidebar: hapus link mati `#template-dokumen`.
+
+---
+
+## ⏸ Sprint 4 BELUM (sisa ~10 jam)
 
 ### S4.1 — API endpoint `/api/simwas/st/sync` (4 jam)
 ```python

@@ -463,6 +463,42 @@ export const api = {
       { method: 'PUT', body: JSON.stringify(edits) }
     ),
 
+  // ===== Reviu Konsep LHP (S3.2 — tahapan 6 LRS LHP, PT/PM) =====
+  /** Riwayat reviu konsep LHP. latest_status: APPROVED | NEEDS_REVISION | null. */
+  listLhpReview: (penugasanId: number) =>
+    request<{
+      total: number;
+      latest_status: 'APPROVED' | 'NEEDS_REVISION' | null;
+      items: Array<{
+        id: number;
+        status: 'APPROVED' | 'NEEDS_REVISION';
+        catatan: string | null;
+        reviewer_user_id: number | null;
+        reviewer_role: string | null;
+        reviewer_name: string | null;
+        reviewed_at: string | null;
+      }>;
+    }>(`/penugasan/${penugasanId}/lhp-review`),
+
+  /** Setujui / minta revisi konsep LHP (PT/PM only). */
+  createLhpReview: (
+    penugasanId: number,
+    status: 'APPROVED' | 'NEEDS_REVISION',
+    catatan?: string
+  ) =>
+    request<{
+      ok: boolean;
+      id: number;
+      status: 'APPROVED' | 'NEEDS_REVISION';
+      catatan: string | null;
+      reviewer_role: string | null;
+      reviewer_name: string | null;
+      reviewed_at: string | null;
+    }>(`/penugasan/${penugasanId}/lhp-review`, {
+      method: 'POST',
+      body: JSON.stringify({ status, catatan: catatan ?? null }),
+    }),
+
   /** W1.1 — sync sasaran dari payload PKP SIMWAS (manual paste/upload hari ini;
    * source='api' placeholder 501 sampai kontrak API + SSO SIMWAS resmi). PT/KT. */
   syncSasaranFromSimwas: (

@@ -98,6 +98,66 @@ async def list_ingested(args: dict) -> dict:
     return {"content": [{"type": "text", "text": "\n".join(files) or "(kosong)"}]}
 
 
+_SURVEY_TEXT_CAP = 12000
+
+
+@tool(
+    "read_survey_pendahuluan",
+    "Baca bahan Survey Pendahuluan (tahapan 0, khusus audit-*) dari sub-folder "
+    "`00-survey/` + teks hasil ekstraksi di `_INGESTED/`. Pakai SAAT setup (Mode A) "
+    "untuk menyusun PROFIL RISIKO awal (3E: Ekonomis/Efisien/Efektif) yang mengarahkan "
+    "sasaran reviu. Bila kosong, lanjut tanpa survey. Untuk kerangka 3E lengkap, baca "
+    "reference skill `references/08-checklist-survey-pendahuluan.md` via read_skill_reference.",
+    {"penugasan_folder": str},
+)
+async def read_survey_pendahuluan(args: dict) -> dict:
+    folder = Path(args["penugasan_folder"])
+    survey_dir = folder / "00-survey"
+    survey_files = (
+        sorted(str(p.relative_to(folder)) for p in survey_dir.rglob("*") if p.is_file())
+        if survey_dir.exists()
+        else []
+    )
+
+    # Teks hasil ekstraksi: cari JSON _INGESTED yang berasal dari dokumen survey.
+    # Dokumen survey di-prefix "survey" / "sp" oleh classify; ambil raw_text_pages.
+    ingested_dir = folder / "_INGESTED"
+    extracted: list[dict] = []
+    budget = _SURVEY_TEXT_CAP
+    if ingested_dir.exists():
+        for jp in sorted(ingested_dir.glob("*.json")):
+            stem = jp.stem.lower()
+            if not (stem.startswith("survey") or stem.startswith("sp") or "survei" in stem):
+                continue
+            data = safe_read_json(jp)
+            if not isinstance(data, dict):
+                continue
+            pages = data.get("raw_text_pages") or []
+            text = "\n".join(
+                p.get("text", "") if isinstance(p, dict) else str(p) for p in pages
+            ).strip()
+            if not text:
+                continue
+            snippet = text[:budget]
+            budget -= len(snippet)
+            extracted.append({"file": jp.name, "text": snippet, "truncated": len(text) > len(snippet)})
+            if budget <= 0:
+                break
+
+    payload = {
+        "ada_survey": bool(survey_files),
+        "survey_files": survey_files,
+        "extracted": extracted,
+        "petunjuk": (
+            "Bila ada_survey=false, lewati profil risiko survey dan susun sasaran "
+            "berdasarkan PKP/skill seperti biasa. Bila ada: rangkum jadi PROFIL RISIKO "
+            "3E (Ekonomis/Efisien/Efektif) — tiap risiko menunjuk sasaran reviu yang "
+            "relevan. File belum terekstraksi bisa dibaca via read_pdf_page."
+        ),
+    }
+    return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]}
+
+
 def _detect_skill_from_folder(folder: Path) -> str | None:
     """Resolve skill penugasan dari folder name (kode penugasan) via DB.
 

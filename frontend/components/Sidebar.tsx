@@ -46,7 +46,6 @@ const MENU_ITEMS: MenuItem[] = [
     children: [
       { href: '/knowledge#pattern', label: 'Pattern Temuan' },
       { href: '/knowledge#template-kp', label: 'Template KP/PKP' },
-      { href: '/knowledge#template-dokumen', label: 'Template Dokumen' },
       { href: '/knowledge#writeback', label: 'Tulis-balik Vault' },
     ],
   },

@@ -89,6 +89,9 @@ def classify_doc_by_filename(name: str) -> str:
         return "KRITERIA"
     if "objek" in n or "obyek" in n:
         return "OBJEK"
+    # Survey pendahuluan (audit-*) — memo SP, hasil entry meeting, profil auditi awal.
+    if "survey" in n or "survei" in n or n.startswith("sp") or "memo sp" in n:
+        return "SURVEY"
     if n.startswith("st") or "surat tugas" in n:
         return "ST"
     if n.startswith("kp") or "kartu penugasan" in n:
@@ -112,6 +115,7 @@ def target_subfolder_for(jenis: str) -> str:
         "KONTRAK": "02-kontrak",
         "KRITERIA": "01-peraturan-internal",  # regulasi/SOP/juknis acuan (criteria-driven)
         "OBJEK": "00-input",                   # dokumen objek pengawasan (criteria-driven)
+        "SURVEY": "00-survey",                 # bahan survey pendahuluan audit-* (tahapan 0)
     }
     return mapping.get(jenis, "00-input")
 
@@ -251,7 +255,7 @@ def reset_downstream(folder: Path, from_stage: str) -> list[str]:
 
 # Jenis dokumen yang dihitung sebagai "bahan analisis" untuk gate Generate Context
 # (criteria-driven). ST/KP/PKP = administratif, bukan bahan analisis.
-INPUT_JENIS = {"TOR", "RAB", "KAK", "HPS", "RFI", "KONTRAK", "KRITERIA", "OBJEK", "OTHER"}
+INPUT_JENIS = {"TOR", "RAB", "KAK", "HPS", "RFI", "KONTRAK", "KRITERIA", "OBJEK", "SURVEY", "OTHER"}
 
 
 def context_readiness(

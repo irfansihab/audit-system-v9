@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import Dokumen, DokumenStatus, Penugasan, PenugasanStatus, Role, TemuanReview, User
+from app.models import Dokumen, DokumenStatus, LhpReview, Penugasan, PenugasanStatus, Role, TemuanReview, User
 from app.schemas import PenugasanCreate, PenugasanOut
 from app.storage import (
     INPUT_JENIS,
@@ -1212,3 +1212,100 @@ async def _upsert_review(
         "status": status_new,
         "reviewed_at": existing.reviewed_at.isoformat() + "Z" if existing.reviewed_at else None,
     }
+
+
+# ============================================================
+# Reviu Konsep LHP (tahapan 6 — LRS LHP) — PT/PM menyetujui / minta revisi
+# ============================================================
+
+
+class LhpReviewCreate(BaseModel):
+    status: Literal["APPROVED", "NEEDS_REVISION"]
+    catatan: str | None = None
+
+
+def _lhp_review_dict(r: LhpReview, reviewer_name: str | None = None) -> dict[str, Any]:
+    return {
+        "id": r.id,
+        "status": r.status,
+        "catatan": r.catatan,
+        "reviewer_user_id": r.reviewer_user_id,
+        "reviewer_role": r.reviewer_role,
+        "reviewer_name": reviewer_name,
+        "reviewed_at": r.reviewed_at.isoformat() + "Z" if r.reviewed_at else None,
+    }
+
+
+@router.get("/{penugasan_id}/lhp-review")
+async def list_lhp_review(
+    penugasan_id: int,
+    _current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Riwayat reviu konsep LHP (semua role bisa baca). Terbaru di atas.
+
+    `latest_status` ringkasan untuk derive tahapan 6 di UI:
+      APPROVED → tahapan selesai; NEEDS_REVISION → revisi diminta; null → belum direviu.
+    """
+    await _get_penugasan_or_404(db, penugasan_id)
+    rows = (
+        await db.execute(
+            select(LhpReview)
+            .where(LhpReview.penugasan_id == penugasan_id)
+            .order_by(LhpReview.reviewed_at.desc(), LhpReview.id.desc())
+        )
+    ).scalars().all()
+
+    # Nama reviewer (best-effort — map user_id → nama_lengkap)
+    user_ids = {r.reviewer_user_id for r in rows if r.reviewer_user_id}
+    names: dict[int, str] = {}
+    if user_ids:
+        users = (
+            await db.execute(select(User).where(User.id.in_(user_ids)))
+        ).scalars().all()
+        names = {u.id: u.nama_lengkap for u in users}
+
+    items = [_lhp_review_dict(r, names.get(r.reviewer_user_id or -1)) for r in rows]
+    return {
+        "total": len(items),
+        "latest_status": items[0]["status"] if items else None,
+        "items": items,
+    }
+
+
+@router.post("/{penugasan_id}/lhp-review", status_code=status.HTTP_201_CREATED)
+async def create_lhp_review(
+    penugasan_id: int,
+    payload: LhpReviewCreate,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Reviu konsep LHP — hanya Pengendali Teknis (PT) / Pengendali Mutu (PM).
+
+    Setiap aksi disimpan sebagai baris baru (history). UI memakai baris terbaru
+    untuk menentukan status tahapan 6 (LRS LHP).
+    """
+    user, role = current
+    if role not in (Role.PT, Role.PM):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Reviu konsep LHP hanya untuk Pengendali Teknis/Mutu (PT/PM). Role Anda: {role.value}.",
+        )
+    if payload.status == "NEEDS_REVISION" and not (payload.catatan or "").strip():
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Catatan revisi wajib diisi saat meminta revisi.",
+        )
+    await _get_penugasan_or_404(db, penugasan_id)
+
+    review = LhpReview(
+        penugasan_id=penugasan_id,
+        reviewer_user_id=user.id,
+        reviewer_role=role.value,
+        status=payload.status,
+        catatan=(payload.catatan or None),
+    )
+    db.add(review)
+    await db.commit()
+    await db.refresh(review)
+    return {"ok": True, **_lhp_review_dict(review, user.nama_lengkap)}
