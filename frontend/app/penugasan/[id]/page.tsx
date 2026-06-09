@@ -8,29 +8,18 @@ import { AppShell } from '@/components/AppShell';
 import { HeroPenugasan } from '@/components/HeroPenugasan';
 import { TemplatePickerKpPkp } from '@/components/TemplatePickerKpPkp';
 
-// Tab workspace per-peran (konsolidasi Fase A):
-//   kp  — Penugasan & KP (PT isi dari template)
-//   pkp — PKP / sasaran (KT isi dari template)
-//   kkp — Workspace AT (konteks + dokumen + analisis AI + HITL approval)
-//   lhp — Konsep Laporan / Workspace KT (generate LHP + approval temuan + approval LHP)
-//   output — daftar file hasil
-type Tab = 'kp' | 'pkp' | 'kkp' | 'lhp' | 'output';
+// NAVIGASI = KARTU TAHAPAN (ala SIMWAS "Detail Pelaksanaan Penugasan").
+// Tidak ada tab bar terpisah — klik kartu tahapan di hero membuka workspace
+// tahapan itu di bawahnya. v7 hanya engine; struktur halaman mengikuti SIMWAS.
+//   0 Survey (audit-*) · 1 KP (PT) · 2 PKP (KT) · 3 KKP (workspace AT)
+//   4 LRS KK · 5 Konsep Laporan (workspace KT) · 6 LRS LHP (PT/PM) · 7 Laporan Hasil
 
-const TAB_LABEL: Record<Tab, string> = {
-  kp: '📇 Penugasan & KP',
-  pkp: '📋 PKP — Sasaran',
-  kkp: '🎯 KKP — Workspace AT',
-  lhp: '📄 Konsep Laporan — Workspace KT',
-  output: '📁 Output & Laporan',
-};
-const TAB_ORDER: Tab[] = ['kp', 'pkp', 'kkp', 'lhp', 'output'];
-
-// Tab default sesuai peran — buka langsung di workspace yang jadi tanggung jawabnya.
-function defaultTabForRole(role: Role): Tab {
-  if (role === 'PT') return 'kp';
-  if (role === 'KT') return 'pkp';
-  if (role === 'AT') return 'kkp';
-  return 'lhp'; // PM
+// Tahapan default sesuai peran — buka langsung di tahapan tanggung jawabnya.
+function defaultStageForRole(role: Role): number {
+  if (role === 'PT') return 1; // Kartu Penugasan
+  if (role === 'KT') return 2; // PKP
+  if (role === 'AT') return 3; // KKP
+  return 6; // PM → LRS LHP
 }
 
 export default function DetailPenugasanPage() {
@@ -44,7 +33,7 @@ export default function DetailPenugasanPage() {
 
   const [penugasan, setPenugasan] = useState<Penugasan | null>(null);
   const [dokumen, setDokumen] = useState<Dokumen[]>([]);
-  const [tab, setTab] = useState<Tab>('kkp');
+  const [stage, setStage] = useState<number>(3);
   const [error, setError] = useState<string | null>(null);
   // Status reviu konsep LHP terbaru (S3.2) — dipakai HeroPenugasan untuk tahapan 6.
   const [lhpStatus, setLhpStatus] = useState<'APPROVED' | 'NEEDS_REVISION' | null>(null);
@@ -53,7 +42,7 @@ export default function DetailPenugasanPage() {
   const [chatSeed, setChatSeed] = useState<{ prompt: string; token: number } | null>(null);
   const runGateInChat = (gateId: string) => {
     setChatSeed({ prompt: `[MODE:GATE:${gateId}]`, token: Date.now() });
-    setTab('kkp'); // gate dijalankan agen AT di Workspace KKP
+    setStage(3); // gate dijalankan agen AT di tahapan 3 (KKP)
   };
 
   useEffect(() => {
@@ -70,7 +59,7 @@ export default function DetailPenugasanPage() {
     setDokumen([]);
     setError(null);
     setLhpStatus(null);
-    setTab(defaultTabForRole(s.role_aktif));
+    setStage(defaultStageForRole(s.role_aktif));
     Promise.all([api.getPenugasan(id), api.listDokumen(id)])
       .then(([p, d]) => {
         setPenugasan(p);
@@ -122,34 +111,17 @@ export default function DetailPenugasanPage() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-sm text-gray-500 mb-2">INTEGRAL / Penugasan / Detail Pelaksanaan</div>
 
-        {/* Hero: info penugasan + 7-tahapan grid (mirror SIMWAS v2 INTEGRAL) */}
+        {/* Hero = navigasi utama (ala SIMWAS): info penugasan + grid tahapan.
+            Klik kartu tahapan → konten tahapan itu tampil di bawah. */}
         <HeroPenugasan
           penugasan={penugasan}
           lhpReviewStatus={lhpStatus}
-          onStageSelect={(t) => setTab(t)}
+          activeStage={stage}
+          onStageSelect={(n) => setStage(n)}
         />
       </div>
 
-      {/* Tab bar — workspace per-peran (Fase A) */}
-      <div className="bg-white border-y border-gray-200 sticky top-16 z-10">
-        <div className="max-w-6xl mx-auto px-6 flex gap-1 overflow-x-auto">
-          {TAB_ORDER.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-3 text-sm whitespace-nowrap border-b-2 transition ${
-                tab === t
-                  ? 'border-primary text-primary-dark font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-primary-dark'
-              }`}
-            >
-              {TAB_LABEL[t]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto px-6 pb-6">
         {error && (
           <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
             {error}
@@ -162,31 +134,50 @@ export default function DetailPenugasanPage() {
         {/* key={id} memaksa React unmount + remount setiap kali penugasan ganti,
             mencegah state lokal (chat prompt, modal preview, dll) bocor antar penugasan. */}
 
-        {/* === Tahapan 1 — Penugasan & Kartu Penugasan (PT isi dari template) === */}
-        {tab === 'kp' && (
-          <KpTab
-            key={`kp-${id}`}
-            penugasan={penugasan}
-            role={session.role_aktif}
-          />
-        )}
-
-        {/* === Tahapan 2 — PKP / Sasaran reviu (KT isi dari template) === */}
-        {tab === 'pkp' && (
-          <SetupPenugasanTab
-            key={`pkp-${id}`}
-            penugasanId={id}
-            role={session.role_aktif}
-            currentUserName={session.user.nama_lengkap}
-            section="sasaran"
-          />
-        )}
-
-        {/* === Tahapan 3 — KKP Workspace AT: konteks → dokumen → analisis AI → HITL === */}
-        {tab === 'kkp' && (
-          <div key={`kkp-${id}`} className="space-y-6">
+        {/* === Tahapan 0 — Survey Pendahuluan (hanya audit-*) === */}
+        {stage === 0 && (
+          <div key={`s0-${id}`} className="space-y-6">
             <WorkspaceBanner
-              title="🎯 Workspace Anggota Tim — Produksi KKP"
+              title="🔎 Tahapan 0 — Survey Pendahuluan (khusus audit)"
+              steps={['Upload bahan survey (jenis SURVEY)', 'KT susun profil risiko 3E', 'Turunkan ke sasaran PKP']}
+            />
+            <DokumenTab
+              dokumen={dokumen}
+              onUpload={handleUpload}
+              onDelete={handleDeleteDokumen}
+              allReady={allReady}
+              role={session.role_aktif}
+              skill={penugasan.skill}
+            />
+          </div>
+        )}
+
+        {/* === Tahapan 1 — Kartu Penugasan (PT isi dari template wiki) === */}
+        {stage === 1 && (
+          <KpTab key={`s1-${id}`} penugasan={penugasan} role={session.role_aktif} />
+        )}
+
+        {/* === Tahapan 2 — PKP: sasaran + langkah kerja (KT, detail dari KP) === */}
+        {stage === 2 && (
+          <div key={`s2-${id}`} className="space-y-6">
+            <WorkspaceBanner
+              title="📋 Tahapan 2 — PKP (Program Kerja Pengawasan) — diisi Ketua Tim"
+              steps={['Detailkan KP jadi sasaran', 'Susun langkah kerja', 'Assign anggota tim']}
+            />
+            <SetupPenugasanTab
+              penugasanId={id}
+              role={session.role_aktif}
+              currentUserName={session.user.nama_lengkap}
+              section="sasaran"
+            />
+          </div>
+        )}
+
+        {/* === Tahapan 3 — KKP, workspace AT: konteks → dokumen → AI → HITL === */}
+        {stage === 3 && (
+          <div key={`s3-${id}`} className="space-y-6">
+            <WorkspaceBanner
+              title="🎯 Tahapan 3 — Kertas Kerja (KKP) — workspace Anggota Tim"
               steps={['Generate Konteks', 'Upload Dokumen', 'Analisis AI', 'Review & Approval Temuan']}
             />
             <SetupPenugasanTab
@@ -213,18 +204,39 @@ export default function DetailPenugasanPage() {
           </div>
         )}
 
-        {/* === Tahapan 5/6 — Konsep Laporan Workspace KT: generate LHP + approval === */}
-        {tab === 'lhp' && (
-          <div key={`lhp-${id}`} className="space-y-6">
+        {/* === Tahapan 4 — LRS KK: status review/approval temuan (auto dari HITL) === */}
+        {stage === 4 && (
+          <div key={`s4-${id}`} className="space-y-6">
             <WorkspaceBanner
-              title="📄 Workspace Ketua Tim — Konsep Laporan (LHP)"
-              steps={['Lihat KKP disetujui AT', 'Generate Draft LHP (AI)', 'Approval Temuan', 'Approval / Revisi Draft LHP']}
+              title="📝 Tahapan 4 — LRS Kertas Kerja (auto dari approval HITL)"
+              steps={['Temuan di-approve AT/KT di tahapan 3', 'Status review = LRS KK', 'KT setujui sasaran → lanjut LHP']}
+            />
+            <TemuanReviewPanel penugasanId={id} key={`lrs-${id}`} />
+          </div>
+        )}
+
+        {/* === Tahapan 5 — Konsep Laporan, workspace KT: generate LHP + approval === */}
+        {stage === 5 && (
+          <div key={`s5-${id}`} className="space-y-6">
+            <WorkspaceBanner
+              title="📄 Tahapan 5 — Konsep Laporan (LHP) — workspace Ketua Tim"
+              steps={['Lihat KKP disetujui AT', 'Generate Draft LHP (AI)', 'Approval Temuan', 'Kirim ke PT/PM untuk LRS LHP']}
             />
             <ChatTab
               key={`chat-kt-${id}`}
               penugasanId={id}
               role="KT"
               skill={penugasan.skill}
+            />
+          </div>
+        )}
+
+        {/* === Tahapan 6 — LRS LHP: PT/PM approve / minta revisi konsep === */}
+        {stage === 6 && (
+          <div key={`s6-${id}`} className="space-y-6">
+            <WorkspaceBanner
+              title="🛡 Tahapan 6 — LRS LHP — reviu Pengendali Teknis / Mutu"
+              steps={['Baca konsep LHP (tahapan 7 → unduh)', 'Setujui atau minta revisi + catatan', 'Approved → lanjut finalisasi']}
             />
             <LhpReviewPanel
               penugasanId={id}
@@ -234,9 +246,15 @@ export default function DetailPenugasanPage() {
           </div>
         )}
 
-        {/* === Output & Laporan — daftar file hasil === */}
-        {tab === 'output' && (
-          <OutputTab key={`output-${id}`} penugasan={penugasan} />
+        {/* === Tahapan 7 — Laporan Hasil: file output final === */}
+        {stage === 7 && (
+          <div key={`s7-${id}`} className="space-y-6">
+            <WorkspaceBanner
+              title="📁 Tahapan 7 — Laporan Hasil"
+              steps={['Unduh KKP/LHP/QC', 'Finalisasi oleh Inspektur (via SIMWAS)']}
+            />
+            <OutputTab penugasan={penugasan} />
+          </div>
         )}
       </div>
     </AppShell>

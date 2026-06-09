@@ -121,32 +121,18 @@ function deriveStageStatus(
   return 'pending';
 }
 
-export type DetailTab = 'kp' | 'pkp' | 'kkp' | 'lhp' | 'output';
-
-// Peta tahapan → tab workspace di detail page (klik kartu = buka tab terkait).
-//   0 Survey → KKP (upload survey ada di workspace AT)
-//   1 KP → kp · 2 PKP → pkp · 3 KKP → kkp (workspace AT)
-//   4 LRS KK / 5 Konsep / 6 LRS LHP → lhp (workspace KT) · 7 Laporan → output
-const STAGE_TAB: Record<number, DetailTab> = {
-  0: 'kkp',
-  1: 'kp',
-  2: 'pkp',
-  3: 'kkp',
-  4: 'lhp',
-  5: 'lhp',
-  6: 'lhp',
-  7: 'output',
-};
-
 export function HeroPenugasan({
   penugasan,
   lhpReviewStatus,
   onStageSelect,
+  activeStage,
 }: {
   penugasan: Penugasan;
   lhpReviewStatus?: 'APPROVED' | 'NEEDS_REVISION' | null;
-  /** Klik kartu tahapan → buka tab workspace yang relevan. */
-  onStageSelect?: (tab: DetailTab) => void;
+  /** Kartu tahapan = navigasi (ala SIMWAS): klik → buka workspace tahapan tsb. */
+  onStageSelect?: (stageNum: number) => void;
+  /** Tahapan yang sedang dibuka — di-highlight di grid. */
+  activeStage?: number;
 }) {
   const skillGroup = SKILL_GROUP[penugasan.skill];
   const showSurvey = skillGroup === 'audit';
@@ -216,19 +202,16 @@ export function HeroPenugasan({
       {/* Right panel — 7/8 tahapan grid */}
       <div className="md:col-span-2 integral-card p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm text-primary-dark">Tahapan Pengawasan ala INTEGRAL</h3>
+          <h3 className="font-semibold text-sm text-primary-dark">Detail Pelaksanaan Penugasan</h3>
           <span className="text-[10px] text-gray-400 uppercase tracking-wider">
-            workflow {totalStages}-tahap
+            klik tahapan untuk membuka · {totalStages} tahap
           </span>
         </div>
         <StageGrid
           stages={stages}
           showSurvey={showSurvey}
-          onSelect={
-            onStageSelect
-              ? (s) => onStageSelect(STAGE_TAB[Number(s.num)] ?? 'kkp')
-              : undefined
-          }
+          activeNum={activeStage}
+          onSelect={onStageSelect ? (s) => onStageSelect(Number(s.num)) : undefined}
         />
       </div>
     </div>

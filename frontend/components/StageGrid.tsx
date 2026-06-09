@@ -45,22 +45,27 @@ export function StageGrid({
   stages,
   showSurvey,
   onSelect,
+  activeNum,
 }: {
   stages: StageInfo[];
   showSurvey?: boolean;
-  /** Klik kartu tahapan → buka tab terkait di detail page. */
+  /** Kartu tahapan = NAVIGASI (ala SIMWAS): klik → buka workspace tahapan itu.
+   * Semua kartu klikabel — tahapan locked tetap bisa dibuka untuk lihat prasyarat. */
   onSelect?: (stage: StageInfo) => void;
+  /** Tahapan yang sedang dibuka — kartunya di-highlight. */
+  activeNum?: number | string;
 }) {
   const visible = stages.filter((s) => s.num !== 0 || showSurvey);
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {visible.map((s) => {
-        const clickable = s.status !== 'locked' && (!!s.href || !!onSelect);
+        const clickable = !!s.href || !!onSelect;
+        const active = activeNum !== undefined && s.num === activeNum;
         const card = (
           <div
             className={`p-3 rounded-lg border-2 transition h-full ${STATUS_BG[s.status]} ${
               clickable ? 'cursor-pointer hover:border-primary hover:shadow-integral' : ''
-            }`}
+            } ${active ? 'ring-2 ring-primary border-primary' : ''}`}
           >
             <div className="flex items-start gap-2">
               <div className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-sm flex-shrink-0 ${
@@ -79,10 +84,10 @@ export function StageGrid({
             </div>
           </div>
         );
-        if (s.href && s.status !== 'locked') {
+        if (s.href) {
           return <Link key={s.num} href={s.href}>{card}</Link>;
         }
-        if (onSelect && s.status !== 'locked') {
+        if (onSelect) {
           return (
             <button key={s.num} type="button" onClick={() => onSelect(s)} className="text-left">
               {card}
