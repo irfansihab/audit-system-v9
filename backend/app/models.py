@@ -60,8 +60,8 @@ class Penugasan(Base):
     skill: Mapped[Skill] = mapped_column(String(40))
     nomor_st: Mapped[str | None] = mapped_column(String(200), nullable=True)
     tanggal_st: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    status: Mapped[PenugasanStatus] = mapped_column(String(40), default=PenugasanStatus.DRAFT)
-    ketua_tim_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    status: Mapped[PenugasanStatus] = mapped_column(String(40), default=PenugasanStatus.DRAFT, index=True)
+    ketua_tim_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     folder_path: Mapped[str] = mapped_column(String(400))
     context_md: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -81,7 +81,7 @@ class Dokumen(Base):
     __tablename__ = "dokumen"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    penugasan_id: Mapped[int] = mapped_column(ForeignKey("penugasan.id"))
+    penugasan_id: Mapped[int] = mapped_column(ForeignKey("penugasan.id"), index=True)
     nama_file: Mapped[str] = mapped_column(String(400))
     file_path: Mapped[str] = mapped_column(String(600))
     jenis: Mapped[str | None] = mapped_column(String(40), nullable=True)
@@ -142,8 +142,8 @@ class EwsFinding(Base):
     cacm_run_id: Mapped[int] = mapped_column(ForeignKey("cacm_runs.id"))
     kode: Mapped[str] = mapped_column(String(20))            # "EWS-01".."EWS-09"
     satker: Mapped[str] = mapped_column(String(200))
-    satker_kode: Mapped[str | None] = mapped_column(String(20), nullable=True)  # itjen/ekosdig/wasdig
-    status: Mapped[str] = mapped_column(String(20))          # MERAH/KUNING/HIJAU/INFO
+    satker_kode: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)  # itjen/ekosdig/wasdig
+    status: Mapped[str] = mapped_column(String(20), index=True)          # MERAH/KUNING/HIJAU/INFO
     judul: Mapped[str | None] = mapped_column(Text, nullable=True)
     penjelasan: Mapped[str | None] = mapped_column(Text, nullable=True)
     ringkasan: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -261,7 +261,7 @@ class AgentRun(Base):
     __tablename__ = "agent_runs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    penugasan_id: Mapped[int] = mapped_column(ForeignKey("penugasan.id"))
+    penugasan_id: Mapped[int] = mapped_column(ForeignKey("penugasan.id"), index=True)
     agent_name: Mapped[str] = mapped_column(String(40))
     # "ingestion" | "anggota_tim" | "qc_saipi_kkp" | "qc_saipi_lhp" | "ketua_tim"
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)

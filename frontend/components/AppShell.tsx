@@ -36,8 +36,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <TopBar />
         <main className="px-6 py-6">{children}</main>
         <footer className="px-6 py-4 border-t border-gray-100 mt-12 text-xs text-gray-500 flex justify-between">
-          <span>Copyright © 2026 INTEGRAL AI Workspace. Inspektorat II — Kementerian Komunikasi dan Digital RI.</span>
-          <span>Powered by Audit AI v7 + Claude Agent SDK</span>
+          <span>© 2026 INTEGRAL · Inspektorat II — Kementerian Komunikasi dan Digital RI.</span>
+          <span>Mesin AI: Claude Agent SDK</span>
         </footer>
       </div>
       <Toaster position="top-right" richColors closeButton />

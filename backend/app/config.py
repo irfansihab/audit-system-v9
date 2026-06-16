@@ -91,6 +91,10 @@ class Settings(BaseSettings):
 
     # Token quota per user per jam (safety)
     rate_limit_runs_per_hour: int = 5
+    # Batas run agen yang berjalan BERSAMAAN di seluruh sistem (G2 — skala ±80 user).
+    # Tiap run = subprocess CLI + LLM + SSE (berat). Lonjakan tak boleh menumbangkan
+    # server: bila penuh, request baru ditolak 429 (backpressure), bukan diterima paksa.
+    max_concurrent_agent_runs: int = 6
 
     # Fallback ekstraksi LLM saat digest deterministik kehilangan field kunci.
     # ON default sejak 3 Jun 2026 (hybrid agresif) — KAK/HPS pengadaan banyak

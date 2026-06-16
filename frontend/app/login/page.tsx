@@ -81,12 +81,12 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-6 bg-gradient-to-br from-blue-50 to-white">
       <div className="w-full max-w-2xl">
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-14 h-14 rounded-xl bg-primary text-white font-bold text-xl flex items-center justify-center shadow-lg">
-            v7
+          <div className="w-14 h-14 rounded-xl bg-primary text-white font-bold text-2xl flex items-center justify-center shadow-lg">
+            ∫
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-primary-dark">Audit AI v7</h1>
-            <p className="text-sm text-gray-500">Inspektorat II Komdigi</p>
+            <h1 className="text-2xl font-bold text-primary-dark">INTEGRAL</h1>
+            <p className="text-sm text-gray-500">Workspace Pengawasan · Inspektorat II Komdigi</p>
           </div>
         </div>
 

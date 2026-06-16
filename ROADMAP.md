@@ -69,7 +69,7 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
 
 > Nama tetap **INTEGRAL**. Tujuan: berhenti tampil seperti dua produk. "Audit AI v7/v8" turun jadi engine/versi internal.
 
-- [ ] **A1 — Hapus framing "Powered by Audit AI v7"** dari UI (landing, `TopBar`, footer, meta title) → cukup **"INTEGRAL — Workspace Pengawasan Inspektorat II"**. "Audit AI" hanya muncul di About/teknis sebagai engine.
+- [x] **A1 — Hapus framing "Powered by Audit AI v7"** ✅ (16 Juni) — landing (`page.tsx`), login, `AppShell` footer, `Sidebar`, meta title (`layout.tsx`): kini "INTEGRAL — Workspace Pengawasan Inspektorat II Komdigi"; footer "Mesin AI: Claude Agent SDK". Verified SSR: 0 sisa "Powered by Audit AI v7".
 - [ ] **A2 — Identitas tetap**: pertahankan logo **∫** + palette ungu `#5C4FE7`. Tidak ada aset baru. (Keputusan: nama tidak diganti.)
 - [ ] **A3 — Satukan narasi dokumen**: `README.md` + `HANDOVER.md` ditulis ulang sebagai **dokumen INTEGRAL tunggal** — INTEGRAL = produk, Audit AI engine = bagian internal; bukan dua hal.
 - [ ] **A4 — Versi internal v7→v8**: `config`, `package.json`, badge versi → v8 sebagai nomor build, tanpa menyentuh brand "INTEGRAL".
@@ -133,10 +133,10 @@ Widget (kartu) yang ditampilkan:
 
 > Operasionalisasi Prinsip §3. Fondasi agar sistem ringan saat dipakai banyak orang.
 
-- [ ] **G1 — Tabel ringkasan + refresh** untuk dashboard (event-driven saat penugasan/TLHP/EWS berubah, atau cron ringan). Hindari hitung berat per request.
-- [ ] **G2 — Antrian & cap konkurensi agent run** (global limit + queue + status "menunggu"); cegah lonjakan subprocess/LLM menumbangkan server.
-- [ ] **G3 — Indeks DB** pada kolom panas (status penugasan, TLHP aging, EWS, temuan) + paginasi daftar; audit query lambat.
-- [ ] **G4 — Frontend ringan**: code-split, kurangi re-render, SSE hanya saat run aktif, 1 fetch dashboard.
+- [x] **G1 — Endpoint ringkas `GET /dashboard/summary`** ✅ (16 Juni) — `app/routes/dashboard.py`: agregat MURAH (penugasan GROUP BY status & EWS GROUP BY status, ber-indeks) + PKPT/kinerja dari fixture, di-**cache TTL 30 dtk** (ringan utk ±80 user). Stub jujur utk modul belum-ada (TLHP/permintaan/tren). *Lanjutan opsional: tabel materialized + refresh event-driven bila uji beban menuntut.*
+- [x] **G2 — Cap konkurensi global agent run** ✅ (16 Juni) — `max_concurrent_agent_runs=6` (config) + cek di `stream_agent` → **429 backpressure** saat penuh; cegah lonjakan subprocess/LLM menumbangkan server. *Lanjutan: antrian "menunggu" sejati (kini ditolak sopan, belum di-queue).*
+- [x] **G3 — Indeks DB** ✅ (16 Juni) — model + live DB: `penugasan(status, ketua_tim_id)`, `dokumen(penugasan_id)`, `agent_runs(penugasan_id)`, `ews_findings(satker_kode, status)`. `CREATE INDEX IF NOT EXISTS` idempotent.
+- [ ] **G4 — Frontend ringan**: code-split, kurangi re-render, SSE hanya saat run aktif (sebagian sudah: SSE per-run), 1 fetch dashboard (endpoint G1 siap).
 - [ ] **G5 — Uji beban ringan** 50–80 sesi simulasi (buka dashboard + beberapa run paralel) → ukur p95 latensi, tetapkan baseline.
 
 ---

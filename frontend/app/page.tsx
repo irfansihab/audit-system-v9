@@ -7,13 +7,13 @@ export default function HomePage() {
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl integral-gradient text-white text-3xl font-bold mb-6 shadow-integral">
           ∫
         </div>
-        <h1 className="text-4xl font-bold text-primary-dark mb-2">INTEGRAL AI Workspace</h1>
+        <h1 className="text-4xl font-bold text-primary-dark mb-2">INTEGRAL</h1>
         <p className="text-sm uppercase tracking-wider text-primary font-semibold mb-4">
-          Powered by Audit AI v7 · Claude Agent SDK
+          Workspace Pengawasan · Inspektorat II Komdigi
         </p>
         <p className="text-gray-600 mb-8 leading-relaxed">
           Workspace cerdas untuk seluruh pengawasan Inspektorat II Kementerian Komunikasi dan Digital RI.
-          Terintegrasi dengan <b>SIMWAS v2 INTEGRAL</b> — dari Survey Pendahuluan hingga Laporan Hasil,
+          Terintegrasi dengan <b>SIMWAS v2</b> — dari Survey Pendahuluan hingga Laporan Hasil,
           dengan agen AI mendampingi setiap tahapan.
         </p>
         <Link

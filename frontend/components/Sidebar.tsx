@@ -96,7 +96,7 @@ export function Sidebar({
             </div>
             <div className="leading-tight">
               <div className="font-bold text-primary-dark text-sm">INTEGRAL</div>
-              <div className="text-[10px] text-gray-500 -mt-0.5">AI Workspace</div>
+              <div className="text-[10px] text-gray-500 -mt-0.5">Workspace Pengawasan</div>
             </div>
           </Link>
         )}

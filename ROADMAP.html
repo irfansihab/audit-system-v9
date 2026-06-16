@@ -178,7 +178,7 @@
   <div class="ws">
     <div class="head"><span class="tag">A</span><h3>Konsolidasi identitas INTEGRAL <span class="pill keep">tetap nama</span></h3></div>
     <p class="desc">Hapus dualitas (“Powered by Audit AI v7”), bukan ganti nama. “Audit AI” jadi engine/versi internal.</p>
-    <div class="task"><div class="box"></div><div class="t"><b>A1 — Hapus framing “Powered by Audit AI v7”</b> dari UI (landing, TopBar, footer, meta title) → cukup “INTEGRAL — Workspace Pengawasan Inspektorat II”.</div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>A1 — Hapus framing “Powered by Audit AI v7”</b> <span class="pill keep">selesai</span><span class="sub">Landing, login, footer, sidebar, meta title → “INTEGRAL — Workspace Pengawasan Inspektorat II Komdigi”; footer “Mesin AI: Claude Agent SDK”. Verified 0 sisa.</span></div></div>
     <div class="task"><div class="box"></div><div class="t"><b>A2 — Identitas tetap</b>: pertahankan logo ∫ + palette ungu #5C4FE7. Tidak ada aset baru.</div></div>
     <div class="task"><div class="box"></div><div class="t"><b>A3 — Satukan narasi dokumen</b> (README + HANDOVER) sebagai dokumen INTEGRAL tunggal.</div></div>
     <div class="task"><div class="box"></div><div class="t"><b>A4 — Versi internal v7→v8</b> di config/package.json/badge, tanpa menyentuh brand.</div></div>
@@ -238,10 +238,10 @@
   <div class="ws new">
     <div class="head"><span class="tag">G</span><h3>Kinerja &amp; skala (±80 pengguna) <span class="pill new">baru</span></h3></div>
     <p class="desc">Operasionalisasi Prinsip §3 — fondasi agar ringan saat dipakai banyak orang.</p>
-    <div class="task"><div class="box"></div><div class="t"><b>G1 — Tabel ringkasan + refresh</b> untuk dashboard (event-driven / cron ringan); hindari hitung berat per request.</div></div>
-    <div class="task"><div class="box"></div><div class="t"><b>G2 — Antrian &amp; cap konkurensi agent run</b> (global limit + queue + status “menunggu”).</div></div>
-    <div class="task"><div class="box"></div><div class="t"><b>G3 — Indeks DB</b> kolom panas (status, TLHP aging, EWS, temuan) + paginasi; audit query lambat.</div></div>
-    <div class="task"><div class="box"></div><div class="t"><b>G4 — Frontend ringan</b>: code-split, kurangi re-render, SSE hanya saat run aktif, 1 fetch dashboard.</div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>G1 — Endpoint ringkas <code>GET /dashboard/summary</code></b> <span class="pill keep">selesai</span><span class="sub">Agregat murah (penugasan & EWS GROUP BY ber-indeks) + PKPT/kinerja fixture, cache TTL 30 dtk. Stub jujur utk modul belum-ada.</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>G2 — Cap konkurensi global agent run</b> <span class="pill keep">selesai</span><span class="sub">max_concurrent_agent_runs=6 + 429 backpressure saat penuh. (Antrian “menunggu” sejati = lanjutan.)</span></div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>G3 — Indeks DB</b> <span class="pill keep">selesai</span><span class="sub">penugasan(status,ketua_tim_id), dokumen(penugasan_id), agent_runs(penugasan_id), ews_findings(satker_kode,status) — model + live DB.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>G4 — Frontend ringan</b>: code-split, kurangi re-render, SSE hanya saat run aktif, 1 fetch dashboard (endpoint G1 siap).</div></div>
     <div class="task"><div class="box"></div><div class="t"><b>G5 — Uji beban ringan</b> 50–80 sesi simulasi → ukur p95 latensi, tetapkan baseline.</div></div>
   </div>
 </section>

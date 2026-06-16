@@ -456,6 +456,15 @@ def _active_handle(penugasan_id: int, agent_name: str) -> RunHandle | None:
     return _RUNS.get(rid)
 
 
+def _active_run_count() -> int:
+    """Jumlah run agen yang sedang berjalan di seluruh sistem (G2 — backpressure).
+
+    `_ACTIVE_BY_KEY` hanya memuat run yang BELUM selesai (dihapus di akhir
+    `_execute_run`), dan double-run per (penugasan,agen) sudah dicegah — jadi
+    jumlah key = jumlah run aktif unik."""
+    return len(_ACTIVE_BY_KEY)
+
+
 async def _execute_run(handle: RunHandle, user_prompt: str, user_id: int) -> None:
     """Loop agen sebenarnya — jalan sebagai task terpisah dari koneksi SSE.
 
@@ -597,6 +606,16 @@ async def stream_agent(
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Masih ada analisis berjalan untuk agen ini. Tunggu selesai atau buka tab Chat untuk melihat progres.",
+        )
+
+    # G2 — cap konkurensi global: lindungi server saat banyak user (±80) agar
+    # lonjakan run (subprocess+LLM) tak menumbangkan sistem. Penuh → 429 backpressure.
+    cap = get_settings().max_concurrent_agent_runs
+    if _active_run_count() >= cap:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"Sistem sedang menjalankan {cap} analisis bersamaan (kapasitas penuh). "
+            "Coba lagi sebentar lagi — analisis lain akan segera selesai.",
         )
 
     skill_str = p.skill if isinstance(p.skill, str) else p.skill.value
