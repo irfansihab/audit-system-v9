@@ -39,6 +39,19 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
 - **Skill registry folder-driven** (`knowledge/skills`, `APP_SKILLS_PATH`); skill = substansi domain, orkestrasi di prompt agen (Tahap R0–R4).
 - **Anti-halusinasi**: tiap temuan ber-`dokumen_sumber`; `sebab` hanya untuk skill AUDIT.
 
+## 2. Prinsip UX v8 — UI clean & minim friksi (WAJIB di semua layar)
+
+> Permintaan utama user: **"UI clean, tidak banyak tombol atau hal yang membingungkan."** Ini jadi pagar desain v8 — berlaku untuk setiap fitur baru (auth, TLHP, CACM, dsb).
+
+- **Satu aksi utama per layar** — tombol primer jelas (1, paling banyak 2). Aksi lain disembunyikan di menu "⋯/Lainnya".
+- **Progressive disclosure** — opsi lanjutan/teknis/dev disembunyikan di balik "Lanjutan"; default cerdas mengurangi pilihan.
+- **Tanpa tombol mati/duplikat** — hapus kontrol yang tak berfungsi atau membingungkan (warisan v7: tombol tema & bell sudah dihapus). Tiap tombol harus punya aksi nyata.
+- **Navigasi tunggal** — alur lewat **tahapan** (ala SIMWAS), bukan banyak tab bertumpuk. Auditor tahu "ada di tahap mana".
+- **Bahasa manusia** — label aksi pakai kata kerja jelas ("Susun PKP", "Setujui Temuan"), hindari jargon teknis/nama tool di UI.
+- **Konsistensi komponen** — satu set komponen (kartu tahapan, panel, tabel) dipakai ulang; hindari pola baru per halaman.
+- **Status terlihat, bukan tersembunyi** — progres & status (hijau/kuning/merah) terbaca sekilas; user tak perlu menebak langkah berikutnya.
+- **Acceptance tiap fitur UI**: "auditor non-teknis paham apa yang harus diklik dalam < 5 detik, tanpa pelatihan."
+
 ---
 
 ## Workstream A — Konsolidasi identitas INTEGRAL (hapus dualitas, BUKAN ganti nama)
@@ -51,6 +64,7 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
 - [ ] **A4 — Versi internal v7→v8**: `config`, `package.json`, badge versi → v8 sebagai nomor build, tanpa menyentuh brand "INTEGRAL".
 - [ ] **A5 — Rapikan penamaan teknis**: `docs/openapi-integral-v7.yaml`→`openapi-integral-v8.yaml`; konsisten "integral" di slug teknis. Lanjutkan pembuangan referensi legacy `audit-system-v4` (bash/Task/_ROLE) di skill non-reviu (reviu sudah R0–R4).
 - [ ] **A6 — Arsip**: pindahkan docs rencana "fase INTEGRAL" yang sudah usang ke `docs/archive/` (riwayat, bukan acuan aktif).
+- [ ] **A7 — Audit UI clean** (lihat Prinsip UX §2): telusuri tiap layar, hapus tombol/kontrol mati & membingungkan, terapkan "satu aksi utama per layar" + progressive disclosure. Buat checklist UX per halaman sebagai gate sebelum fitur dianggap selesai.
 
 ## Workstream B — Autentikasi username + password (BARU, fondasi v8)
 
