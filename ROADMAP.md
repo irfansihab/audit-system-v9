@@ -52,6 +52,17 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
 - **Status terlihat, bukan tersembunyi** — progres & status (hijau/kuning/merah) terbaca sekilas; user tak perlu menebak langkah berikutnya.
 - **Acceptance tiap fitur UI**: "auditor non-teknis paham apa yang harus diklik dalam < 5 detik, tanpa pelatihan."
 
+## 3. Prinsip kinerja & skala (target: ±80 pengguna, ringan & lancar)
+
+> Sistem dipakai **~80 auditor**. Harus tetap **ringan & responsif** saat dipakai bersamaan. Patokan: dashboard buka **< 1,5 detik**, navigasi terasa instan.
+
+- **Agregat dashboard di-precompute, bukan dihitung saat load** — angka EWS/PKPT/TLHP/kinerja disimpan sebagai ringkasan (tabel summary / cache, refresh terjadwal atau saat ada event), bukan query berat tiap kali halaman dibuka. Hindari N+1.
+- **Agent run = sumber daya berat** (subprocess CLI + LLM + SSE). Wajib **antrian + batas konkurensi global** (mis. N run paralel; sisanya queued) + backpressure. 80 user ≠ 80 run serentak, tapi sistem tak boleh tumbang saat lonjakan. (Sudah ada cegah double-run per penugasan; tambahkan cap global.)
+- **DB**: connection pool memadai + **indeks** pada kolom yang sering difilter (penugasan.status, temuan, TLHP aging, EWS). Query async, paginasi daftar panjang.
+- **Frontend ringan**: bundle kecil, hindari re-render mahal, SSE hanya untuk run yang sedang aktif (bukan polling global), data dashboard via 1 endpoint ringkas (bukan banyak fetch).
+- **Backend stateless** (sesi via JWT) → siap horizontal scaling bila perlu. Hindari state in-memory yang mengikat ke 1 worker.
+- **Acceptance**: uji beban ringan (mis. 50–80 sesi simulasi membuka dashboard + beberapa run paralel) tanpa degradasi parah.
+
 ---
 
 ## Workstream A — Konsolidasi identitas INTEGRAL (hapus dualitas, BUKAN ganti nama)
@@ -104,14 +115,40 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
 - [ ] A3 laporan bespoke (dashboard pemantauan, tabel aspek evaluasi).
 - [ ] Fix kosmetik: warning duplicate-key `Sidebar.tsx`; cap 14000 char `load_skill` untuk 2 skill pipeline besar.
 
+## Workstream F — Dashboard beranda (pusat informasi pimpinan & auditor)
+
+> Beranda = ringkasan sekilas seluruh pengawasan. Mengikat 4 pilar (Wiki/EWS/Agen/TLHP). **Wajib ringan** (lihat §3): semua angka dari ringkasan precomputed, satu endpoint.
+
+Widget (kartu) yang ditampilkan:
+- [ ] **F1 — Update informasi EWS** — peringatan terbaru dari CACM/EWS (per satker, severity), link ke detail.
+- [ ] **F2 — Progres pemenuhan PKPT** — Program Kerja Pengawasan Tahunan: rencana vs realisasi penugasan (%, sisa). *Perlu data model PKPT (daftar rencana pengawasan tahunan) — flag baru.*
+- [ ] **F3 — Permintaan pengawasan belum ditindaklanjuti** — antrian ND/permintaan masuk yang belum jadi penugasan (umur, asal).
+- [ ] **F4 — Progres TLHP** — rekap status tindak lanjut (SUDAH/PROSES/BELUM), kritis >365 hari (tarik dari modul C5).
+- [ ] **F5 — Tren temuan berulang** — pola temuan lintas penugasan/waktu (dari Wiki pola-berulang + temuan), grafik tren.
+- [ ] **F6 — Capaian kinerja (scorecard)** — nilai **SPIP · SAKIP · RB · IACM · PEKPP · temuan BPK** dalam satu kartu skor (nilai + tren naik/turun). *Perlu sumber/entry nilai — manual input atau integrasi.*
+- [ ] **F7 — Satu endpoint ringkas** `GET /dashboard/summary` mengembalikan semua angka dari tabel ringkasan (bukan agregasi berat live). Role-aware (pimpinan vs auditor).
+- [ ] **F8 — Desain clean** (Prinsip UX §2): kartu seragam, status warna sekilas, klik kartu → detail; tanpa kontrol membingungkan.
+
+## Workstream G — Kinerja & skala (±80 pengguna)
+
+> Operasionalisasi Prinsip §3. Fondasi agar sistem ringan saat dipakai banyak orang.
+
+- [ ] **G1 — Tabel ringkasan + refresh** untuk dashboard (event-driven saat penugasan/TLHP/EWS berubah, atau cron ringan). Hindari hitung berat per request.
+- [ ] **G2 — Antrian & cap konkurensi agent run** (global limit + queue + status "menunggu"); cegah lonjakan subprocess/LLM menumbangkan server.
+- [ ] **G3 — Indeks DB** pada kolom panas (status penugasan, TLHP aging, EWS, temuan) + paginasi daftar; audit query lambat.
+- [ ] **G4 — Frontend ringan**: code-split, kurangi re-render, SSE hanya saat run aktif, 1 fetch dashboard.
+- [ ] **G5 — Uji beban ringan** 50–80 sesi simulasi (buka dashboard + beberapa run paralel) → ukur p95 latensi, tetapkan baseline.
+
 ---
 
 ## Urutan eksekusi yang disarankan
 
 1. **D1 bootstrap** → pastikan v8 jalan lokal (npm/pip install) sebelum apa pun.
-2. **B (auth username/password)** + **A (rebrand)** — fondasi identitas v8.
-3. **C (verifikasi fitur dipertahankan)** pasca-rebrand.
-4. **D2–D4 infra/deploy**, lalu **E (backlog mutu)**.
+2. **B (auth username/password)** + **A (konsolidasi identitas)** — fondasi v8.
+3. **G (kinerja & skala)** — tabel ringkasan, cap konkurensi agent, indeks DB. Fondasi agar ringan untuk 80 user; menopang dashboard.
+4. **C (verifikasi fitur dipertahankan)** + **C5 (TLHP)**.
+5. **F (dashboard beranda)** — setelah C5 (TLHP) & G1 (ringkasan) siap, rakit 6 widget di atas 1 endpoint ringkas.
+6. **D2–D4 infra/deploy**, lalu **E (backlog mutu)**.
 
 ## Cara menjalankan v8 (lokal)
 

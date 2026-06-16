@@ -160,6 +160,19 @@
 </section>
 
 <section>
+  <h2><span class="n">3</span> Prinsip kinerja &amp; skala (±80 pengguna)</h2>
+  <div class="callout"><strong>Sistem dipakai ~80 auditor</strong> — harus tetap ringan &amp; responsif saat bersamaan. Patokan: dashboard buka <b>&lt; 1,5 detik</b>, navigasi terasa instan.</div>
+  <ul class="clean">
+    <li><b>Agregat dashboard di-precompute</b>, bukan dihitung saat load — angka EWS/PKPT/TLHP/kinerja dari tabel ringkasan/cache (refresh terjadwal/event), hindari N+1.</li>
+    <li><b>Agent run = berat</b> (subprocess CLI + LLM + SSE) → wajib <b>antrian + batas konkurensi global</b> + backpressure. 80 user ≠ 80 run serentak, tapi tak boleh tumbang saat lonjakan.</li>
+    <li><b>DB</b>: pool memadai + indeks kolom panas (status, temuan, TLHP aging, EWS); query async + paginasi.</li>
+    <li><b>Frontend ringan</b>: bundle kecil, hindari re-render mahal, SSE hanya saat run aktif, data dashboard via 1 endpoint ringkas.</li>
+    <li><b>Backend stateless</b> (sesi via JWT) → siap horizontal scaling; hindari state in-memory terikat 1 worker.</li>
+    <li><b>Acceptance</b>: uji beban ringan 50–80 sesi (buka dashboard + beberapa run paralel) tanpa degradasi parah.</li>
+  </ul>
+</section>
+
+<section>
   <h2>Workstream</h2>
 
   <div class="ws">
@@ -208,6 +221,29 @@
     <div class="task"><div class="box"></div><div class="t">Eval P3–P5: grounding+coverage, token logging + instrumen HITL, akurasi digest.</div></div>
     <div class="task"><div class="box"></div><div class="t">Fix kosmetik: warning duplicate-key Sidebar; cap 14000 char load_skill untuk 2 skill pipeline besar.</div></div>
   </div>
+
+  <div class="ws new">
+    <div class="head"><span class="tag">F</span><h3>Dashboard beranda — pusat informasi <span class="pill new">baru</span></h3></div>
+    <p class="desc">Ringkasan sekilas seluruh pengawasan, mengikat 4 pilar. Wajib ringan (§3): angka dari ringkasan precomputed, satu endpoint.</p>
+    <div class="task"><div class="box"></div><div class="t"><b>F1 — Update informasi EWS</b><span class="sub">Peringatan terbaru dari CACM/EWS (per satker, severity) → link detail.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F2 — Progres pemenuhan PKPT</b><span class="sub">Program Kerja Pengawasan Tahunan: rencana vs realisasi (%, sisa). Perlu data model PKPT — baru.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F3 — Permintaan pengawasan belum ditindaklanjuti</b><span class="sub">Antrian ND/permintaan masuk yang belum jadi penugasan (umur, asal).</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F4 — Progres TLHP</b><span class="sub">Rekap status SUDAH/PROSES/BELUM + kritis &gt;365 hari (dari modul C5).</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F5 — Tren temuan berulang</b><span class="sub">Pola temuan lintas penugasan/waktu (Wiki pola-berulang + temuan), grafik tren.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F6 — Capaian kinerja (scorecard)</b><span class="sub">Nilai SPIP · SAKIP · RB · IACM · PEKPP · temuan BPK — satu kartu skor + tren. Perlu sumber/entry nilai.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F7 — Satu endpoint ringkas</b><span class="sub">GET /dashboard/summary dari tabel ringkasan (bukan agregasi berat live), role-aware.</span></div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>F8 — Desain clean</b> (Prinsip UX §2)<span class="sub">Kartu seragam, status warna sekilas, klik kartu → detail.</span></div></div>
+  </div>
+
+  <div class="ws new">
+    <div class="head"><span class="tag">G</span><h3>Kinerja &amp; skala (±80 pengguna) <span class="pill new">baru</span></h3></div>
+    <p class="desc">Operasionalisasi Prinsip §3 — fondasi agar ringan saat dipakai banyak orang.</p>
+    <div class="task"><div class="box"></div><div class="t"><b>G1 — Tabel ringkasan + refresh</b> untuk dashboard (event-driven / cron ringan); hindari hitung berat per request.</div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>G2 — Antrian &amp; cap konkurensi agent run</b> (global limit + queue + status “menunggu”).</div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>G3 — Indeks DB</b> kolom panas (status, TLHP aging, EWS, temuan) + paginasi; audit query lambat.</div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>G4 — Frontend ringan</b>: code-split, kurangi re-render, SSE hanya saat run aktif, 1 fetch dashboard.</div></div>
+    <div class="task"><div class="box"></div><div class="t"><b>G5 — Uji beban ringan</b> 50–80 sesi simulasi → ukur p95 latensi, tetapkan baseline.</div></div>
+  </div>
 </section>
 
 <section>
@@ -215,7 +251,9 @@
   <ol class="steps">
     <li><b>D1 bootstrap</b> — pastikan v8 jalan lokal (npm/pip install) sebelum apa pun.</li>
     <li><b>B (auth)</b> + <b>A (konsolidasi identitas)</b> — fondasi v8.</li>
-    <li><b>C (verifikasi fitur dipertahankan)</b> + <b>C5 TLHP</b>.</li>
+    <li><b>G (kinerja &amp; skala)</b> — tabel ringkasan, cap konkurensi, indeks. Fondasi ringan untuk 80 user &amp; menopang dashboard.</li>
+    <li><b>C (verifikasi fitur)</b> + <b>C5 TLHP</b>.</li>
+    <li><b>F (dashboard beranda)</b> — setelah C5 &amp; G1 siap, rakit 6 widget di atas 1 endpoint ringkas.</li>
     <li><b>D2–D4 infra/deploy</b>, lalu <b>E (backlog mutu)</b>.</li>
   </ol>
 </section>
