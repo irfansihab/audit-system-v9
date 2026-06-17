@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, clearToken, getSession, Session, SkillInfo } from '@/lib/api';
+import { confirmDialog } from '@/lib/confirm';
 import { AppShell } from '@/components/AppShell';
 import { TemplatePickerKpPkp } from '@/components/TemplatePickerKpPkp';
 
@@ -595,8 +596,8 @@ function GraduasiPanel() {
     } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
   };
   const act = async (nama: string, kind: 'promote' | 'reject') => {
-    if (kind === 'reject' && !confirm(`Tolak & hapus draft "${nama}"?`)) return;
-    if (kind === 'promote' && !confirm(`Promote draft "${nama}" jadi skill aktif di registry?`)) return;
+    if (kind === 'reject' && !(await confirmDialog({ message: `Tolak & hapus draft "${nama}"?`, danger: true, confirmText: 'Tolak & hapus' }))) return;
+    if (kind === 'promote' && !(await confirmDialog(`Promote draft "${nama}" jadi skill aktif di registry?`))) return;
     setBusy(true); setMsg(null);
     try {
       if (kind === 'promote') { await api.promoteGraduasi(nama); setMsg(`Skill "${nama}" dipromote & terdaftar.`); }
@@ -760,7 +761,7 @@ function WritebackPanel({ role }: { role: string }) {
 
   const doApply = async () => {
     if (!selected) return;
-    if (!confirm(`Apply ke vault?\n\nFile pengawasan-<kode>.md akan ditulis langsung ke folder vault. Index & log juga di-update.\n\nKalau ragu, pilih "Download .md" sebagai gantinya — lebih aman, kamu apply manual via Obsidian.`)) return;
+    if (!(await confirmDialog({ message: `Apply ke vault?\n\nFile pengawasan-<kode>.md akan ditulis langsung ke folder vault. Index & log juga di-update.\n\nKalau ragu, pilih "Download .md" sebagai gantinya — lebih aman, kamu apply manual via Obsidian.`, confirmText: 'Apply ke vault' }))) return;
     setBusy(true); setMsg(null);
     try {
       const r = await api.applyWritebackProposal(selected.penugasan_id);
@@ -772,7 +773,7 @@ function WritebackPanel({ role }: { role: string }) {
 
   const doReject = async () => {
     if (!selected) return;
-    if (!confirm('Tolak proposal ini? (status → REJECTED, tidak masuk vault)')) return;
+    if (!(await confirmDialog({ message: 'Tolak proposal ini? (status → REJECTED, tidak masuk vault)', danger: true, confirmText: 'Tolak' }))) return;
     setBusy(true); setMsg(null);
     try {
       const r = await api.rejectWritebackProposal(selected.penugasan_id);

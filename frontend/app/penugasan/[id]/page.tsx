@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { confirmDialog } from '@/lib/confirm';
 import { api, getSession, Dokumen, Penugasan, Role, Session, GateStatus } from '@/lib/api';
 import { AppShell } from '@/components/AppShell';
 import { HeroPenugasan } from '@/components/HeroPenugasan';
@@ -105,9 +106,11 @@ export default function DetailPenugasanPage() {
 
   const handleDeleteDokumen = async (d: Dokumen) => {
     if (
-      !confirm(
-        `Hapus dokumen "${d.nama_file}"?\n\nFile + hasil ekstraksi akan dihapus. Karena dokumen berubah, hasil analisis KKP/LHP yang lama akan di-reset agar bisa dianalisis ulang.`
-      )
+      !(await confirmDialog({
+        message: `Hapus dokumen "${d.nama_file}"?\n\nFile + hasil ekstraksi akan dihapus. Karena dokumen berubah, hasil analisis KKP/LHP yang lama akan di-reset agar bisa dianalisis ulang.`,
+        danger: true,
+        confirmText: 'Hapus',
+      }))
     )
       return;
     try {
@@ -1559,10 +1562,12 @@ function SetupPenugasanTab({
       // + AT tak bisa mulai. Warn tegas, tapi tetap izinkan simpan (draft).
       const noAssignee = cleaned.filter((s) => s.assigned_to.length === 0);
       if (noAssignee.length > 0) {
-        const lanjut = confirm(
-          `${noAssignee.length} sasaran belum punya anggota: ${noAssignee.map((s) => s.sasaran_id).join(', ')}.\n\n` +
-            `Tanpa anggota, QC SAIPI akan KRITIS (REN-006) dan Anggota Tim tidak bisa mulai analisis.\n\nTetap simpan?`
-        );
+        const lanjut = await confirmDialog({
+          message:
+            `${noAssignee.length} sasaran belum punya anggota: ${noAssignee.map((s) => s.sasaran_id).join(', ')}.\n\n` +
+            `Tanpa anggota, QC SAIPI akan KRITIS (REN-006) dan Anggota Tim tidak bisa mulai analisis.\n\nTetap simpan?`,
+          confirmText: 'Tetap simpan',
+        });
         if (!lanjut) {
           setSaving(null);
           return;
@@ -2437,7 +2442,7 @@ function GatePanel({
   }, [penugasanId]);
 
   const decide = async (gateId: string, decision: 'LANJUT' | 'KOREKSI' | 'ULANG') => {
-    if (decision !== 'LANJUT' && !confirm(`Tandai Gate ${gateId} sebagai ${decision}?`)) return;
+    if (decision !== 'LANJUT' && !(await confirmDialog(`Tandai Gate ${gateId} sebagai ${decision}?`))) return;
     setBusy(true);
     try {
       await api.recordGateDecision(penugasanId, gateId, decision);
@@ -2746,7 +2751,7 @@ function TemplateSetupModal({
       .finally(() => setLoading(false));
   }, [penugasanId]);
 
-  const applyHistoris = (kode: string) => {
+  const applyHistoris = async (kode: string) => {
     const h = (data?.historis || []).find((x) => x.kode === kode);
     if (!h) return;
     const fromTemplate: Sasaran[] = h.sasaran.map((s) => ({
@@ -2756,9 +2761,12 @@ function TemplateSetupModal({
       langkah_kerja: s.langkah_kerja,
       status: 'AKTIF',
     }));
-    if (!confirm(strategy === 'replace'
-      ? `Replace ${existingSasaran.length} sasaran existing dengan ${fromTemplate.length} sasaran dari "${h.obyek}"?`
-      : `Tambahkan ${fromTemplate.length} sasaran dari "${h.obyek}" ke ${existingSasaran.length} existing? (anti-dup by sasaran_id)`)) return;
+    if (!(await confirmDialog({
+      message: strategy === 'replace'
+        ? `Replace ${existingSasaran.length} sasaran existing dengan ${fromTemplate.length} sasaran dari "${h.obyek}"?`
+        : `Tambahkan ${fromTemplate.length} sasaran dari "${h.obyek}" ke ${existingSasaran.length} existing? (anti-dup by sasaran_id)`,
+      danger: strategy === 'replace',
+    }))) return;
     if (strategy === 'replace') {
       onApply(fromTemplate);
     } else {
@@ -2768,7 +2776,7 @@ function TemplateSetupModal({
     }
   };
 
-  const applyPatterns = () => {
+  const applyPatterns = async () => {
     const fromTemplate: Sasaran[] = (data?.patterns?.sasaran || []).map((s) => ({
       sasaran_id: s.sasaran_id,
       deskripsi: s.deskripsi,
@@ -2777,9 +2785,12 @@ function TemplateSetupModal({
       status: 'AKTIF',
     }));
     if (fromTemplate.length === 0) return;
-    if (!confirm(strategy === 'replace'
-      ? `Replace ${existingSasaran.length} sasaran dengan ${fromTemplate.length} skeleton dari pattern wiki?`
-      : `Tambahkan ${fromTemplate.length} skeleton dari pattern wiki ke ${existingSasaran.length} existing?`)) return;
+    if (!(await confirmDialog({
+      message: strategy === 'replace'
+        ? `Replace ${existingSasaran.length} sasaran dengan ${fromTemplate.length} skeleton dari pattern wiki?`
+        : `Tambahkan ${fromTemplate.length} skeleton dari pattern wiki ke ${existingSasaran.length} existing?`,
+      danger: strategy === 'replace',
+    }))) return;
     if (strategy === 'replace') {
       onApply(fromTemplate);
     } else {
@@ -3392,7 +3403,7 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
     finally { setBusy(null); }
   };
   const doReject = async (tid: string) => {
-    if (!confirm(`Tolak temuan ${tid}? Tidak akan masuk KKP/LHR final.`)) return;
+    if (!(await confirmDialog({ message: `Tolak temuan ${tid}? Tidak akan masuk KKP/LHR final.`, danger: true, confirmText: 'Tolak' }))) return;
     setBusy(tid); setMsg(null);
     try { await api.rejectTemuan(penugasanId, tid); refresh(); }
     catch (e: any) { setMsg(`Gagal reject ${tid}: ${e.message}`); }
@@ -3439,7 +3450,7 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
     }
   };
   const clearOverlay = async (t: TemuanReviewItem) => {
-    if (!confirm(`Hapus semua edit overlay untuk ${t.id_temuan}? Kembali ke versi asli agen.`)) return;
+    if (!(await confirmDialog({ message: `Hapus semua edit overlay untuk ${t.id_temuan}? Kembali ke versi asli agen.`, danger: true, confirmText: 'Hapus edit' }))) return;
     setBusy(t.id_temuan); setMsg(null);
     try {
       await api.editTemuan(penugasanId, t.id_temuan, {
@@ -3459,7 +3470,7 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
   const doBulkApprove = async () => {
     const pending = counts['PENDING'] || 0;
     if (!pending) return;
-    if (!confirm(`Setujui ${pending} temuan PENDING sekaligus?`)) return;
+    if (!(await confirmDialog({ message: `Setujui ${pending} temuan PENDING sekaligus?`, confirmText: 'Setujui semua' }))) return;
     setBusy('bulk'); setMsg(null);
     try {
       const r = await api.bulkApproveTemuan(penugasanId);

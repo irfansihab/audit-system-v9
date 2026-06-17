@@ -14,6 +14,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { api, getSession, Penugasan, Session, Skill, SkillInfo } from '@/lib/api';
+import { confirmDialog } from '@/lib/confirm';
 import { AppShell } from '@/components/AppShell';
 
 // Status penugasan (di-derive backend dari artefak) → label + warna yang ramah.
@@ -135,10 +136,12 @@ export default function DashboardPage() {
       return;
     }
     if (!nomorSt.trim()) {
-      const lanjut = confirm(
-        'Nomor ST belum diisi.\n\nContext.md akan memuat placeholder dan QC SAIPI akan KRITIS (REN-003) ' +
-          'sampai Nomor ST + tanggal dilengkapi (via tab Konteks/Setup).\n\nTetap buat penugasan?'
-      );
+      const lanjut = await confirmDialog({
+        message:
+          'Nomor ST belum diisi.\n\nContext.md akan memuat placeholder dan QC SAIPI akan KRITIS (REN-003) ' +
+          'sampai Nomor ST + tanggal dilengkapi (via tab Konteks/Setup).\n\nTetap buat penugasan?',
+        confirmText: 'Tetap buat',
+      });
       if (!lanjut) return;
     }
     try {
@@ -159,9 +162,11 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState<number | null>(null);
   const handleDelete = async (p: Penugasan) => {
     if (
-      !confirm(
-        `Hapus penugasan "${p.obyek}"?\n\nSeluruh dokumen, hasil ingest, KKP, dan LHP akan DIHAPUS PERMANEN dari disk. Tindakan ini tidak bisa dibatalkan.`
-      )
+      !(await confirmDialog({
+        message: `Hapus penugasan "${p.obyek}"?\n\nSeluruh dokumen, hasil ingest, KKP, dan LHP akan DIHAPUS PERMANEN dari disk. Tindakan ini tidak bisa dibatalkan.`,
+        danger: true,
+        confirmText: 'Hapus permanen',
+      }))
     )
       return;
     setDeleting(p.id);

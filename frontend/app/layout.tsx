@@ -7,10 +7,15 @@ export const metadata: Metadata = {
     'INTEGRAL — workspace pengawasan Inspektorat II Komdigi: Reviu RKA-K/L, Reviu/Audit/Pemantauan Pengadaan, Audit Kinerja, Evaluasi SAKIP/SPIP/RB/MR, Konsultansi & Pendampingan. Terintegrasi dengan SIMWAS v2.',
 };
 
+import { ConfirmHost } from '@/components/ConfirmHost';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ConfirmHost />
+      </body>
     </html>
   );
 }

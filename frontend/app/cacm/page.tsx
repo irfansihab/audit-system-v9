@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, clearToken, getSession, Session } from '@/lib/api';
+import { confirmDialog } from '@/lib/confirm';
 import { AppShell } from '@/components/AppShell';
 
 type Run = Awaited<ReturnType<typeof api.getCacmRun>>;
@@ -111,7 +112,7 @@ export default function CacmPage() {
   };
 
   const promote = async (f: Finding) => {
-    if (!confirm(`Jadikan finding ${f.kode} (${f.satker}) sebagai usulan penugasan?`)) return;
+    if (!(await confirmDialog(`Jadikan finding ${f.kode} (${f.satker}) sebagai usulan penugasan?`))) return;
     setBusy(`promote-${f.id}`);
     try {
       await api.promoteFinding(f.id);
@@ -383,7 +384,7 @@ function V7NativeFindingsSection({ runId }: { runId: number }) {
       setMsg(`Status ${f.status} tidak bisa dipromosikan (hanya MERAH/KUNING).`);
       return;
     }
-    if (!confirm(`Promosikan finding ${f.kriteria_id} (${f.satker_nama}) jadi penugasan USULAN_CACM?`)) return;
+    if (!(await confirmDialog(`Promosikan finding ${f.kriteria_id} (${f.satker_nama}) jadi penugasan USULAN_CACM?`))) return;
     setPromotingId(f.id); setMsg(null);
     try {
       const r = await api.promoteCacmFinding(f.id);
@@ -398,7 +399,7 @@ function V7NativeFindingsSection({ runId }: { runId: number }) {
 
   const doReEval = async () => {
     if (!canReEval) return;
-    if (!confirm(`Re-evaluate run #${runId} dgn kriteria YAML terbaru? CacmFinding & CacmObservasi run ini akan dihapus & dibangun ulang. EwsFinding legacy tidak terpengaruh.`)) return;
+    if (!(await confirmDialog({ message: `Re-evaluate run #${runId} dgn kriteria YAML terbaru? CacmFinding & CacmObservasi run ini akan dihapus & dibangun ulang. EwsFinding legacy tidak terpengaruh.`, danger: true, confirmText: 'Re-evaluate' }))) return;
     setBusy(true); setMsg(null);
     try {
       const r = await api.reEvaluateCacmRun(runId);
