@@ -353,12 +353,59 @@ def rule_d2_unclassified_banyak(digest: dict) -> dict | None:
 # ENGINE
 # ============================================================
 
+_JUSTIFIKASI_LABEL = {
+    "kebutuhan": "Kebutuhan (identifikasi kebutuhan/latar belakang)",
+    "spesifikasi_teknis": "Spesifikasi teknis & fungsi",
+    "metode_pengadaan": "Rencana cara/metode pengadaan",
+    "waktu_penyelesaian": "Waktu penyelesaian pekerjaan",
+    "output": "Output/keluaran yang diharapkan",
+}
+
+
+def rule_p5_kelengkapan_justifikasi(digest: dict) -> dict | None:
+    """P.5 — Justifikasi/KAK belum memuat seluruh 5 elemen wajib dokumen persiapan.
+
+    5 elemen (Perpres 16/2018 Ps. 11 & 18-19, Perlem LKPP 12/2021 Bab III):
+    kebutuhan, spesifikasi teknis & fungsi, rencana metode pengadaan, waktu
+    penyelesaian, output. Deteksi presence-only (heuristik keyword) →
+    PERINGATAN; auditor wajib konfirmasi ke dokumen + isi Sebab substantif.
+    """
+    kak = _parsed(_first(digest, "kak"))
+    if not kak:
+        return None
+    elemen = kak.get("elemen_justifikasi")
+    if not isinstance(elemen, dict):
+        return None
+    missing = [_JUSTIFIKASI_LABEL[k] for k, v in elemen.items() if not v and k in _JUSTIFIKASI_LABEL]
+    if not missing:
+        return None
+    return _rule(
+        "P.5", PERINGATAN, "Perencanaan",
+        f"Justifikasi/KAK belum memuat {len(missing)} dari 5 elemen wajib: {', '.join(missing)}",
+        "Kelengkapan justifikasi (5 elemen dokumen persiapan) belum terpenuhi berdasarkan deteksi otomatis.",
+        bukti={"elemen_terdeteksi": {k: v for k, v in elemen.items()}, "elemen_tidak_terdeteksi": missing},
+        draft={
+            "kondisi": (f"Dokumen perencanaan belum memuat/menyebut elemen justifikasi berikut: "
+                        f"{', '.join(missing)}. (Deteksi otomatis — auditor wajib mengonfirmasi langsung "
+                        f"ke dokumen sebelum menyimpulkan.)"),
+            "kriteria": ("Perpres 16/2018 Pasal 11 & 18–19 jo. Perlem LKPP 12/2021 Bab III — dokumen persiapan/"
+                         "KAK wajib memuat: identifikasi kebutuhan, spesifikasi teknis & fungsi, rencana cara/"
+                         "metode pengadaan, waktu penyelesaian pekerjaan, dan output/keluaran yang diharapkan."),
+            "sebab": "[Auditor lengkapi] — analisis mengapa elemen tidak tercantum (mis. KAK disusun terburu-buru, "
+                     "ketidakpahaman PPK atas standar dokumen persiapan, atau template internal belum lengkap).",
+            "akibat": ("Justifikasi tidak lengkap melemahkan dasar pengadaan: penyedia sulit memahami kebutuhan, "
+                       "spesifikasi/penawaran berisiko tidak sesuai, dan pengendalian atas kewajaran pengadaan lemah."),
+        }
+    )
+
+
 ALL_RULES = [
     rule_d1_dokumen_kunci_missing,
     rule_p1_hps_tanpa_pembentuk_harga,
     rule_p2_kak_hps_periode_beda,
     rule_p3_kak_hps_sla_beda,
     rule_p4_kak_migrasi_hps_tidak,
+    rule_p5_kelengkapan_justifikasi,
     rule_k1_nilai_kontrak_vs_hps,
     rule_k2_kontrak_tanpa_sla,
     rule_k3_kontrak_tanpa_jaminan,

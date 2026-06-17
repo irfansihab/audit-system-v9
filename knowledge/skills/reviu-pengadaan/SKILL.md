@@ -24,7 +24,7 @@ changelog:
 > **Skill ini = substansi domain.** Cara menjalankan (role, pipeline, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01/03/04`, `_ROLE.md`, atau `AskUserQuestion` (itu paradigma lama audit-system-v4).
 
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
-- **Pipeline R3:** tool **`run_batch_pbj(penugasan_folder, role="AT")`** (7 rules, reuse digest pengadaan). KT/PT/PM tidak men-generate KKP — hanya approve & draft LHR.
+- **Pipeline R3:** tool **`run_batch_pbj(penugasan_folder, role="AT")`** (12 rules, reuse digest pengadaan). KT/PT/PM tidak men-generate KKP — hanya approve & draft LHR.
 - **Mode:** AT **auto-execute** R0→R3 tanpa berhenti tiap tahap (jangan tanya "Mau saya lanjut?"). Titik HITL: **KT approve KKP**, lalu **KT draft LHR**.
 - **Tool inti:** `read_context` → `run_batch_pbj` → `read_anomalies` → analisis substantif → `append_temuan` → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
 
@@ -35,7 +35,7 @@ changelog:
 | **R0 — Validasi & Konteks** | Tentukan scope (Perencanaan/Pemilihan/Penuh) dari KP; pastikan KAK/HPS/kontrak tersedia; susun `context.md` bila placeholder. | AT (auto) |
 | **R1 — Kerangka Reviu (KP-R)** | Tujuan, lingkup, metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **R2 — Program Kerja (PKP-R)** | Aspek reviu per sasaran (KAK, HPS, metode, kontrak). | KT (UI Setup) |
-| **R3 — Pelaksanaan** | `run_batch_pbj` (7 rules) → verifikasi false positive → **analisis substantif wajib** (tabel di bawah) → `append_temuan` (K/K/A/R, **tanpa Sebab**) + `record_pkp_assessment`. | AT (auto) |
+| **R3 — Pelaksanaan** | `run_batch_pbj` (12 rules) → verifikasi false positive → **analisis substantif wajib** (tabel di bawah) → `append_temuan` (K/K/A/R, **tanpa Sebab**) + `record_pkp_assessment`. | AT (auto) |
 | **R4 — Laporan (LHR)** | Render LHR + Nota Dinas; polish narasi & simpulan keyakinan terbatas. | KT |
 
 ### Analisis Substantif Wajib (Tahap R3)
@@ -59,7 +59,7 @@ Rules deterministik (R3 pipeline) hanya menangkap inkonsistensi struktural seder
 
 | # | Tugas Substantif | Detail |
 |---|------------------|--------|
-| 1. | **Verifikasi false positive rules** | Buka PDF di halaman yang dirujuk RP.1-RP.7. Konfirmasi temuan benar atau false positive (mis. RP.2 "Periode KAK = 45 Tahun" mungkin parser glitch dari nomor pasal). Hapus false positive dari _KKP/temuan.json. |
+| 1. | **Verifikasi false positive rules** | Buka PDF di halaman yang dirujuk RP.1–RP.12. Konfirmasi temuan benar atau false positive (mis. RP.2 "Periode KAK = 45 Tahun" mungkin parser glitch dari nomor pasal). Hapus false positive dari _KKP/temuan.json. |
 | 2. | **Analisis kewajaran HPS vs RFI Vendor** | Baca semua RFI di 00-input/. Validasi: vendor memberikan harga atau hanya refusal participation? Bila HPS hanya berbasis 1 RFI valid (misal RFI lain tidak bersedia) → temuan KRITIS multi-source HPS (Perpres 16/2018 Pasal 26 ayat 5: HPS dibuat dari minimal 2 sumber harga independen). |
 | 3. | **Konsistensi dasar hukum HPS dengan Tahun Anggaran** | Baca header HPS bagian DASAR PERHITUNGAN. Cek apakah SBM dirujuk = SBM TA pelaksanaan? Cek Pedoman Pelaksanaan Anggaran = TA pelaksanaan? Bila SBM/Pedoman rujukan ≠ TA DIPA → temuan PERINGATAN. |
 | 4. | **Konsistensi spek KAK ↔ komponen HPS** | Setiap kebutuhan teknis di KAK harus traceable ke line item HPS detail. Setiap line item HPS harus traceable ke kebutuhan KAK. Bila ada komponen HPS tanpa pembentuk harga atau tanpa basis di KAK → temuan PERINGATAN. |
@@ -75,7 +75,7 @@ Rules deterministik (R3 pipeline) hanya menangkap inkonsistensi struktural seder
 
 ## Identitas
 - **Nama Skill:** reviu-pengadaan
-- **Versi:** 1.4
+- **Versi:** 1.5
 - **Jenis Pengawasan:** Reviu Perencanaan dan Pemilihan Pengadaan Barang/Jasa
 - **Dasar Hukum:** Perpres 16/2018 jo. Perpres 12/2021, Perlem LKPP 12/2021
 - **Tingkat Keyakinan:** Terbatas — hanya memastikan pemenuhan aspek administratif
@@ -91,7 +91,7 @@ Paradigma reviu adalah **berbasis temuan dengan judul deskriptif** — setiap ca
 
 ## Pipeline & Cross-check (Tahap R3)
 
-Pipeline dipanggil agen via tool **`run_batch_pbj(penugasan_folder, role="AT")`** (di belakang layar: reuse digest pengadaan KAK/HPS/SPPBJ + 7 cross-check rules reviu). Hasil dibaca via **`read_anomalies`** / `read_ingested_digest`. Agen TIDAK menjalankan `digest_pengadaan.py`/`cross_check.py` lewat bash.
+Pipeline dipanggil agen via tool **`run_batch_pbj(penugasan_folder, role="AT")`** (di belakang layar: reuse digest pengadaan KAK/HPS/SPPBJ + 12 cross-check rules reviu). Hasil dibaca via **`read_anomalies`** / `read_ingested_digest`. Agen TIDAK menjalankan `digest_pengadaan.py`/`cross_check.py` lewat bash.
 
 ### Hemat Token — Jangan Re-Read PDF Setelah Digest
 
@@ -104,17 +104,22 @@ Pipeline dipanggil agen via tool **`run_batch_pbj(penugasan_folder, role="AT")`*
 
 **Tidak boleh** re-read full PDF "untuk memahami konteks". Setiap re-read full PDF menambah ~3-8k token tanpa nilai tambah substansi.
 
-### 7 Rules v0.1
+### Rules deteksi (RP.1–RP.12)
 
 | ID | Aspek | Rule |
 |---|---|---|
 | RP.1 | Perencanaan | HPS tanpa dokumen pembentuk harga |
 | RP.2 | Perencanaan | Periode KAK ≠ HPS |
-| RP.3 | Perencanaan | SLA KAK ≠ HPS |
+| RP.3 | Perencanaan | SLA KAK ≠ HPS (atau KAK punya SLA, HPS tak alokasi) |
 | RP.4 | Perencanaan | KAK menyebut migrasi tapi HPS tidak |
 | RP.5 | Perencanaan | KAK belum cantumkan parameter teknis kunci |
 | RP.6 | Pemilihan | SPPBJ tapi tidak ada Permohonan Jaminan Pelaksanaan |
 | RP.7 | Dokumentasi | KAK atau HPS tidak tersedia |
+| RP.8 | Perencanaan | HPS tidak multi-source (<2 RFI valid) |
+| RP.9 | Perencanaan | Dasar hukum HPS (SBM/Pedoman) ≠ TA pelaksanaan |
+| RP.10 | Perencanaan | HPS 1 line item total tanpa breakdown komponen |
+| RP.11 | Perencanaan | KAK menyebut >1 nilai SLA berbeda (inkonsistensi internal) |
+| **RP.12** | **Perencanaan** | **Justifikasi/KAK belum memuat 5 elemen wajib** (kebutuhan, spek teknis & fungsi, metode pengadaan, waktu penyelesaian, output) — deteksi otomatis kelengkapan justifikasi |
 
 Perbedaan kolom KKP vs audit-pengadaan: **tanpa Sebab**, hanya Kondisi-Kriteria-Akibat-Rekomendasi.
 

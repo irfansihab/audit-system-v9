@@ -392,6 +392,50 @@ def rule_rp10_hps_tanpa_breakdown(digest):
     )
 
 
+_JUSTIFIKASI_LABEL = {
+    "kebutuhan": "Kebutuhan (identifikasi kebutuhan/latar belakang)",
+    "spesifikasi_teknis": "Spesifikasi teknis & fungsi",
+    "metode_pengadaan": "Rencana cara/metode pengadaan",
+    "waktu_penyelesaian": "Waktu penyelesaian pekerjaan",
+    "output": "Output/keluaran yang diharapkan",
+}
+
+
+def rule_rp12_kelengkapan_justifikasi(digest):
+    """RP.12 — Justifikasi/KAK belum memuat seluruh 5 elemen wajib.
+
+    5 elemen dokumen persiapan (Perpres 16/2018 Ps. 11 & 18-19, Perlem LKPP
+    12/2021 Bab III): kebutuhan, spesifikasi teknis & fungsi, rencana metode
+    pengadaan, waktu penyelesaian, output. Deteksi presence-only (heuristik
+    keyword) → severity PERINGATAN + minta konfirmasi manual reviewer.
+    """
+    kak = _parsed(_first(digest, "kak"))
+    if not kak:
+        return None
+    elemen = kak.get("elemen_justifikasi")
+    if not isinstance(elemen, dict):
+        return None
+    missing = [_JUSTIFIKASI_LABEL[k] for k, v in elemen.items() if not v and k in _JUSTIFIKASI_LABEL]
+    if not missing:
+        return None
+    return _rule(
+        "RP.12", PERINGATAN, "Perencanaan",
+        f"Justifikasi/KAK belum memuat {len(missing)} dari 5 elemen wajib: {', '.join(missing)}",
+        "Kelengkapan justifikasi (5 elemen dokumen persiapan) belum terpenuhi berdasarkan deteksi otomatis.",
+        bukti={"elemen_terdeteksi": {k: v for k, v in elemen.items()}, "elemen_tidak_terdeteksi": missing},
+        draft={
+            "kondisi": (f"Berdasarkan penelaahan dokumen perencanaan, elemen justifikasi berikut belum "
+                        f"ditemukan/teridentifikasi: {', '.join(missing)}. (Deteksi otomatis — reviewer wajib "
+                        f"mengonfirmasi langsung ke dokumen sebelum menyimpulkan.)"),
+            "kriteria": ("Perpres 16/2018 Pasal 11 & 18–19 jo. Perlem LKPP 12/2021 Bab III — dokumen persiapan/"
+                         "KAK wajib memuat: identifikasi kebutuhan, spesifikasi teknis & fungsi, rencana cara/"
+                         "metode pengadaan, waktu penyelesaian pekerjaan, dan output/keluaran yang diharapkan."),
+            "akibat": ("Justifikasi yang tidak lengkap menyulitkan penyedia memahami kebutuhan, berisiko "
+                       "spesifikasi/penawaran tidak sesuai, dan melemahkan dasar penilaian kesesuaian dokumen."),
+        }
+    )
+
+
 ALL_RULES = [
     rule_rp1_hps_tanpa_pembentuk_harga,
     rule_rp2_kak_hps_periode_beda,
@@ -404,6 +448,7 @@ ALL_RULES = [
     rule_rp9_sbm_year_mismatch,
     rule_rp10_hps_tanpa_breakdown,
     rule_rp11_sla_internal_inkonsisten_kak,
+    rule_rp12_kelengkapan_justifikasi,
 ]
 
 

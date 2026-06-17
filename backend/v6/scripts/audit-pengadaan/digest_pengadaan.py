@@ -202,6 +202,32 @@ def parse_kak(pages: list[str]) -> dict:
     hm = re.search(r"Rp\s*([\d\.,]+)", text)
     if hm:
         out["nilai_hps"] = _rupiah_to_int(hm.group(1))
+    # Kelengkapan 5 elemen justifikasi/dokumen persiapan (deteksi keyword full-text).
+    # Dipakai rule kelengkapan justifikasi (reviu/audit pengadaan). Heuristik
+    # presence-only — bisa false-negative bila frasa tak lazim → rule berseverity
+    # PERINGATAN + minta konfirmasi manual.
+    out["elemen_justifikasi"] = {
+        "kebutuhan": bool(re.search(
+            r"latar\s+belakang|identifikasi\s+kebutuhan|analisis\s+kebutuhan|maksud\s+dan\s+tujuan",
+            text, re.I)),
+        "spesifikasi_teknis": bool(re.search(
+            r"spesifikasi\s+teknis|persyaratan\s+teknis|spesifikasi\s+barang|spek\s+teknis|"
+            r"spesifikasi\s+fungsi|kebutuhan\s+fungsional",
+            text, re.I)),
+        "metode_pengadaan": bool(re.search(
+            r"metode\s+(?:pengadaan|pemilihan)|cara\s+pengadaan|tender\b|seleksi\b|"
+            r"penunjukan\s+langsung|pengadaan\s+langsung|e-?purchasing|e-?katalog|e-?katalogue",
+            text, re.I)),
+        # waktu: reuse hasil _extract_periode atau frasa jadwal/waktu penyelesaian
+        "waktu_penyelesaian": bool(out["periode"]) or bool(re.search(
+            r"jangka\s+waktu|waktu\s+pelaksanaan|jadwal\s+pelaksanaan|masa\s+pelaksanaan|"
+            r"waktu\s+penyelesaian|jadwal\s+kegiatan",
+            text, re.I)),
+        "output": bool(re.search(
+            r"keluaran|output|deliverable|hasil\s+yang\s+diharapkan|hasil\s+pekerjaan|"
+            r"produk\s+yang\s+dihasilkan|sasaran\s+keluaran",
+            text, re.I)),
+    }
     return out
 
 

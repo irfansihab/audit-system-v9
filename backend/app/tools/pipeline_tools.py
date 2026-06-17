@@ -140,8 +140,8 @@ async def run_batch_rka(args: dict) -> dict:
 
 @tool(
     "run_batch_audit_pbj",
-    "Jalankan pipeline V6 audit-pengadaan: digest_pengadaan + cross_check 11 rules "
-    "(P.1-4, K.1-3, PL.1, B.1, D.1-2) untuk SELURUH SIKLUS pengadaan (perencanaan → "
+    "Jalankan pipeline V6 audit-pengadaan: digest_pengadaan + cross_check 12 rules "
+    "(P.1-5, K.1-3, PL.1, B.1, D.1-2) untuk SELURUH SIKLUS pengadaan (perencanaan → "
     "pemilihan → kontrak → pelaksanaan → pembayaran). Beda dengan reviu-pengadaan "
     "(perencanaan saja), audit-pengadaan WAJIB menganalisis hasil pekerjaan (BAST, "
     "SPM, kewajaran pembayaran) dan WAJIB isi kolom Sebab di setiap temuan KKP. "

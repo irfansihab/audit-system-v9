@@ -1,13 +1,14 @@
 ---
 name: audit-pengadaan
 format_laporan: kksa
-version: 2.2
+version: 2.3
 jenis: Audit Kepatuhan Pengadaan Barang/Jasa
 dasar-hukum: Perpres 16/2018 jo. Perpres 12/2021, Perlem LKPP 12/2021, Perlem LKPP 4/2024, Perpres 46/2025
 model: claude-sonnet-4-6
 auto_execute: true
 auto_execute_command: "tool: run_batch_audit_pbj(penugasan_folder, role=\"AT\")"
 changelog:
+  - v2.3 (2026-06-17): Tambah rule deterministik P.5 — kelengkapan 5 elemen justifikasi/dokumen persiapan (kebutuhan, spek teknis & fungsi, metode pengadaan, waktu penyelesaian, output) di pipeline cross_check; selaras fix reviu-pengadaan v1.5. Cross-check kini 12 rules.
   - v2.2 (2026-06-17): Refactor orkestrasi ke v7 — pisah substansi domain dari orkestrasi; struktur seragam Tahap A0–A4; hapus AUTO-EXECUTE LANGKAH/STEP A-C/Task 00-01/_ROLE.md/bash/AskUserQuestion (legacy audit-system-v4); pipeline via tool run_batch_audit_pbj. Substansi (8 tugas substantif, 11 rules, output-vs-kontrak, kerugian negara) dipertahankan.
 ---
 
@@ -18,7 +19,7 @@ changelog:
 > **Skill ini = substansi domain.** Cara menjalankan (role, pipeline, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (itu paradigma lama audit-system-v4).
 
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
-- **Pipeline A3:** `run_batch_audit_pbj(penugasan_folder, role="AT")` — `digest_pengadaan` + 11 rules cross-check untuk **SELURUH siklus** (perencanaan→pemilihan→kontrak→pelaksanaan→pembayaran). Output `_KKP/anomalies.json` + `_KKP/pengadaan-digest.json`. Ini **akselerator deteksi struktural saja** — analisis substantif (8 tugas di bawah) tetap WAJIB.
+- **Pipeline A3:** `run_batch_audit_pbj(penugasan_folder, role="AT")` — `digest_pengadaan` + 12 rules cross-check untuk **SELURUH siklus** (perencanaan→pemilihan→kontrak→pelaksanaan→pembayaran). Output `_KKP/anomalies.json` + `_KKP/pengadaan-digest.json`. Ini **akselerator deteksi struktural saja** — analisis substantif (8 tugas di bawah) tetap WAJIB.
 - **Mode:** AT **auto-execute** A0→A3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHA** (bukan stop tiap tahap).
 - **Tool inti:** `read_context` → `run_batch_audit_pbj` → verifikasi false positive + analisis substantif → `append_temuan` (CCSAA, **wajib Sebab**) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
 
@@ -29,7 +30,7 @@ changelog:
 | **A0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; dokumen pengadaan tersedia di `00-input/` (KAK/HPS/Kontrak/BAST/SPM/dll.); susun `context.md` bila masih placeholder. | AT (auto) |
 | **A1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan audit, ruang lingkup (tahap siklus mana yang diaudit), kriteria (Perpres 16/2018 dst.), metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **A2 — Program Kerja Pengujian (PKP)** | Per sasaran/tahap pengadaan: Aspek · Tujuan Pengujian · Prosedur · Sampel · Bukti yang Dicari. | KT (UI Setup) |
-| **A3 — Pelaksanaan & KKP** | `run_batch_audit_pbj` (11 rules) → verifikasi false positive → **8 tugas analisis substantif WAJIB** (kewajaran HPS, output-vs-kontrak, kerugian negara — lihat tabel di bawah) → temuan **CCSAA** (wajib **Sebab**) via `append_temuan` + `record_pkp_assessment`. | AT (auto) |
+| **A3 — Pelaksanaan & KKP** | `run_batch_audit_pbj` (12 rules) → verifikasi false positive → **8 tugas analisis substantif WAJIB** (kewajaran HPS, output-vs-kontrak, kerugian negara — lihat tabel di bawah) → temuan **CCSAA** (wajib **Sebab**) via `append_temuan` + `record_pkp_assessment`. | AT (auto) |
 | **A4 — Laporan (LHA)** | Render LHA + Nota Dinas; ringkasan per area, rekomendasi material, simpulan **keyakinan memadai**. | KT |
 
 **Eskalasi:** indikasi kerugian negara material (>Rp 1 M) atau pidana → flag MERAH + eskalasi ke PT/Inspektur.
@@ -84,11 +85,11 @@ Tool `run_batch_audit_pbj` menjalankan pipeline deterministik sebagai **akselera
 | Komponen | Fungsi | Output |
 |---|---|---|
 | `digest_pengadaan` | Scan folder, klasifikasi 14 jenis dokumen (KAK/HPS/Kontrak/BAST/Pembayaran/dll.), parse ke JSON | `_KKP/pengadaan-digest.json` |
-| `cross_check` | 11 rules deterministik (Perencanaan/Kontrak/Pelaksanaan/Pembayaran/Dokumentasi) | `_KKP/anomalies.json` |
+| `cross_check` | 12 rules deterministik (Perencanaan/Kontrak/Pelaksanaan/Pembayaran/Dokumentasi) | `_KKP/anomalies.json` |
 
 Render KKP/LHA dilakukan terpisah via tool `render_kkp_docx` (AT) dan oleh KT untuk LHA — bukan oleh pipeline ini.
 
-### 11 Rules deteksi struktural
+### 12 Rules deteksi struktural
 
 | ID | Aspek | Rule |
 |---|---|---|
@@ -98,6 +99,7 @@ Render KKP/LHA dilakukan terpisah via tool `render_kkp_docx` (AT) dan oleh KT un
 | P.2 | Perencanaan | Periode KAK ≠ HPS |
 | P.3 | Perencanaan | SLA KAK ≠ HPS |
 | P.4 | Perencanaan | KAK menyebut migrasi tapi HPS tidak |
+| **P.5** | **Perencanaan** | **Justifikasi/KAK belum memuat 5 elemen wajib** (kebutuhan, spek teknis & fungsi, metode pengadaan, waktu penyelesaian, output) — deteksi otomatis kelengkapan justifikasi |
 | K.1 | Kontrak | Nilai kontrak ≥ HPS (tidak wajar) |
 | K.2 | Kontrak | Kontrak tanpa klausul SLA padahal KAK mensyaratkan |
 | K.3 | Kontrak | Kontrak tanpa Jaminan Pelaksanaan |
