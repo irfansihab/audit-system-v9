@@ -28,10 +28,12 @@ Ini adalah aturan inti yang menentukan elemen apa yang **wajib, opsional, atau t
 | **Audit** (Pengadaan, Keuangan) | ✅ Wajib | ✅ Wajib | ✅ Wajib | ✅ Wajib | ✅ Wajib | Format KKSA penuh — setiap temuan |
 | **Evaluasi Kinerja / MR** | ✅ Wajib | ✅ Wajib | ✅ Wajib | ✅ Wajib | ✅ Wajib (di G) | Format KKSA — Rekomendasi dikompilasi di seksi G terpisah |
 | **Evaluasi RB** | — | — | — | ✅ (Analisis Dampak) | ✅ (jika ada catatan) | Format tabel khusus PermenPAN-RB: Ketepatan/Ketercapaian/Kualitas/Kesesuaian |
-| **Reviu Dokumen Kontrak** | ✅ Per aspek | ✅ Per aspek | ❌ Tidak perlu | ✅ Jika ada catatan | ✅ Jika ada catatan | Format naratif per aspek (justifikasi/harga/output) |
-| **Reviu LKj (SAKIP)** | ✅ Hasil per kriteria | ✅ Kriteria PermenPAN-RB | ❌ Tidak perlu | ❌ Tidak perlu | ✅ Jika ada catatan | Format tabel 3 aspek + Pernyataan Telah Direviu |
-| **Reviu SPIP** | ✅ Per unsur | ✅ PP 60/2008 | ❌ Tidak perlu | ❌ Tidak perlu | ✅ Jika ada catatan | Format catatan reviu per unsur SPIP |
-| **Konsultasi** | — | ✅ Dasar hukum | — | — | ✅ Pendapat/Saran | Format memo konsultasi |
+| **Reviu Dokumen Kontrak** | ✅ Per aspek | ✅ Per aspek | ✅ Diisi (anti-mengarang) | ✅ Jika ada catatan | ✅ Jika ada catatan | Format naratif per aspek (justifikasi/harga/output) |
+| **Reviu LKj (SAKIP)** | ✅ Hasil per kriteria | ✅ Kriteria PermenPAN-RB | ✅ Diisi (anti-mengarang) | ❌ Tidak perlu | ✅ Jika ada catatan | Format tabel 3 aspek + Pernyataan Telah Direviu |
+| **Reviu SPIP** | ✅ Per unsur | ✅ PP 60/2008 | ✅ Diisi (anti-mengarang) | ❌ Tidak perlu | ✅ Jika ada catatan | Format catatan reviu per unsur SPIP |
+| **Konsultasi** | — | ✅ Dasar hukum | — | — | ✅ Pendapat/Saran | Format memo konsultasi (tanpa temuan/Sebab) |
+
+> **Sebab — semua jenis (sejak 17 Jun 2026, kecuali Konsultasi & Eval RB).** Unsur Sebab kini **diisi untuk semua jenis pengawasan** dengan **anti-mengarang**: isi hanya bila terbukti dari bukti; bila tidak ditemukan/bukti tidak cukup → tulis **"Tidak ditemukan penyebab"** / **"Tidak cukup data untuk menyimpulkan penyebab"** (jangan menebak). Reviu/evaluasi berlingkup terbatas → wajar sering "tidak cukup data".
 
 ### Penyajian unsur KONDISI — kronologis dulu, baru isu/deviasi (WAJIB semua jenis)
 
@@ -45,8 +47,8 @@ Audit memberikan keyakinan memadai dan bertujuan menemukan penyimpangan. Analisi
 **Mengapa Evaluasi Kinerja/MR pakai KKSA?**
 Evaluasi ini menilai efektivitas sistem/pelaksanaan secara substantif, bukan sekadar administratif. Analisis Sebab diperlukan agar rekomendasi dapat memperbaiki sistem, bukan hanya gejala permukaan.
 
-**Mengapa Reviu tidak perlu Sebab?**
-Reviu memberikan keyakinan terbatas atas aspek yang bersifat administratif/prosedural. Lingkup reviu adalah "terpenuhi atau tidak terpenuhi" — tidak sampai menganalisis mengapa penyimpangan terjadi. Rekomendasi diberikan berdasarkan kondisi yang ditemukan.
+**Sebab pada Reviu (sejak 17 Jun 2026):**
+Reviu memberikan keyakinan terbatas atas aspek administratif/prosedural. Unsur **Sebab tetap diisi** bila penyebab terbukti dari bukti; namun karena lingkup pengujian reviu terbatas (fokus "terpenuhi/tidak terpenuhi"), **wajar bila banyak temuan ber-Sebab "Tidak cukup data untuk menyimpulkan penyebab"** — itu jujur dan benar. **Jangan mengarang** akar masalah. Rekomendasi tetap diberikan berdasarkan kondisi yang ditemukan.
 
 **Evaluasi RB punya format khusus:**
 Evaluasi RB diatur oleh PermenPAN-RB dengan instrumen evaluasi spesifik (tabel 4 dimensi). Tidak menggunakan KKSA — menggunakan format lembar evaluasi on going sesuai Juknis.
