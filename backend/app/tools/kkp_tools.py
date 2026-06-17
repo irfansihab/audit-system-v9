@@ -215,6 +215,10 @@ def _normalize_temuan_input(raw: dict) -> dict:
     """
     out = dict(raw)
 
+    # id alias → id_temuan (agen bisa kirim `id` atau `id_temuan`)
+    if "id_temuan" not in out and "id" in out:
+        out["id_temuan"] = out.pop("id")
+
     # judul → judul_temuan
     if "judul_temuan" not in out and "judul" in out:
         out["judul_temuan"] = out.pop("judul")
@@ -258,11 +262,16 @@ def _normalize_temuan_input(raw: dict) -> dict:
 
 @tool(
     "append_temuan",
-    "Append 1 temuan ke _KKP/temuan.json. Bridge otomatis transform key sederhana "
-    "(judul, assigned_to) ke schema V6 (judul_temuan, anggota_tim.nama_lengkap). "
-    "Field wajib di input: sasaran_id, anggota_tim/assigned_to, judul, kondisi, kriteria, "
-    "akibat, dokumen_sumber[{file, halaman, kutipan}]. Ketertelusuran (isi bila ada): "
-    "langkah_kerja_terkait (langkah PKP yang memunculkan temuan), pattern_id (id pattern wiki).",
+    "Tambah ATAU timpa 1 temuan di _KKP/temuan.json (UPSERT by id_temuan). "
+    "Perilaku: bila input memuat `id_temuan` (atau `id`) yang SUDAH ADA → temuan itu "
+    "DITIMPA di tempat (untuk koreksi/penyempurnaan, id tetap). Bila tanpa id atau id "
+    "belum ada → ditambah sebagai temuan BARU (id auto T-NNN). Jadi: koreksi = kirim "
+    "ulang dengan id yang sama (menimpa, tidak menggandakan); temuan baru = tanpa id. "
+    "Bridge otomatis transform key sederhana (judul, assigned_to) ke schema V6 "
+    "(judul_temuan, anggota_tim.nama_lengkap). Field wajib: sasaran_id, anggota_tim/"
+    "assigned_to, judul, kondisi, kriteria, akibat, dokumen_sumber[{file, halaman, kutipan}]. "
+    "Ketertelusuran (isi bila ada): langkah_kerja_terkait (langkah PKP yang memunculkan "
+    "temuan), pattern_id (id pattern wiki).",
     {
         "penugasan_folder": str,
         "temuan": dict,
@@ -294,20 +303,55 @@ async def append_temuan(args: dict) -> dict:
     data.setdefault("temuan", [])
 
     new_temuan = _normalize_temuan_input(args["temuan"])
-    if not new_temuan.get("id_temuan"):
+
+    # UPSERT: bila id_temuan sudah ada → timpa di tempat (koreksi); else append (baru).
+    given_id = new_temuan.get("id_temuan")
+    action = "appended"
+    if given_id:
+        idx = next(
+            (i for i, t in enumerate(data["temuan"]) if t.get("id_temuan") == given_id),
+            None,
+        )
+        if idx is not None:
+            data["temuan"][idx] = new_temuan
+            action = "replaced"
+        else:
+            data["temuan"].append(new_temuan)
+    else:
         seq = len(data["temuan"]) + 1
         new_temuan["id_temuan"] = f"T-{seq:03d}"
+        data["temuan"].append(new_temuan)
 
-    data["temuan"].append(new_temuan)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return {
         "content": [
             {
                 "type": "text",
-                "text": f"OK|id={new_temuan['id_temuan']}|total_now={len(data['temuan'])}",
+                "text": f"OK|action={action}|id={new_temuan['id_temuan']}|total_now={len(data['temuan'])}",
             }
         ]
     }
+
+
+@tool(
+    "reset_temuan",
+    "Kosongkan SELURUH temuan di _KKP/temuan.json (header penugasan dipertahankan). "
+    "HANYA dipakai saat auditor minta analisis ULANG DARI AWAL (fresh-run pada penugasan "
+    "yang sudah punya temuan), supaya hasil lama tidak menumpuk. JANGAN dipakai untuk "
+    "koreksi/penyempurnaan biasa — itu pakai append_temuan dengan id yang sama (upsert).",
+    {"penugasan_folder": str},
+)
+async def reset_temuan(args: dict) -> dict:
+    folder = Path(args["penugasan_folder"])
+    path = folder / "_KKP" / "temuan.json"
+    if not path.exists():
+        return {"content": [{"type": "text", "text": "OK|temuan.json belum ada — tidak ada yang direset"}]}
+    data = safe_read_json(path) or {}
+    before = len(data.get("temuan", []) or [])
+    data.setdefault("temuan", [])
+    data["temuan"] = []
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"content": [{"type": "text", "text": f"OK|reset|temuan_dihapus={before}|total_now=0"}]}
 
 
 async def _filter_temuan_by_review(folder: Path) -> tuple[Path | None, dict | None]:
@@ -905,7 +949,7 @@ async def build_context_md_template(args: dict) -> dict:
 KKP_TOOLS = [
     read_context, list_ingested, read_ingested_digest, get_team_members,
     write_context_md, build_context_md_template,
-    append_temuan, build_draft_temuan_from_anomalies, read_draft_temuan,
+    append_temuan, reset_temuan, build_draft_temuan_from_anomalies, read_draft_temuan,
     render_kkp_docx, run_qc_kkp,
     read_temuan_json,
 ]

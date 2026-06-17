@@ -50,7 +50,8 @@ Kalau `sasaran-assignment.json` masih kosong (`sasaran: []`) → KT belum setup.
 - `search_wiki(query, limit)` — cari di vault pengetahuan organisasi (profil auditi/unit, riwayat temuan BPK, profil vendor, regulasi, Renja/RKA). Pakai untuk menarik KONTEKS auditi/vendor/riwayat yang relevan dengan penugasan
 - `get_wiki_page(name)` — baca isi lengkap satu catatan vault hasil `search_wiki`
 - `read_temuan_json(penugasan_folder)` — baca `_KKP/temuan.json` (deteksi mode REFINE; lihat LANGKAH 0 di bawah). Read-only.
-- `append_temuan(penugasan_folder, temuan)` — append 1 temuan ke `_KKP/temuan.json` (bridge transform skema otomatis)
+- `append_temuan(penugasan_folder, temuan)` — **UPSERT** 1 temuan ke `_KKP/temuan.json` (bridge transform skema otomatis). Tanpa `id_temuan` → temuan BARU (id auto). Dengan `id_temuan` yang SUDAH ADA → **menimpa di tempat** (koreksi, tidak menggandakan).
+- `reset_temuan(penugasan_folder)` — kosongkan SEMUA temuan (HANYA untuk "analisis ulang dari awal" eksplisit; bukan untuk koreksi biasa)
 - `render_kkp_docx(penugasan_folder, nama_anggota)` — render KKP-{nama}.docx
 - `run_qc_kkp(penugasan_folder)` — jalankan QC SAIPI stage KKP secara sync, return status + breakdown
 - `submit_feedback(penugasan_folder, agent_name, overall_confidence, summary, workflow_issues, substansi_issues, pattern_suggestions, notes_freetext)` — catat refleksi retrospective sebelum return ke pengguna
@@ -109,14 +110,14 @@ Empat sumber, **peran berbeda — jangan disamakan**:
 >   - **JANGAN re-run `run_batch_*`** — pipeline V6 sudah dijalankan, hasil di `_KKP/anomalies*.json` & `temuan.json` masih sah.
 >   - **JANGAN baca ulang seluruh konteks dari nol.** Cukup baca `read_context` (sasaran-assignment + context.md), lewati digest deep-read, lewati `list_konteks/get_konteks` & `list_temuan_patterns` kecuali permintaan auditor butuh itu.
 >   - **Fokus pada permintaan auditor** di pesan terakhir. Empat skenario REFINE yang umum:
->     - **(a) Tambah temuan baru** ("masih ada yang kurang", "cek aspek X juga") → `list_temuan_patterns` + `search_wiki` + `read_pdf_page` sesuai kebutuhan → `append_temuan` (hanya temuan BARU; jangan ulang yg sudah ada — periksa judul/sasaran_id supaya tidak duplikat).
->     - **(b) Sempurnakan temuan tertentu** ("perbaiki temuan T-002", "tambah kutipan kondisi") → baca temuan target, tools v7 saat ini hanya `append_temuan` (no in-place edit) — bila perubahan ringan tetap tulis 1 temuan baru dgn judul yg dimodifikasi & catat di chat agar KT/auditor hapus versi lama via UI Output & QC. Hindari menggandakan ID.
+>     - **(a) Tambah temuan baru** ("masih ada yang kurang", "cek aspek X juga") → `list_temuan_patterns` + `search_wiki` + `read_pdf_page` sesuai kebutuhan → `append_temuan` **tanpa `id_temuan`** (id auto T-NNN). Hanya temuan BENAR-BENAR BARU; periksa judul/sasaran_id supaya tidak menduplikasi yang sudah ada.
+>     - **(b) Sempurnakan/koreksi temuan tertentu** ("perbaiki temuan T-002", "tambah kutipan kondisi") → baca temuan target via `read_temuan_json`, lalu `append_temuan` dengan **`id_temuan` yang SAMA (mis. "T-002")** beserta SELURUH field versi perbaikan → temuan itu **DITIMPA di tempat** (upsert), bukan digandakan. **Default koreksi = MENIMPA, bukan menambah.** Jangan buat ID baru untuk hal yang sama.
 >     - **(c) Tolak temuan / mark false positive** → laporkan ID temuan + alasan di chat; auditor hapus via UI. Jangan delete dari sini.
 >     - **(d) Jawab pertanyaan tentang temuan existing** → langsung jawab pakai data `temuan.json` + `read_pdf_page` bila perlu cross-check. Jangan re-analisis full pipeline hanya untuk menjawab.
 >   - **Setelah refine: WAJIB `render_kkp_docx` ulang** (KKP regenerate dgn temuan terkini) + `run_qc_kkp` untuk gate SAIPI.
 >   - **Submit feedback** tetap (langkah 12) — `summary` sebutkan "REFINE: <ringkasan perubahan>".
 >
-> **Aturan emas REFINE**: pekerjaan AT sebelumnya adalah BASELINE. Tambahkan/sempurnakan, jangan ulangi dari nol. Bila auditor minta "analisis ulang dari awal" eksplisit, baru jalankan FRESH-RUN — dan beri tahu auditor bahwa temuan lama akan ter-replace (`temuan.json` di-rewrite).
+> **Aturan emas REFINE**: pekerjaan AT sebelumnya adalah BASELINE. **Koreksi/penyempurnaan = TIMPA via `append_temuan` dengan id yang sama (upsert); HANYA temuan benar-benar baru yang ditambah (tanpa id).** Jangan ulangi analisis dari nol. Bila auditor minta **"analisis ulang dari awal" eksplisit** → panggil **`reset_temuan(penugasan_folder)`** (kosongkan temuan lama) lalu jalankan FRESH-RUN, dan beri tahu auditor bahwa temuan lama telah di-reset.
 
 > **⚠️ Dua alur — tentukan dari `skill` di header:**
 > - **`reviu-rka-kl` / `reviu-pengadaan` (pipeline V6):** ikuti langkah 1–13 di bawah apa adanya (ada digest + `run_batch_*` + `read_anomalies`).
