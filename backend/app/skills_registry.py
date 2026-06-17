@@ -28,6 +28,12 @@ LEGACY_SKILLS = ("reviu-rka-kl", "reviu-pengadaan")
 # sistem), bukan jenis pengawasan — diakses terpisah saat fitur graduasi (Fase C).
 _EXCLUDE_DIRS = {"_draft", "panduan-format-umum", "graduasi-skill-spesifik"}
 
+# Skill yang TETAP loadable agen (via load_skill/_scan) tapi TIDAK ditawarkan di
+# dropdown pemilihan skill auditor. `kepatuhan-saipi` adalah META-SKILL QA SAIPI
+# yang dipakai agen untuk penjaminan mutu (QC), bukan jenis pengawasan yang dipilih
+# auditor. (Beda dgn _EXCLUDE_DIRS yang juga menyembunyikan dari _scan/load_skill.)
+_HIDDEN_FROM_PICKER = {"kepatuhan-saipi"}
+
 
 def _skills_dir() -> Path:
     return get_settings().skills_path
@@ -109,8 +115,13 @@ def refresh() -> None:
 
 
 def list_skills() -> list[dict]:
-    """Daftar skill terdaftar (metadata ringkas), urut slug."""
-    return list(_scan().values())
+    """Daftar skill PILIHAN AUDITOR (metadata ringkas), urut slug.
+
+    Mengecualikan meta-skill yang loadable agen tapi bukan jenis pengawasan
+    (mis. `kepatuhan-saipi` = QC SAIPI). Skill itu tetap bisa di-`load_skill`
+    oleh agen lewat `_scan()`/`skill_exists()`.
+    """
+    return [m for s, m in _scan().items() if s not in _HIDDEN_FROM_PICKER]
 
 
 def available_slugs() -> list[str]:
