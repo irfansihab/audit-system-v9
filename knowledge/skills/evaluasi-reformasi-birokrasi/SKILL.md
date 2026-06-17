@@ -1,16 +1,16 @@
 ---
 name: evaluasi-reformasi-birokrasi
 format_laporan: rb-4dim
-version: 2.0
+version: 2.1
 jenis: Evaluasi Internal Reformasi Birokrasi (Ex-Ante dan On-Going)
 dasar-hukum: PermenPAN-RB 9/2023, KepmenPAN-RB 182/2024, SE MenPAN-RB 6/2025
 model: claude-sonnet-4-6
 output: LHEI (Laporan Hasil Evaluasi Internal) + Lembar Kerja Evaluasi terisi
+changelog:
+  - v2.1 (2026-06-17): Refactor orkestrasi ke v7 — Tahap E0–E4 seragam; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); role+sasaran via sasaran-assignment.json; HITL=KT approve KKP→KT draft LHE; tanpa unsur Sebab (keluarga Evaluasi — keyakinan terbatas). Substansi RB (area perubahan/komponen/LKE 4 dimensi) dipertahankan.
 ---
 
 # Skill: Evaluasi Internal Reformasi Birokrasi
-
-> **Checklist gate-by-gate:** Lihat `audit-system-v4/checklists/evaluasi-reformasi-birokrasi.md` untuk daftar pemeriksaan tahap demi tahap.
 
 ## Identitas
 - **Nama Skill:** evaluasi-reformasi-birokrasi
@@ -24,18 +24,24 @@ output: LHEI (Laporan Hasil Evaluasi Internal) + Lembar Kerja Evaluasi terisi
 
 ---
 
-## Hemat Token & Eksekusi (v4.0.4)
+## Eksekusi di v7 (orkestrasi — seragam semua skill evaluasi)
 
-Sebelum mulai analisis dokumen, ikuti panduan berikut agar eksekusi cepat tanpa mengorbankan kualitas:
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
 
-1. **Jangan re-read dokumen yang sudah di-digest**. Bila skill ini punya pipeline pre-digest (`scripts/[skill]/digest_*.py` + `cross_check.py`), pakai langsung field `parsed.*` di output JSON. Re-read dokumen asli hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan` atau cross-check false positive rule.
-2. **Render KKP & LHP via script terstandar** (v4.0.4):
-   - KKP DOCX: `python3 scripts/render_kkp.py --penugasan ... --all-anggota`
-   - LHP DOCX: `python3 scripts/render_lhp.py --penugasan ... --rekomendasi-file ...` (template skeleton di `templates/_skeleton-lhp/template-lhp-[skill].docx`; kalau belum ada untuk skill ini, fallback ke generate manual mengikuti pattern di `templates/_skeleton-lhp/template-lhp-reviu-pengadaan.docx`)
-3. **Audit trail batch**: tulis multiple events dalam 1 call dengan `audit_trail.py log-batch --events '[...]'`. Hindari chain `log-event` x N.
-4. **Preflight QC SAIPI** di akhir Task 01: `qc_saipi.py --preflight-context` cek context.md sebelum analisis Task 03 mulai (mencegah KRITIS context.md baru ketahuan saat KKP sudah disusun).
-5. **Auto-gen QA placeholder**: `init_qa_artifacts.py` di akhir Task 01 menulis `_QA-SAIPI/deklarasi-independensi.md`, `jawaban-needs-review.md`, `justifikasi.md` — mencegah iterasi NEEDS_REVIEW di Task 03/04.
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline E3:** *tidak ada tool v7 — criteria/LKE-driven manual* (baca dokumen ter-ingest via `read_ingested_digest`).
+- **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE**.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian per area perubahan/komponen → `append_temuan` (TANPA Sebab) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
 
+## Tahap Evaluasi (E0–E4)
+
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode dari KP jelas; LKE/kriteria + dokumen objek (Roadmap RB, Rencana Aksi, bukti dukung) tersedia; susun `context.md` bila placeholder. | AT (auto) |
+| **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan, ruang lingkup, jenis evaluasi (Ex-Ante/On-Going TW), komponen Rencana Aksi RB yang dinilai, metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: komponen/sub-komponen Rencana Aksi RB yang dinilai · langkah penelaahan (4 dimensi) · bukti. | KT (UI Setup) |
+| **E3 — Pelaksanaan & KKP** | Per komponen Rencana Aksi: nilai kesesuaian 4 dimensi (Ketepatan Pelaksanaan / Ketercapaian Output / Kualitas Pelaksanaan / Kesesuaian Waktu) → temuan/catatan (TANPA Sebab) → `append_temuan` + `record_pkp_assessment`. | AT (auto) |
+| **E4 — Laporan (LHE)** | Render LHEI + Nota Dinas; simpulan kesesuaian per dimensi & saran perbaikan RB. | KT |
 
 ## Peran Claude
 

@@ -1,18 +1,20 @@
 ---
 name: evaluasi-umum
 format_laporan: kksa
-version: 1.0
+version: 1.1
 jenis: Evaluasi (umum — kriteria fleksibel)
 fungsi: Assurance — Penilaian Efektivitas/Sistem
 output: KKE (.xlsx) + LHE (.docx) + JSON KKP
 model: claude-sonnet-4-6
+changelog:
+  - v1.1 (2026-06-17): Refactor orkestrasi ke v7 — Tahap E0–E4 seragam; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); HAPUS unsur Sebab; role+sasaran via sasaran-assignment.json; HITL=KT approve KKP→KT draft LHE. Substansi domain dipertahankan.
 ---
 
 # Skill: Evaluasi Umum (Generic, Criteria-Driven)
 
 ## Identitas
 - **Nama Skill:** evaluasi-umum
-- **Versi:** 1.0 (Mei 2026)
+- **Versi:** 1.1 (Juni 2026)
 - **Jenis Pengawasan:** Evaluasi umum atas efektivitas sistem/program/kebijakan
 - **Fungsi APIP:** Assurance — penilaian substantif (efektivitas, kinerja, kesesuaian)
 - **Format Output:** Nota Dinas + Laporan Hasil Evaluasi (LHE) format surat dinas
@@ -39,11 +41,11 @@ Untuk evaluasi yang belum punya skill spesifik. Jika ada (evaluasi-sakip, evalua
 Kamu adalah evaluator Inspektorat II yang menilai **efektivitas, kinerja, atau kesesuaian** suatu objek terhadap kriteria evaluasi. Berbeda dari reviu (administratif) dan audit (kepatuhan terperinci), evaluasi bersifat **substantif** dan menilai apakah suatu sistem/program **berfungsi sebagaimana mestinya**.
 
 Karakteristik:
-- **KKSA penuh** — Kondisi, Kriteria, Sebab, Akibat, Rekomendasi (sama seperti audit)
+- **Temuan tanpa Sebab** — Kondisi, Kriteria, Akibat, Rekomendasi (keyakinan terbatas; akar masalah TIDAK digali seperti audit)
 - Rekomendasi **dikompilasi terpisah di Bab G** LHE (bukan per temuan seperti audit pengadaan)
 - Sering memakai **dimensi/skor** (mis. tertib administrasi 1-4, kualitas 1-5)
 - Hasil dapat berbentuk **predikat/level** (mis. "Sangat Baik", "Baik", "Cukup", "Kurang")
-- Dapat memakai **format dimensi khusus** seperti EvaRB jika kriteria mensyaratkan (lihat panduan-format-umum)
+- Dapat memakai **format dimensi khusus** seperti EvaRB jika kriteria mensyaratkan (lihat `panduan-format-umum/PANDUAN.md`)
 
 ## Input Contract
 
@@ -60,46 +62,26 @@ penugasan/[ID]/
 
 Kriteria evaluasi sering kompleks: pedoman teknis + lembar kerja evaluasi (LKE) + instrumen survei + data baseline. Auto-detect mengikuti `references/01-panduan-ekstraksi-kriteria.md` dengan tambahan deteksi instrumen (LKE.xlsx, kuesioner, rubrik skor).
 
-## Workflow Gate-Based
+## Eksekusi di v7 (orkestrasi — seragam semua skill evaluasi)
 
-### Gate 0 — Validasi Input
-- ST jelas, periode evaluasi terdefinisi
-- Kriteria evaluasi lengkap (pedoman + instrumen jika ada)
-- Objek tersedia + data dukung kinerja
-- **STOP**: konfirmasi auditor
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
 
-### Gate 1 — Kerangka Evaluasi (KP-E)
-File: `_KKP/01-KP-E.md`
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline E3:** *tidak ada tool v7 — criteria-driven manual* (digest generik via `read_ingested_digest`).
+- **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE**.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian per kriteria → `append_temuan` (TANPA Sebab) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
 
-Berisi: latar belakang, tujuan evaluasi, ruang lingkup, **dimensi/aspek penilaian** (matriks ekstraksi), **rubrik/skor** (jika ada), metodologi (telaah dokumen, wawancara, observasi, analisis data), tim, jadwal.
+## Tahap Evaluasi (E0–E4)
 
-**STOP**: konfirmasi.
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; kriteria + instrumen (LKE/rubrik bila ada) + objek tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
+| **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan evaluasi, ruang lingkup, **dimensi/aspek penilaian** + **rubrik/skor** (bila ada), metodologi (telaah dokumen, wawancara, observasi, analisis data) — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: aspek/sub-aspek/indikator yang dinilai · bobot · sumber data · metode · langkah · bukti. | KT (UI Setup) |
+| **E3 — Pelaksanaan & KKE** | Per aspek/indikator: kumpulkan bukti → nilai sesuai rubrik (skor + % capaian) → temuan/catatan (TANPA Sebab) untuk hal yang butuh rekomendasi sistem → `append_temuan` + `record_pkp_assessment`. Skor di bawah ambang / temuan signifikan ditandai agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
+| **E4 — Laporan (LHE)** | Render LHE + Nota Dinas (ikuti `panduan-format-umum/PANDUAN.md`); simpulan keyakinan **terbatas** (nilai/predikat sesuai metodologi); rekomendasi terpilih di Bab G. | KT |
 
-### Gate 2 — Instrumen Evaluasi (PKP-E)
-File: `_KKP/02-PKP-E.xlsx`
-
-Setiap baris = 1 sub-aspek/indikator:
-
-| ID | Aspek | Sub-aspek | Indikator | Bobot | Sumber Data | Metode | Penanggung Jawab |
-
-**STOP**: konfirmasi instrumen.
-
-### Gate 3 — Pelaksanaan Evaluasi & KKE
-Untuk setiap indikator:
-1. Kumpulkan bukti (dokumen + wawancara + data)
-2. Nilai sesuai rubrik → skor + narasi pendukung
-3. Dokumentasikan **temuan KKSA** untuk hal-hal yang membutuhkan rekomendasi sistem
-4. Catat di `_KKP/03-KKE.xlsx`
-
-**STOP & TANYA AUDITOR** untuk:
-- Skor di bawah ambang (mis. < 60% bobot)
-- Temuan KKSA yang akan dimuat di laporan
-
-### Gate 4 — Laporan Hasil Evaluasi (LHE)
-- `_LHP/Nota-Dinas.docx`
-- `_LHP/LHE-[ID].docx`
-
-**STOP**: review final.
+**Eskalasi:** temuan strategis (mempengaruhi capaian misi/sasaran organisasi) → flag + eskalasi ke Inspektur (lihat tabel Materialitas).
 
 ## Format KKE (Kertas Kerja Evaluasi)
 
@@ -115,9 +97,9 @@ Sheet "Cover", "Matriks Kriteria & Bobot", "Daftar Bukti", "Audit Trail", lalu:
 
 | Dimensi | Bobot | Skor | % | Predikat |
 
-**Sheet "Temuan KKSA"** (untuk hal yang membutuhkan rekomendasi sistem):
+**Sheet "Temuan"** (untuk hal yang membutuhkan rekomendasi sistem — TANPA unsur Sebab):
 
-| ID | Aspek | **Kondisi** | **Kriteria** | **Sebab** | **Akibat** | **Rekomendasi** | Bukti |
+| ID | Aspek | **Kondisi** | **Kriteria** | **Akibat** | **Rekomendasi** | Bukti |
 
 ## Format LHE
 
@@ -131,7 +113,7 @@ Ikuti `panduan-format-umum/PANDUAN.md`. Struktur isi:
   - E.1 Skor per Dimensi (tabel rekapitulasi)
   - E.2 Predikat & Posisi (jika ada level/tingkat)
   - E.3 Analisis Per Dimensi (narasi)
-- **F. Temuan & Catatan** — KKSA penuh per temuan
+- **F. Temuan & Catatan** — Kondisi/Kriteria/Akibat/Rekomendasi per temuan (TANPA Sebab)
 - **G. Rekomendasi** — kompilasi rekomendasi terpilih (sistem-level, bukan per temuan)
 - **H. Simpulan**
 - **I. Apresiasi**
@@ -154,8 +136,8 @@ Tidak menggunakan ambang rupiah seperti audit. Evaluasi memakai:
 | Level | Kriteria | Aksi |
 |-------|----------|------|
 | Catatan minor | Skor di bawah target tetapi bukan dimensi utama | Cantumkan di Bagian E.3 |
-| Temuan signifikan | Skor di bawah target di dimensi utama, **atau** indikasi sistem tidak berjalan | KKSA penuh + rekomendasi di Bagian G |
-| Temuan strategis | Mempengaruhi capaian misi/sasaran organisasi | KKSA penuh + eskalasi ke Inspektur |
+| Temuan signifikan | Skor di bawah target di dimensi utama, **atau** indikasi sistem tidak berjalan | Temuan tanpa Sebab + rekomendasi di Bagian G |
+| Temuan strategis | Mempengaruhi capaian misi/sasaran organisasi | Temuan tanpa Sebab + eskalasi ke Inspektur |
 
 ## Output JSON KKP
 
@@ -174,8 +156,8 @@ Tidak menggunakan ambang rupiah seperti audit. Evaluasi memakai:
   "rekap_dimensi": [
     {"dimensi": "...", "skor": 0, "persen": 0, "predikat": "..."}
   ],
-  "temuan_kksa": [
-    {"id": "T01", "kondisi": "...", "kriteria": "...", "sebab": "...", "akibat": "...", "rekomendasi": "..."}
+  "temuan": [
+    {"id": "T01", "kondisi": "...", "kriteria": "...", "akibat": "...", "rekomendasi": "..."}
   ],
   "predikat_total": "...",
   "skor_total": 0,
@@ -185,11 +167,11 @@ Tidak menggunakan ambang rupiah seperti audit. Evaluasi memakai:
 
 ## Referensi Wajib Dibaca
 - `references/01-panduan-ekstraksi-kriteria.md`
-- `audit-system-v4/skills/panduan-format-umum/PANDUAN.md` — terutama matriks elemen (KKSA penuh untuk evaluasi)
+- `panduan-format-umum/PANDUAN.md` — terutama matriks elemen (Kondisi/Kriteria/Akibat/Rekomendasi, tanpa Sebab, untuk evaluasi)
 - (jika tersedia) `references/02-rubrik-skoring.md`
 
 ## Catatan Khusus
 
-Jika kriteria evaluasi mensyaratkan **format dimensi khusus** (seperti PermenPAN-RB untuk EvaRB: Ketepatan/Ketercapaian/Kualitas/Kesesuaian) dan format itu **berbeda** dari KKSA standar, gunakan format yang dipersyaratkan kriteria dan dokumentasikan deviasi format di Gate 1 KP-E.
+Jika kriteria evaluasi mensyaratkan **format dimensi khusus** (seperti PermenPAN-RB untuk EvaRB: Ketepatan/Ketercapaian/Kualitas/Kesesuaian) dan format itu **berbeda** dari format temuan standar, gunakan format yang dipersyaratkan kriteria dan dokumentasikan deviasi format di Tahap E1 (KP).
 
 Untuk kasus yang sudah ada skill spesifik (SAKIP, SPIP, MR, RB), prioritaskan skill spesifik karena instrumen sudah disiapkan lengkap di references-nya masing-masing.

@@ -1,154 +1,60 @@
 ---
 name: evaluasi-spip
 format_laporan: kksa
-version: 1.5
+version: 1.6
 jenis: Penjaminan Kualitas Penilaian Maturitas Penyelenggaraan SPIP Terintegrasi
 dasar-hukum: Peraturan BPKP Nomor 5 Tahun 2021
 model: claude-sonnet-4-6
 output: Lembar Kerja Evaluasi (xlsx) — kolom Nilai PK terisi + Catatan + AoI
 template: references/templates/lke-spip-kementerian.xlsx
-alur-bertahap: tasks/evaluasi-spip-bertahap.md
-auto_execute: true
-auto_execute_command: python3 audit-system-v4/scripts/evaluasi-spip/run_batch.py --penugasan <PENUGASAN_DIR> --lke-json <LKE_SPIP_JSON_PATH>
+auto_execute: false
+changelog:
+  - v1.6 (2026-06-17): Refactor orkestrasi ke v7 — struktur seragam Tahap E0–E4; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); role+sasaran via sasaran-assignment.json; HITL=KT approve KKP→KT draft LHE. Tidak ada unsur Sebab pada keluarga evaluasi (penjaminan, bukan audit). Substansi SPIP (komponen/unsur/sub-unsur, LKE, kriteria gradasi, bobot, penalti) dipertahankan utuh.
 ---
 
 # Skill: Evaluasi SPIP — Penjaminan Kualitas (PK) oleh APIP
 
-> **Checklist gate-by-gate:** Lihat `audit-system-v4/checklists/evaluasi-spip.md` untuk daftar pemeriksaan tahap demi tahap.
+## Eksekusi di v7 (orkestrasi — seragam semua skill evaluasi)
 
-## ⚡ AUTO-EXECUTE LANGKAH 0 — WAJIB SEBELUM ANALISIS APAPUN
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
 
-**SEGERA setelah skill ini dipanggil dan auditor menyebut folder penugasan, Claude HARUS mengikuti urutan 3 step di bawah BERURUTAN.** Tidak boleh skip, tidak boleh langsung ke pipeline tanpa cek role.
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline E3:** *tidak ada tool v7 — criteria/LKE-driven manual* (LKE SPIP diisi/diolah manual; baca dokumen ter-ingest via `read_ingested_digest`).
+- **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE** (bukan stop tiap tahap).
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian per komponen/sub-unsur SPIP → `append_temuan` (TANPA Sebab) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
 
----
+## Tahap Evaluasi (E0–E4)
 
-### STEP A — Identifikasi Role (Task 00)
-
-Cek apakah `<PENUGASAN>/_ROLE.md` sudah ada DAN sesuai user yang sedang sesi.
-
-- **Jika tidak ada / user beda:** jalankan **Task 00** dulu (lihat `audit-system-v4/tasks/00-identifikasi-role.md`). Tanya 2 hal via `AskUserQuestion`:
-  1. Nama lengkap user
-  2. Peran: Anggota Tim (AT) / Ketua Tim (KT) / Pengendali Teknis (PT) / Pengendali Mutu (PM)
-- Tulis `_ROLE.md` dengan frontmatter `nama_lengkap`, `role`, `role_kode`, `session_start`.
-- **JANGAN LANJUT ke Step B sampai `_ROLE.md` ada dan valid.**
-
----
-
-### STEP B — Inisiasi Penugasan (Task 01) — Hanya kalau belum
-
-Cek apakah `<PENUGASAN>/_PKP/sasaran-assignment.json` sudah ada.
-
-- **Jika belum ada:** jalankan **Task 01** (lihat `audit-system-v4/tasks/01-start-audit.md`). Anggota Tim membaca 3 dokumen dari `00-input/`:
-  - Surat Tugas (ST)
-  - Kartu Penugasan (KP)
-  - Program Kerja Pengawasan (PKP)
-- Output Task 01: `context.md` + `_PKP/sasaran-assignment.json` (pembagian sasaran ke anggota tim).
-- **JANGAN LANJUT ke Step C sampai sasaran-assignment.json ada.**
-
----
-
-### STEP C — Jalankan Pipeline dengan Role Gating
-
-Baca `role_kode` dari `_ROLE.md`. Jalankan `run_batch.py` dengan flag `--role` yang sesuai:
-
-**Jika role = AT (Anggota Tim) — Pipeline KKP (Task 03):**
-
-```bash
-python3 audit-system-v4/scripts/evaluasi-spip/run_batch.py \
-    --penugasan "<FOLDER_PENUGASAN>" \
-    --role AT \
-    --lke-json "<PATH_KE_LKE_SPIP.json>" \
-    --no-render
-```
-
-Output: `_KKP/anomalies.json`, `_KKP/temuan.json`, `_KKP/KKP-{nama-anggota}.docx`. **TIDAK render LHP** — itu pekerjaan Ketua Tim.
-
-**Jika role = KT/PT/PM (Ketua Tim/Pengendali) — Pipeline LHP (Task 04):**
-
-```bash
-python3 audit-system-v4/scripts/evaluasi-spip/run_batch.py \
-    --penugasan "<FOLDER_PENUGASAN>" \
-    --role KT \
-    --lke-json "<PATH_KE_LKE_SPIP.json>" \
-    --context "<FOLDER_PENUGASAN>/context.md"
-```
-
-Pre-check: `temuan.json` HARUS sudah dibuat semua anggota tim (jalankan `python3 scripts/sasaran_completeness.py --penugasan <DIR>` untuk verify). Output: `_LHP/LHE-DRAFT.docx` (Konsep Laporan).
-
----
-
-### Output Final (sama untuk semua role)
-
-Setelah pipeline selesai, terlepas dari role:
-- `_KKP/_pipeline_meta.json` — timing, status, jumlah anomali per severity
-- `_BUKTI-AI/Bukti-Cek-AI-*.docx` — dokumen bukti penggunaan AI (slot #6 Integral)
-- `_SUBMIT/submit-latest.json` — paket 8-tahapan untuk Integral SIMWAS
-
-**Setelah pipeline selesai, BARU Claude masuk ke peran review/judgment**: filter false positive, validasi temuan substantif, polish narasi KKP/LHP.
-
----
-
-### Troubleshooting
-
-- **`_ROLE.md` ada tapi user beda:** Run Task 00 ulang dengan user baru. Override `_ROLE.md`.
-- **`sasaran-assignment.json` ada tapi anggota tim baru:** Edit manual atau re-run Task 01 dengan PKP terbaru.
-- **Anggota Tim mau jalankan render LHP:** Tolak — minta Ketua Tim. `role_check.py` akan auto-block via Task 04.
-- **Ketua Tim mau jalankan KKP:** Tolak — minta Anggota Tim yang assigned. Ketua Tim hanya reviu KKP, bukan generate.
-- **Pipeline error:** Cek script integrity `python3 -c "import ast; ast.parse(open('audit-system-v4/scripts/evaluasi-spip/run_batch.py').read())"`. Cek dependency: python3 ≥ 3.10, openpyxl, python-docx, pdfplumber.
-
----
-
-
-## ⚡ AUTO-EXECUTE LANGKAH 1 — ANALISIS SUBSTANTIF WAJIB POST-PIPELINE
-
-**Setelah LANGKAH 0 (pipeline rule-based) selesai, Claude WAJIB lanjut analisis substantif berikut SECARA OTOMATIS.** Tidak boleh menawarkan opsi ke auditor ("Mau saya bantu...?") — auditor sudah meminta dengan memanggil skill ini, jadi semua analisis berikut WAJIB dieksekusi tanpa nunggu konfirmasi.
-
-Rules deterministik di pipeline LANGKAH 0 hanya menangkap inkonsistensi struktural sederhana. Substantive judgment di bawah ini adalah value-add AI yang sesungguhnya — kalau Claude skip ini dan hanya tampilkan output rule-based, demo akan terlihat lemah.
-
-| # | Tugas Substantif | Detail |
-|---|------------------|--------|
-| 1. | **Verifikasi Nilai PK per subunsur (gate-based)** | Per gate (1-8): baca dokumen pendukung di folder per unsur. Tetapkan Nilai PK (1-5) berdasar kualitas bukti, BUKAN copy dari Nilai PM. Catat alasan singkat di kolom Catatan. |
-| 2. | **Hitung gap Nilai PM vs PK** | Untuk setiap subunsur: hitung selisih PM - PK. Gap > 1 level = unit over-claim maturitas, perlu catatan AoI khusus. |
-| 3. | **Identifikasi Area of Improvement per Unsur** | Update file penugasan/SPIP/AoI-SPIP-[tahun].md per gate selesai (incremental). AoI = quick wins + struktural improvements per unsur SPIP. |
-| 4. | **Veto penalti (Gate 7)** | Bila auditor mengkonfirmasi ada kasus korupsi/fraud yang memengaruhi maturitas: terapkan KK4_PENALTI sesuai Perka BPKP 5/2021. |
-| 5. | **Hitung nilai maturitas final tertimbang (Gate 8)** | Bobot: Penetapan Tujuan 40% + Struktur-Proses 30% + Pencapaian Tujuan 30%. Tetapkan tingkat maturitas (Level 1 Rintisan / 2 Berkembang / 3 Terdefinisi / 4 Terkelola dan Terukur / 5 Optimum). |
-| 6. | **Susun Ringkasan Eksekutif (Gate 8)** | Narasi eksekutif: Nilai maturitas, key strengths, AoI prioritas, Peta Jalan Peningkatan Maturitas. |
-
-**Setiap temuan substantif WAJIB di-append** ke `_KKP/temuan.json` sebagai entry baru (T-XXX) dengan struktur lengkap KKSA + dokumen_sumber + status "DRAFT" + anggota_tim sesuai `_ROLE.md`.
-
-**Setelah semua analisis substantif selesai, BARU lapor ke auditor** dengan ringkasan: total temuan rule-based + total temuan substantif + per-severity breakdown. Hindari kalimat "Mau saya lanjut ...?" — tampilkan langsung hasil.
-
----
-
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode dari KP jelas; LKE SPIP (template `references/templates/lke-spip-kementerian.xlsx`) + dokumen pendukung per unsur tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
+| **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan, ruang lingkup, komponen/unsur SPIP yang dinilai (Penetapan Tujuan, Struktur & Proses, Pencapaian Tujuan), metodologi PK atas PM — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: unsur/sub-unsur SPIP yang dinilai · langkah pengujian bukti · bukti yang dicari. | KT (UI Setup) |
+| **E3 — Pelaksanaan & KKP** | Per unsur/sub-unsur: tetapkan Nilai PK (skor maturitas 1–5 LKE, independen dari Nilai PM) berdasar bukti → catatan/AoI (TANPA Sebab) → `append_temuan` + `record_pkp_assessment`. Veto penalti via `KK4_PENALTI` bila ada kasus korupsi (lihat seksi Mekanisme Penalti). | AT (auto) |
+| **E4 — Laporan (LHE)** | Render LHE + Nota Dinas; simpulan tingkat maturitas SPIP (Level 1–5) & Area of Improvement prioritas. | KT |
 
 ## Posisi dalam Keluarga Skill Kinerja
 
 > Termasuk dalam keluarga skill kinerja (audit-kinerja, evaluasi-sakip, evaluasi-spip, reviu-rka-kl). Lihat `shared-kinerja-references/PANDUAN.md` untuk panduan perbandingan dasar hukum, terminologi, dan format output yang konsisten antar skill kinerja.
 
-## Alur Eksekusi: WAJIB Bertahap per Gate
+## Cakupan Penilaian per Komponen (peta blok LKE)
 
-Berbeda dari skill audit/reviu yang berjalan dalam satu iterasi, evaluasi SPIP **dipecah menjadi 9 gate** — setiap gate berhenti dan menunggu konfirmasi auditor (**LANJUT / KOREKSI / ULANG**) sebelum lanjut ke gate berikutnya. Alasan:
+Penilaian maturitas SPIP mencakup **25 subunsur dalam 5 unsur**, dikelompokkan ke tiga komponen berbobot. Karena evaluasi SPIP umumnya memerlukan analisis ratusan dokumen, AT mengerjakannya per blok komponen secara berurutan (bukan stop-and-wait per blok) — setiap blok memetakan ke sheet LKE tertentu:
 
-1. **Hemat token** — evaluasi SPIP rata-rata memerlukan analisis ratusan dokumen (600+ file). Memecah per unsur mencegah analysis paralysis dan memungkinkan model Haiku untuk triage + Sonnet untuk analisis mendalam.
-2. **Kualitas lebih terjaga** — setiap unsur punya bobot berbeda (Penetapan Tujuan 40%, Struktur-Proses 30%, Pencapaian Tujuan 30%); auditor dapat memberi feedback sebelum skor salah masuk ke agregator.
-3. **Resume-able** — jika sesi terputus di tengah, progress per gate tersimpan di `penilaian-progress.json` dan bisa dilanjut.
-4. **Auditor tetap memegang kendali** — setiap perubahan skor besar melewati review manusia, bukan batch sekali jalan.
-
-**Sembilan gate** dalam urutan:
 ```
-Gate 0 — Konfirmasi Awal (4 pertanyaan wajib)
-Gate 1 — Penetapan Tujuan (KKE 1.1, 1.2, 2.1, 2.2)
-Gate 2 — Struktur-Proses Unsur I (Lingkungan Pengendalian 1.1–1.8)
-Gate 3 — Struktur-Proses Unsur II (Penilaian Risiko 2.1–2.2)
-Gate 4A — Struktur-Proses Unsur III-A (Kegiatan Pengendalian 3.1–3.4)
-Gate 4B — Struktur-Proses Unsur III-B (Kegiatan Pengendalian 3.5–3.11)
-Gate 5 — Struktur-Proses Unsur IV & V (4.1, 4.2, 5.1, 5.2)
-Gate 6 — Pencapaian Tujuan SPIP (KK 5.1A, 5.1B, 5.2, 6, 7, 8)
-Gate 7 — Veto Penalti + Verifikasi KKLEAD_SPIP
-Gate 8 — AoI + Ringkasan Eksekutif
+Konfirmasi Awal             — 4 hal kritis (lihat seksi Konfirmasi Awal Penugasan)
+Penetapan Tujuan            — KKE 1.1, 1.2, 2.1, 2.2
+Struktur-Proses Unsur I     — Lingkungan Pengendalian 1.1–1.8
+Struktur-Proses Unsur II    — Penilaian Risiko 2.1–2.2
+Struktur-Proses Unsur III-A — Kegiatan Pengendalian 3.1–3.4
+Struktur-Proses Unsur III-B — Kegiatan Pengendalian 3.5–3.11
+Struktur-Proses Unsur IV & V — Informasi & Komunikasi 4.1, 4.2 · Pemantauan 5.1, 5.2
+Pencapaian Tujuan SPIP      — KK 5.1A, 5.1B, 5.2, 6, 7, 8
+Veto Penalti                — KK4_PENALTI + verifikasi KKLEAD_SPIP
+AoI + Ringkasan Eksekutif   — tingkat maturitas final & area perbaikan prioritas
 ```
 
-**Detail per gate:** lihat `tasks/evaluasi-spip-bertahap.md`. Skill ini memuat prinsip penilaian, mapping cell, dan aturan anti-rusak-rumus; task file memuat instruksi eksekusi per gate.
+Skill ini memuat prinsip penilaian, mapping cell, dan aturan anti-rusak-rumus; orkestrasi (urutan, role, HITL) mengikuti Tahap E0–E4 di atas dan `backend/app/prompts/anggota_tim.md`.
 
 ---
 
@@ -186,17 +92,13 @@ Gate 8 — AoI + Ringkasan Eksekutif
 
 ---
 
-## Hemat Token & Eksekusi (v4.0.4)
+## Hemat Token & Eksekusi
 
 Sebelum mulai analisis dokumen, ikuti panduan berikut agar eksekusi cepat tanpa mengorbankan kualitas:
 
-1. **Jangan re-read dokumen yang sudah di-digest**. Bila skill ini punya pipeline pre-digest (`scripts/[skill]/digest_*.py` + `cross_check.py`), pakai langsung field `parsed.*` di output JSON. Re-read dokumen asli hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan` atau cross-check false positive rule.
-2. **Render KKP & LHP via script terstandar** (v4.0.4):
-   - KKP DOCX: `python3 scripts/render_kkp.py --penugasan ... --all-anggota`
-   - LHP DOCX: `python3 scripts/render_lhp.py --penugasan ... --rekomendasi-file ...` (template skeleton di `templates/_skeleton-lhp/template-lhp-[skill].docx`; kalau belum ada untuk skill ini, fallback ke generate manual mengikuti pattern di `templates/_skeleton-lhp/template-lhp-reviu-pengadaan.docx`)
-3. **Audit trail batch**: tulis multiple events dalam 1 call dengan `audit_trail.py log-batch --events '[...]'`. Hindari chain `log-event` x N.
-4. **Preflight QC SAIPI** di akhir Task 01: `qc_saipi.py --preflight-context` cek context.md sebelum analisis Task 03 mulai (mencegah KRITIS context.md baru ketahuan saat KKP sudah disusun).
-5. **Auto-gen QA placeholder**: `init_qa_artifacts.py` di akhir Task 01 menulis `_QA-SAIPI/deklarasi-independensi.md`, `jawaban-needs-review.md`, `justifikasi.md` — mencegah iterasi NEEDS_REVIEW di Task 03/04.
+1. **Jangan re-read dokumen yang sudah di-ingest**. Pakai `read_ingested_digest` untuk membaca ringkasan dokumen pendukung; re-read dokumen asli hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan`.
+2. **Render KKP & LHE via tool v7**: KKP DOCX dengan `render_kkp_docx`, lalu QC dengan `run_qc_kkp`. LHE didraf oleh Ketua Tim pada Tahap E4.
+3. **Catat penilaian per sub-unsur** lewat `record_pkp_assessment` dan temuan/AoI lewat `append_temuan` (TANPA Sebab) — hindari menulis ulang file JSON secara manual.
 
 
 ## Peran Claude sebagai APIP Penjamin Kualitas
@@ -205,63 +107,38 @@ Kamu adalah APIP yang bertugas mengisi kolom **Nilai PK** pada lembar kerja eval
 
 ### Tujuh Tugas Utama
 
-1. **Konfirmasi awal ke auditor** — SEBELUM menilai, tanyakan 4 hal kritis ke auditor (lihat seksi "Konfirmasi Awal Penugasan" di bawah)
+1. **Pastikan konfirmasi awal** — SEBELUM menilai, pastikan 4 hal kritis dari KP/`context.md` (lihat seksi "Konfirmasi Awal Penugasan" di bawah)
 2. **Baca lembar kerja evaluasi** — identifikasi subunsur mana yang perlu dinilai, baca Nilai PM yang sudah ada sebagai referensi (bukan patokan)
 3. **Analisis dokumen per unsur** — baca dokumen yang disediakan di folder (SOP, SK, laporan, notulen, data kinerja, dll.) untuk memahami kondisi nyata pengendalian
 4. **Isi kolom Nilai PK** — tetapkan skor PK (1–5) untuk setiap subunsur/parameter berdasarkan bukti dari dokumen; sertakan catatan singkat alasan skor
-5. **Identifikasi penalti** — periksa apakah ada kasus korupsi yang memengaruhi skor (hanya jika auditor mengkonfirmasi ada); terapkan via `KK4_PENALTI`
-6. **Generate AoI per gate (WAJIB)** — setiap gate yang selesai, langsung update file `penugasan/SPIP/AoI-SPIP-[tahun].md` dengan AoI baru. File AoI terakumulasi lintas gate dan menjadi acuan LHE akhir.
-7. **Hitung nilai akhir** — hitung nilai tertimbang di Gate 7 setelah semua gate selesai, tentukan tingkat maturitas, susun ringkasan eksekutif di Gate 8.
+5. **Identifikasi penalti** — periksa apakah ada kasus korupsi yang memengaruhi skor (hanya jika dikonfirmasi pada KP); terapkan via `KK4_PENALTI`
+6. **Susun AoI (WAJIB)** — untuk setiap subunsur dengan Nilai PK ≤ 3 atau direvisi turun dari PM, rumuskan Area of Improvement; AoI menjadi acuan LHE akhir.
+7. **Hitung nilai akhir** — hitung nilai tertimbang setelah seluruh komponen dinilai, tentukan tingkat maturitas, susun ringkasan eksekutif.
 
 ---
 
-## Konfirmasi Awal Penugasan (WAJIB sebelum menilai)
+## Konfirmasi Awal Penugasan (4 hal yang dipastikan dari KP)
 
-Sebelum turn pertama pengisian LKE, Claude **HARUS** mengajukan 4 pertanyaan berikut ke auditor dan menerima jawaban eksplisit. Tanpa konfirmasi, pengisian LKE tidak boleh dimulai.
+Sebelum mengisi LKE, AT **memastikan** 4 hal kritis berikut dari Kartu Penugasan / `sasaran-assignment.json` / `context.md`. Bila salah satu belum jelas dari dokumen, pakai *default* di bawah dan catat sebagai keterbatasan — bukan menghentikan pengisian untuk bertanya interaktif.
 
-### Pertanyaan Wajib
+### Empat Hal yang Dipastikan
 
 1. **Status Nilai PM**
-   > "Apakah Nilai PM pada LKE sudah diisi penuh oleh manajemen? Jika sebagian kosong, subunsur mana yang perlu di-skip?"
-   - Default: Nilai PM sudah diisi manajemen, Claude membacanya sebagai referensi.
-   - Jika kosong: Claude hanya mengisi kolom PK, kolom PM dibiarkan kosong dengan catatan.
+   - Default: Nilai PM sudah diisi manajemen, dibaca sebagai referensi (bukan patokan).
+   - Jika sebagian kosong: hanya kolom PK yang diisi, kolom PM dibiarkan kosong dengan catatan.
 
 2. **Cakupan Satker**
-   > "Apakah keempat satker (Ditjen Infradigi, Ditjen Ekodigi, Ditjen KPM, Badan Aksesibilitas) wajib dinilai semuanya?"
-   - Default (Inspektorat II Komdigi): **Ya, semua 4 satker wajib dinilai.**
-   - **Aturan bukti parsial:** jika bukti dukung untuk satker tertentu tidak lengkap, satker tersebut langsung dinilai **tidak lengkap** — skor pada kolom satker bersangkutan **diturunkan** (bukan disamakan dengan satker lain). Catat di kolom W: "Satker X bukti parsial — skor diturunkan".
+   - Default (Inspektorat II Komdigi): **semua 4 satker** (Ditjen Infradigi, Ditjen Ekodigi, Ditjen KPM, Badan Aksesibilitas) wajib dinilai.
+   - **Aturan bukti parsial:** jika bukti dukung untuk satker tertentu tidak lengkap, satker tersebut dinilai **tidak lengkap** — skor pada kolom satker bersangkutan **diturunkan** (bukan disamakan dengan satker lain). Catat di kolom W: "Satker X bukti parsial — skor diturunkan".
 
 3. **Subunsur tanpa bukti dukung**
-   > "Untuk subunsur yang folder bukti dukungnya kosong/tidak tersedia, apakah:
-   > (a) Ikut Nilai PM dengan catatan 'perlu verifikasi'?
-   > (b) Tunda dan minta auditor melengkapi?
-   > (c) Beri skor 1 karena tidak ada bukti?"
-   - Default: (a) — ikut Nilai PM dengan catatan "Bukti dukung tidak tersedia di folder — mengikuti Nilai PM, perlu verifikasi langsung ke satker/unit."
+   - Default: ikut Nilai PM dengan catatan "Bukti dukung tidak tersedia di folder — mengikuti Nilai PM, perlu verifikasi langsung ke satker/unit."
 
 4. **Kasus Korupsi untuk Penalti**
-   > "Apakah dalam periode penilaian (Jul tahun n-1 s.d. Jun tahun n) terdapat kasus korupsi pada K/L yang telah memasuki tahap penuntutan/putusan atau OTT?"
    - Default: **Tidak ada** → `KK4_PENALTI` kolom C seluruhnya "TIDAK".
-   - Jika ada: minta detail kasus (nama, jenis institusional/individual, subunsur terkait) lalu isi `KK4_PENALTI!C[baris]="YA"` + `D[baris]=skor penalti`.
+   - Jika ada (kasus pada K/L yang memasuki tahap penuntutan/putusan atau OTT dalam periode Jul tahun n-1 s.d. Jun tahun n): catat detail kasus (nama, jenis institusional/individual, subunsur terkait) lalu isi `KK4_PENALTI!C[baris]="YA"` + `D[baris]=skor penalti`.
 
-### Pencatatan Jawaban
-
-Simpan jawaban auditor ke `penilaian-progress.json` di folder penugasan:
-
-```json
-{
-  "konfirmasi_auditor": {
-    "tanggal": "YYYY-MM-DD",
-    "nilai_pm_terisi": true,
-    "satker_wajib": ["Infradigi","Ekodigi","KPM","Badan Aksesibilitas"],
-    "aturan_bukti_parsial": "turunkan skor satker bersangkutan",
-    "subunsur_tanpa_bukti": "ikut PM dengan catatan perlu verifikasi",
-    "ada_kasus_korupsi": false,
-    "detail_kasus": null
-  }
-}
-```
-
-Konfirmasi ini dicatat di kolom W KK3.1 pada baris pertama yang relevan sebagai jejak audit trail.
+Hasil keempat hal di atas dicatat di `context.md` dan/atau kolom W KK3.1 pada baris pertama yang relevan sebagai jejak audit trail.
 
 ### Prinsip Penetapan Nilai PK
 

@@ -1,21 +1,45 @@
 ---
 name: pemantauan-tindak-lanjut
 format_laporan: kksa
-version: 0.1
+version: 0.2
 jenis: Pemantauan Tindak Lanjut Hasil Pengawasan (TLHP)
+fungsi: Pemantauan — Monitoring (tanpa keyakinan/assurance)
 dasar-hukum: PP 60/2008 Pasal 50, Permenpan 5/2008
 model: claude-sonnet-4-6
 output: Laporan Hasil Pemantauan TLHP + Update Status
 status: skeleton
+changelog:
+  - v0.2 (2026-06-17): Refactor orkestrasi ke v7 — Tahap P0–P4 seragam; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); role+sasaran via sasaran-assignment.json; HITL=KT approve KKP→KT draft Laporan Pemantauan. Substansi status TL dipertahankan.
 ---
-
-> **Checklist gate-by-gate:** Lihat `audit-system-v4/checklists/pemantauan-tindak-lanjut.md` untuk daftar pemeriksaan tahap demi tahap.
-
 
 # Pemantauan Tindak Lanjut Hasil Pengawasan (TLHP)
 
-> **Model**: `claude-sonnet-4-6` untuk aging analysis & narasi, `claude-haiku-4-5` untuk klasifikasi status.
-> **Output**: Laporan Pemantauan TLHP (`templates/Laporan Hasil Pemantauan TLHP.docx`) + matrix aging Excel.
+## Identitas
+- **Nama Skill:** pemantauan-tindak-lanjut
+- **Versi:** 0.2 (19 April 2026; refactor v7 17 Juni 2026)
+- **Jenis Pengawasan:** Pemantauan Tindak Lanjut Hasil Pengawasan (TLHP)
+- **Fungsi APIP:** Pemantauan/monitoring — **tidak memberi keyakinan (assurance)**, hanya melaporkan status/perkembangan tindak lanjut
+- **Format Output:** Laporan Hasil Pemantauan TLHP + matrix aging Excel
+- **Model AI:** Claude Sonnet 4.6
+
+## Eksekusi di v7 (orkestrasi — seragam semua skill pemantauan)
+
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
+
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline P3:** *tidak ada tool v7 — manual* (baca dokumen/rekomendasi ter-ingest via `read_ingested_digest`).
+- **Mode:** AT **auto-execute** P0→P3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft Laporan Pemantauan**.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → cek status TL per rekomendasi → `append_temuan` (status TL; Sebab opsional) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+
+## Tahap Pemantauan (P0–P4)
+
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **P0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode dari KP jelas; daftar rekomendasi/temuan yang dipantau + bukti TL tersedia; susun `context.md` bila placeholder. | AT (auto) |
+| **P1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan pemantauan, ruang lingkup (rekomendasi/periode), metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **P2 — Program Kerja Pengawasan (PKP)** | Per sasaran: daftar rekomendasi yang dipantau · bukti TL yang diminta · kriteria status TL. | KT (UI Setup) |
+| **P3 — Pelaksanaan** | Per rekomendasi: nilai status TL (Selesai / Dalam Proses / Belum Ditindaklanjuti / Tidak Dapat Ditindaklanjuti) berdasarkan bukti + hitung umur (aging) → `append_temuan` (status; Sebab opsional) → `record_pkp_assessment`. | AT (auto) |
+| **P4 — Laporan Pemantauan** | Render Laporan Hasil Pemantauan TLHP + Nota Dinas; rekap status TL, aging per PIC & daftar rekomendasi kritis yang masih terbuka. | KT |
 
 ## Tujuan
 
@@ -28,22 +52,9 @@ Memastikan seluruh rekomendasi pengawasan eksternal (BPK) dan internal (BPKP, It
 - **TLHP APIP**: rekomendasi LHP Itjen (audit + reviu + evaluasi)
 - **Peer Review**: rekomendasi peer review APIP (jika ada)
 
-## Hemat Token & Eksekusi (v4.0.4)
-
-Sebelum mulai analisis dokumen, ikuti panduan berikut agar eksekusi cepat tanpa mengorbankan kualitas:
-
-1. **Jangan re-read dokumen yang sudah di-digest**. Bila skill ini punya pipeline pre-digest (`scripts/[skill]/digest_*.py` + `cross_check.py`), pakai langsung field `parsed.*` di output JSON. Re-read dokumen asli hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan` atau cross-check false positive rule.
-2. **Render KKP & LHP via script terstandar** (v4.0.4):
-   - KKP DOCX: `python3 scripts/render_kkp.py --penugasan ... --all-anggota`
-   - LHP DOCX: `python3 scripts/render_lhp.py --penugasan ... --rekomendasi-file ...` (template skeleton di `templates/_skeleton-lhp/template-lhp-[skill].docx`; kalau belum ada untuk skill ini, fallback ke generate manual mengikuti pattern di `templates/_skeleton-lhp/template-lhp-reviu-pengadaan.docx`)
-3. **Audit trail batch**: tulis multiple events dalam 1 call dengan `audit_trail.py log-batch --events '[...]'`. Hindari chain `log-event` x N.
-4. **Preflight QC SAIPI** di akhir Task 01: `qc_saipi.py --preflight-context` cek context.md sebelum analisis Task 03 mulai (mencegah KRITIS context.md baru ketahuan saat KKP sudah disusun).
-5. **Auto-gen QA placeholder**: `init_qa_artifacts.py` di akhir Task 01 menulis `_QA-SAIPI/deklarasi-independensi.md`, `jawaban-needs-review.md`, `justifikasi.md` — mencegah iterasi NEEDS_REVIEW di Task 03/04.
-
-
 ## Paradigma
 
-**Monitoring** — bukan assurance. Auditor mencatat status *apa adanya* berdasarkan bukti tindak lanjut yang diserahkan unit kerja.
+**Monitoring** — bukan assurance. Auditor mencatat status *apa adanya* berdasarkan bukti tindak lanjut yang diserahkan unit kerja. **Analisis Sebab opsional** (boleh dicatat bila relevan untuk menjelaskan keterlambatan TL, tidak wajib); pemantauan tidak menghitung kerugian.
 
 ## Kolom KKP / Tabel Pemantauan
 
@@ -99,7 +110,7 @@ Rekomendasi dengan umur >365 hari + status ≠ Selesai otomatis naik ke **Daftar
 
 ### Langkah 5 — Susun Laporan
 
-Template: `templates/Laporan Hasil Pemantauan TLHP.docx`
+Laporan Hasil Pemantauan TLHP di-render KT pada tahap **P4** (ikuti `panduan-format-umum/PANDUAN.md`).
 
 Struktur:
 1. Ringkasan Eksekutif (1 halaman — untuk Menteri/Sekjen)
@@ -112,7 +123,7 @@ Struktur:
 ## Integrasi dengan Skill Lain
 
 - **evaluasi-spip**: skor Komponen IV (Informasi-Komunikasi) dan V (Pemantauan) bisa memakai data TLHP sebagai bukti dukung
-- **evaluasi-sakip**: Komponen Evaluasi Akuntabilitas Internal (Gate 4) merujuk persentase penyelesaian TLHP
+- **evaluasi-sakip**: Komponen Evaluasi Akuntabilitas Internal merujuk persentase penyelesaian TLHP
 - **audit-kinerja**: temuan berulang dari TLHP bisa jadi input Hipotesis Audit Awal di Memo SP
 
 ## Kerangka References yang Dibutuhkan

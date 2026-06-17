@@ -1,11 +1,13 @@
 ---
 name: pemantauan-umum
 format_laporan: kksa
-version: 1.0
+version: 1.1
 jenis: Pemantauan (umum — kriteria fleksibel)
 fungsi: Assurance — Status & Progres
 output: KKPemantauan (.xlsx) + LHPemantauan (.docx) + JSON KKP
 model: claude-sonnet-4-6
+changelog:
+  - v1.1 (2026-06-17): Refactor orkestrasi ke v7 — Tahap P0–P4 seragam; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); role+sasaran via sasaran-assignment.json; HITL=KT approve KKP→KT draft Laporan Pemantauan. Substansi domain dipertahankan.
 ---
 
 # Skill: Pemantauan Umum (Generic, Criteria-Driven)
@@ -64,49 +66,24 @@ Dalam pemantauan, "kriteria" sering berupa:
 - Instruksi/perintah dengan tenggat waktu
 - Rekomendasi LHP sebelumnya yang dipantau tindak lanjutnya
 
-## Workflow Gate-Based
+## Eksekusi di v7 (orkestrasi — seragam semua skill pemantauan)
 
-### Gate 0 — Validasi Input
-- Pastikan ada **acuan target/rencana** (kriteria pemantauan)
-- Pastikan ada **data realisasi terkini**
-- Tetapkan **periode pelaporan** (cut-off date)
-- **STOP**: konfirmasi auditor
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
 
-### Gate 1 — Kerangka Pemantauan (KP-M)
-File: `_KKP/01-KP-M.md`
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline P3:** *tidak ada tool v7 — manual* (digest generik via `read_ingested_digest`).
+- **Mode:** AT **auto-execute** P0→P3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft Laporan Pemantauan**.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → pantau status per objek → `append_temuan` (status; Sebab opsional) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
 
-Berisi: latar belakang, tujuan, ruang lingkup (objek + periode), indikator status (cara menilai status), metodologi (sumber data, frekuensi), tim.
+## Tahap Pemantauan (P0–P4)
 
-**STOP**: konfirmasi.
-
-### Gate 2 — Matriks Pemantauan (PKP-M)
-File: `_KKP/02-PKP-M.xlsx`
-
-Setiap baris = 1 item yang dipantau:
-
-| ID | Item/Kegiatan | Target | Tenggat | Penanggung Jawab | Sumber Data Realisasi | Indikator Status |
-
-**STOP**: konfirmasi.
-
-### Gate 3 — Pelaksanaan Pemantauan
-Untuk setiap item:
-1. Bandingkan realisasi vs target
-2. Hitung % capaian (jika kuantitatif)
-3. Tetapkan **status warna**:
-   - 🟢 **HIJAU** — sesuai/melampaui target, on-track
-   - 🟡 **KUNING** — ada deviasi minor, masih dapat diatasi
-   - 🔴 **MERAH** — deviasi material, butuh intervensi segera
-4. Catat penyebab deviasi (jika ada — singkat, bukan analisis akar masalah audit)
-5. Susun rekomendasi percepatan
-
-**STOP & TANYA AUDITOR** untuk setiap item berstatus MERAH sebelum laporan final.
-
-### Gate 4 — Laporan Hasil Pemantauan
-- `_LHP/Nota-Dinas.docx`
-- `_LHP/LHPemantauan-[periode].docx`
-- (Opsional) Lampiran dashboard `.xlsx`
-
-**STOP**: review final.
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **P0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; acuan target/rencana (kriteria pemantauan) + data realisasi terkini tersedia; tetapkan periode pelaporan (cut-off date); susun `context.md` bila placeholder. | AT (auto) |
+| **P1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan pemantauan, ruang lingkup (objek + periode), indikator status, metodologi (sumber data, frekuensi) — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **P2 — Program Kerja Pengawasan (PKP)** | Per sasaran: item/kegiatan yang dipantau · target & tenggat · penanggung jawab · sumber data realisasi · indikator/kriteria status. | KT (UI Setup) |
+| **P3 — Pelaksanaan** | Per item: bandingkan realisasi vs target, hitung % capaian, tetapkan status warna (🟢/🟡/🔴) → `append_temuan` (status/catatan + rekomendasi percepatan; Sebab/penyebab deviasi opsional, singkat) → `record_pkp_assessment`. Item 🔴 ditandai agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
+| **P4 — Laporan Pemantauan** | Render Laporan Pemantauan + Nota Dinas; rekap status agregat & isu (🔴/🟡) yang perlu tindak lanjut/intervensi. | KT |
 
 ## Format KKPemantauan
 
@@ -164,7 +141,7 @@ Jika selama pemantauan ditemukan indikasi penyimpangan substantif yang melebihi 
 | 🟡 KUNING | % capaian 70–95%, atau slip jadwal ≤ 10% periode |
 | 🔴 MERAH | % capaian < 70%, atau slip jadwal > 10%, atau ada blocker yang belum tertangani |
 
-Auditor dapat menyesuaikan threshold di Gate 1 dan mendokumentasikannya di KP-M.
+Auditor dapat menyesuaikan threshold di tahap P1 (KP) dan mendokumentasikannya di Kerangka Penugasan.
 
 ## Output JSON KKP
 
@@ -196,5 +173,5 @@ Auditor dapat menyesuaikan threshold di Gate 1 dan mendokumentasikannya di KP-M.
 
 ## Referensi Wajib Dibaca
 - `references/01-panduan-ekstraksi-kriteria.md`
-- `audit-system-v4/skills/panduan-format-umum/PANDUAN.md`
+- `panduan-format-umum/PANDUAN.md`
 - (jika tersedia) `references/02-aturan-status-warna.md`

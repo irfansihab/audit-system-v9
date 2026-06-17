@@ -1,24 +1,42 @@
 ---
 name: evaluasi-manajemen-risiko
 format_laporan: kksa
-version: 2.0
+version: 2.1
 jenis: Evaluasi Manajemen Risiko
 dasar-hukum: Pedoman Menkomdigi 6/2017, ISO 31000:2018
 model: claude-sonnet-4-6
 output: Nota Dinas + LHE dengan catatan naratif bernomor + Rekomendasi terpisah
+changelog:
+  - v2.1 (2026-06-17): Refactor orkestrasi ke v7 — Tahap E0–E4 seragam; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); HAPUS unsur Sebab (evaluasi tak menggali sebab); role+sasaran via sasaran-assignment.json; HITL=KT approve KKP→KT draft LHE. Substansi maturitas MR dipertahankan.
 ---
 
 # Skill: Evaluasi Manajemen Risiko
-
-> **Checklist gate-by-gate:** Lihat `audit-system-v4/checklists/evaluasi-manajemen-risiko.md` untuk daftar pemeriksaan tahap demi tahap.
-
-> **Model**: `claude-sonnet-4-6`
 
 ## Identitas
 - **Jenis Pengawasan:** Evaluasi Efektivitas Manajemen Risiko
 - **Paradigma:** Evaluasi (Keyakinan Terbatas)
 - **Kode Nomor Surat:** PW.04.05
-- **Versi:** 2.0
+- **Versi:** 2.1
+- **Model AI:** Claude Sonnet 4.6 (via Cowork)
+
+## Eksekusi di v7 (orkestrasi — seragam semua skill evaluasi)
+
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
+
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline E3:** *tidak ada tool v7 — criteria-driven manual* (baca dokumen ter-ingest via `read_ingested_digest`).
+- **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE**.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian maturitas per kriteria → `append_temuan` (TANPA Sebab) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+
+## Tahap Evaluasi (E0–E4)
+
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode dari KP jelas; kriteria (Pedoman Menkomdigi 6/2017 + dokumen MR objek) tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
+| **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan, ruang lingkup, kriteria/dimensi maturitas MR yang dinilai (struktur MR, konteks, profil risiko, penanganan, pemantauan, TKPMR), metodologi uji petik — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: dimensi/parameter MR yang dinilai · langkah penelaahan · bukti (formulir/dokumen MR). | KT (UI Setup) |
+| **E3 — Pelaksanaan & KKP** | Per dimensi/parameter: nilai maturitas/kesesuaian terhadap kriteria → catatan KKA (Kondisi/Kriteria/Akibat — **TANPA Sebab**) → `append_temuan` + `record_pkp_assessment`. | AT (auto) |
+| **E4 — Laporan (LHE)** | Render LHE + Nota Dinas; simpulan tingkat maturitas MR (keyakinan terbatas) & rekomendasi perbaikan (dikompilasi terpisah). | KT |
 
 ---
 
@@ -47,7 +65,7 @@ File ini memuat seluruh substansi kriteria evaluasi yang bersumber dari **Pedoma
 ## ⚠️ Struktur Laporan Khusus
 
 Laporan evaluasi manajemen risiko memiliki struktur yang **berbeda** dari audit atau reviu:
-- Seksi **F. Hasil Evaluasi** = berisi **catatan naratif bernomor** menggunakan format KKSA (Kondisi–Kriteria–Sebab–Akibat)
+- Seksi **F. Hasil Evaluasi** = berisi **catatan naratif bernomor** menggunakan format KKA (Kondisi–Kriteria–Akibat)
 - Seksi **G. Rekomendasi** = dikompilasi TERPISAH dari F (bukan bagian dari setiap catatan)
 - Seksi **H. Apresiasi** = penutup
 
@@ -55,23 +73,11 @@ Setiap catatan di F berisi:
 1. **Judul catatan** — kalimat singkat yang menggambarkan masalah
 2. **Kondisi** — fakta dari dokumen: apa yang ada, apa yang belum ada, apa yang tidak sesuai; sertakan nama dokumen + detail teknis
 3. **Kriteria** — ketentuan yang menjadi acuan dari Pedoman Menkomdigi 6/2017 (sebutkan Bab/Bagian); ISO 31000:2018 sebagai pendukung jika perlu
-4. **Sebab** — analisis mengapa kondisi ini terjadi
-5. **Akibat** — dampak konkret pada tata kelola dan pencapaian tujuan organisasi
+4. **Akibat** — dampak konkret pada tata kelola dan pencapaian tujuan organisasi
+
+> **Catatan paradigma evaluasi:** evaluasi memberikan **keyakinan terbatas** dan **tidak menggali Sebab/akar masalah** (itu ranah audit). Catatan cukup memuat Kondisi–Kriteria–Akibat, lalu rekomendasi perbaikan dikompilasi terpisah di Seksi G.
 
 ---
-
-## Hemat Token & Eksekusi (v4.0.4)
-
-Sebelum mulai analisis dokumen, ikuti panduan berikut agar eksekusi cepat tanpa mengorbankan kualitas:
-
-1. **Jangan re-read dokumen yang sudah di-digest**. Bila skill ini punya pipeline pre-digest (`scripts/[skill]/digest_*.py` + `cross_check.py`), pakai langsung field `parsed.*` di output JSON. Re-read dokumen asli hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan` atau cross-check false positive rule.
-2. **Render KKP & LHP via script terstandar** (v4.0.4):
-   - KKP DOCX: `python3 scripts/render_kkp.py --penugasan ... --all-anggota`
-   - LHP DOCX: `python3 scripts/render_lhp.py --penugasan ... --rekomendasi-file ...` (template skeleton di `templates/_skeleton-lhp/template-lhp-[skill].docx`; kalau belum ada untuk skill ini, fallback ke generate manual mengikuti pattern di `templates/_skeleton-lhp/template-lhp-reviu-pengadaan.docx`)
-3. **Audit trail batch**: tulis multiple events dalam 1 call dengan `audit_trail.py log-batch --events '[...]'`. Hindari chain `log-event` x N.
-4. **Preflight QC SAIPI** di akhir Task 01: `qc_saipi.py --preflight-context` cek context.md sebelum analisis Task 03 mulai (mencegah KRITIS context.md baru ketahuan saat KKP sudah disusun).
-5. **Auto-gen QA placeholder**: `init_qa_artifacts.py` di akhir Task 01 menulis `_QA-SAIPI/deklarasi-independensi.md`, `jawaban-needs-review.md`, `justifikasi.md` — mencegah iterasi NEEDS_REVIEW di Task 03/04.
-
 
 ## Peran Claude
 
@@ -132,7 +138,7 @@ E. Gambaran Umum
    sistem informasi yang digunakan, kondisi umum implementasi]
 
 F. Hasil Evaluasi
-   [Setiap catatan menggunakan format KKSA — lihat panduan di bawah]
+   [Setiap catatan menggunakan format KKA — lihat panduan di bawah]
 
    [Nomor]. [Judul Catatan]
 
@@ -145,9 +151,6 @@ F. Hasil Evaluasi
    Kriteria:
    [Ketentuan dari Pedoman Menkomdigi 6/2017 Bab/Bagian [X]: [isi normatif]
    ISO 31000:2018 Klausul [X]: [kutipan singkat] — jika pedoman internal belum mengatur]
-
-   Sebab:
-   [Analisis akar masalah — mengapa kondisi ini bisa terjadi]
 
    Akibat:
    [Dampak konkret jika kondisi tidak diperbaiki:
@@ -168,7 +171,7 @@ H. Apresiasi
 
 ---
 
-## Panduan Konten per Area — Contoh KKSA
+## Panduan Konten per Area — Contoh KKA
 
 ### Contoh 1: Kelengkapan Formulir Konteks
 ```
@@ -186,11 +189,6 @@ Bab III.A.2 Pedoman Menkomdigi Nomor 6 Tahun 2017 menetapkan bahwa
 penetapan konteks MR meliputi 7 elemen: sasaran organisasi, struktur UPR,
 identifikasi stakeholder, identifikasi peraturan terkait, kategori risiko,
 kriteria risiko, serta matriks analisis risiko dan selera risiko.
-
-Sebab:
-Formulir Konteks diisi tanpa mengacu sepenuhnya pada format Lampiran 2
-Pedoman MR Kementerian. Belum ada mekanisme pengecekan kelengkapan
-sebelum Piagam MR ditandatangani.
 
 Akibat:
 Penetapan konteks yang tidak lengkap berdampak pada kualitas proses
@@ -217,11 +215,6 @@ identifikasi risiko dilakukan melalui tahapan yang terpisah antara
 mengidentifikasi kejadian risiko (risk event) dan mencari penyebab
 (akar masalah), yang dapat menggunakan metode fishbone diagram.
 
-Sebab:
-Risk owner belum sepenuhnya memahami perbedaan konseptual antara
-peristiwa risiko dan penyebab risiko. Belum tersedia panduan praktis
-atau contoh konkret yang dibagikan kepada seluruh UPR.
-
 Akibat:
 Kesalahan identifikasi berdampak pada tidak tepatnya opsi penanganan
 yang dipilih. Rencana aksi mitigasi yang dibuat berdasarkan identifikasi
@@ -245,9 +238,6 @@ Bab III.A.5.b Pedoman Menkomdigi Nomor 6 Tahun 2017 menetapkan bahwa
 pemantauan berkala dilaksanakan secara triwulanan yaitu pada bulan April,
 Juli, Oktober, dan Januari pada tahun berikutnya, dengan penanggung jawab
 Koordinator Risiko di tingkatan yang bersangkutan.
-
-Sebab:
-[Uraikan sebab berdasarkan dokumen/keterangan yang tersedia]
 
 Akibat:
 Ketidaklengkapan pemantauan menyebabkan tren Risiko dan efektivitas
@@ -318,7 +308,7 @@ E. Gambaran Umum
    organisasi MR, sistem informasi yang digunakan, kondisi umum implementasi]
 
 F. Hasil Evaluasi
-   [Setiap catatan menggunakan format KKSA lengkap:]
+   [Setiap catatan menggunakan format KKA lengkap:]
 
    [Nomor]. [Judul Catatan — kalimat singkat yang menggambarkan masalah]
 
@@ -333,12 +323,6 @@ F. Hasil Evaluasi
    - ISO 31000:2018 Klausul [X]: [kutipan/parafrase singkat]
    - Pedoman Menkominfo [nomor/tahun] Pasal [X]: [isi normatif]
    - Three Lines Model (IIA, 2020): [prinsip yang relevan]]
-
-   Sebab:
-   [Analisis akar masalah — mengapa kondisi ini bisa terjadi. Contoh:
-   - Pedoman belum diperbarui karena belum ada prioritas/anggaran revisi
-   - Belum ada penetapan PIC karena struktur MR belum terdefinisi
-   - Keterbatasan kapasitas sistem yang ada saat ini]
 
    Akibat:
    [Dampak konkret jika kondisi tidak diperbaiki:
@@ -361,7 +345,7 @@ H. Apresiasi
 
 ## Panduan Konten per Area Evaluasi
 
-### Contoh KKSA: Kerangka Kerja MR (Pedoman tidak di-update)
+### Contoh KKA: Kerangka Kerja MR (Pedoman tidak di-update)
 ```
 Judul: "Belum Dilakukannya Pengkinian Pedoman Manajemen Risiko (MR)"
 
@@ -382,11 +366,6 @@ menetapkan kebijakan manajemen risiko yang memuat komitmen, peran, dan tanggung
 jawab yang jelas. Klausul 5.4.3 mensyaratkan penetapan selera risiko sebagai
 dasar pengambilan keputusan.
 
-Sebab:
-Pedoman belum diperbarui karena perubahan nomenklatur kementerian dan
-reorganisasi struktural mengalihkan fokus sumber daya. Selain itu, belum
-terdapat mekanisme review berkala yang terjadwal atas relevansi pedoman.
-
 Akibat:
 Ketidakpastian dalam batas pengambilan risiko organisasi karena tidak adanya
 acuan selera risiko yang jelas. Peran-peran strategis yang tidak terdefinisi
@@ -394,7 +373,7 @@ berdampak pada lemahnya akuntabilitas dan terjadinya tumpang tindih tanggung
 jawab dalam pelaksanaan manajemen risiko.
 ```
 
-### Contoh KKSA: Pembagian Peran / Three Lines Model
+### Contoh KKA: Pembagian Peran / Three Lines Model
 ```
 Judul: "Belum Optimalnya Pembagian Peran dan Struktur Manajemen Risiko"
 
@@ -413,11 +392,6 @@ dan memfasilitasi MR (lini kedua), dan fungsi yang memberikan assurance
 independen (lini ketiga). ISO 31000:2018 Klausul 5.4 mensyaratkan penetapan
 peran dan tanggung jawab yang eksplisit.
 
-Sebab:
-Pedoman MR yang berlaku belum memuat definisi dan pembagian peran antar lini
-secara terperinci. Belum ada SK/regulasi internal yang menetapkan struktur
-Three Lines secara formal di lingkungan [instansi].
-
 Akibat:
 Ketidakjelasan pembagian tugas di tingkat teknis mengakibatkan penentuan serta
 pelaksanaan opsi mitigasi risiko menjadi tidak terukur, yang berpotensi
@@ -425,7 +399,7 @@ menimbulkan tumpang tindih kewenangan atau pengabaian risiko dalam proses
 pengambilan keputusan organisasi.
 ```
 
-### Contoh KKSA: Kompetensi SDM MR
+### Contoh KKA: Kompetensi SDM MR
 ```
 Judul: "Belum Tersedianya Standar dan Rencana Pengembangan Kompetensi MR"
 
@@ -442,18 +416,13 @@ ISO 31000:2018 Klausul 5.4.4 mensyaratkan organisasi memastikan sumber daya
 yang memadai dialokasikan untuk MR, termasuk kompetensi SDM. Pedoman [nomor]
 [tahun] [instansi] Pasal/Bagian [X] mensyaratkan [ketentuan kompetensi yang ada].
 
-Sebab:
-Belum tersedianya standar kompetensi yang dapat dijadikan acuan pelatihan dan
-pengembangan personel MR. Program pelatihan MR yang ada belum terstruktur
-dan belum mencakup seluruh level pegawai.
-
 Akibat:
 Kesenjangan kompetensi berdampak langsung pada kualitas identifikasi risiko.
 Penetapan opsi perlakuan/mitigasi risiko menjadi kurang tepat sasaran, yang
 pada akhirnya melemahkan ketahanan organisasi dalam menghadapi ketidakpastian.
 ```
 
-### Contoh KKSA: Sistem Informasi MR
+### Contoh KKA: Sistem Informasi MR
 ```
 Judul: "Belum Optimalnya Sistem Informasi Manajemen Risiko"
 
@@ -470,18 +439,13 @@ informasi risiko dikomunikasikan secara tepat waktu dan memadai kepada
 pengambil keputusan. Praktik tata kelola MR modern mensyaratkan sistem
 monitoring berbasis data real-time untuk mendukung early warning.
 
-Sebab:
-Sistem informasi MR dikembangkan sebelum kebutuhan early warning dan
-pelaporan otomatis menjadi standar. Anggaran pengembangan sistem belum
-diprioritaskan untuk fitur-fitur tersebut.
-
 Akibat:
 Ketiadaan fungsi-fungsi ini menghambat kecepatan eskalasi risiko serta
 mengurangi efisiensi pengawasan pimpinan dalam memantau profil risiko
 organisasi secara menyeluruh.
 ```
 
-### Contoh KKSA: Integrasi Sistem
+### Contoh KKA: Integrasi Sistem
 ```
 Judul: "Belum Terintegrasinya Sistem Manajemen Risiko dengan Aplikasi Lainnya"
 
@@ -497,18 +461,13 @@ organisasi, termasuk perencanaan, pengambilan keputusan, dan pelaporan kinerja.
 Prinsip tata kelola yang baik mensyaratkan informasi risiko tersedia bagi
 pengambil keputusan strategis secara terintegrasi.
 
-Sebab:
-Pengembangan aplikasi kementerian dilakukan secara terpisah tanpa perencanaan
-integrasi antar sistem yang terkoordinasi. Belum ada roadmap integrasi sistem
-yang mencakup SIMR.
-
 Akibat:
 MR belum dapat berfungsi optimal sebagai instrumen pendukung pengambilan
 keputusan strategis. Kebijakan organisasi berisiko diambil tanpa pertimbangan
 profil risiko yang akurat.
 ```
 
-### Contoh KKSA: Identifikasi Insiden dan QA
+### Contoh KKA: Identifikasi Insiden dan QA
 ```
 Judul: "Belum Tersedianya Prosedur Identifikasi Insiden dan Mekanisme
 Penjaminan Kualitas"
@@ -526,11 +485,6 @@ sistematis. Praktik MR yang baik mensyaratkan mekanisme pembelajaran dari
 insiden (lesson learned) dan quality assurance atas proses MR. COSO ERM
 mensyaratkan adanya mekanisme monitoring berkelanjutan termasuk pencatatan
 kejadian dan near-miss.
-
-Sebab:
-Belum adanya SOP formal tentang pelaporan insiden dan near-miss dalam konteks
-MR. Fungsi Quality Assurance MR belum dipetakan secara eksplisit ke unit
-atau jabatan tertentu.
 
 Akibat:
 Manajemen risiko menjadi kurang responsif dan cenderung bersifat reaktif

@@ -1,120 +1,37 @@
 ---
 name: evaluasi-sakip
 format_laporan: kksa
-version: 5.1
+version: 5.2
 jenis: Evaluasi Akuntabilitas Kinerja Instansi Pemerintah (AKIP)
 dasar-hukum: PermenPAN-RB 88/2021, Perpres 29/2014, PP 8/2006
 model: claude-sonnet-4-6
 output: LKE Excel terisi (APIP) + LHE AKIP (.docx) + KKP Markdown
-auto_execute: true
-auto_execute_command: python3 audit-system-v4/scripts/evaluasi-sakip/run_batch.py --penugasan <PENUGASAN_DIR> --lke <LKE_XLSX_PATH>
+auto_execute: false
+changelog:
+  - v5.2 (2026-06-17): Refactor orkestrasi ke v7 — struktur seragam Tahap E0–E4; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); role+sasaran via sasaran-assignment.json; AT auto-execute, HITL=KT approve KKP→KT draft LHE; hapus unsur Sebab dari format temuan (evaluasi = keyakinan terbatas, tanpa penggalian akar masalah). Substansi domain (LKE/komponen/kriteria PermenPAN-RB 88/2021) dipertahankan.
 ---
 
-# Skill: Evaluasi SAKIP — Versi 5.0
+# Skill: Evaluasi SAKIP — Versi 5.2
 **Berbasis Folder Bukti Dukung (Cowork)** | PermenPAN-RB No. 88 Tahun 2021
-> **Checklist gate-by-gate:** Lihat `audit-system-v4/checklists/evaluasi-sakip.md` untuk daftar pemeriksaan tahap demi tahap.
 
+## Eksekusi di v7 (orkestrasi — seragam semua skill evaluasi)
 
-## ⚡ AUTO-EXECUTE LANGKAH 0 — WAJIB SEBELUM ANALISIS APAPUN
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
 
-**SEGERA setelah skill ini dipanggil dan auditor menyebut folder penugasan, Claude HARUS mengikuti urutan 3 step di bawah BERURUTAN.** Tidak boleh skip, tidak boleh langsung ke pipeline tanpa cek role.
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline E3:** *tidak ada tool v7 — criteria/LKE-driven manual* (AT mengisi/mengolah LKE & baca dokumen bukti dukung ter-ingest via `read_ingested_digest`).
+- **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE** (bukan stop tiap tahap).
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian per komponen/kriteria (predikat APIP per kriteria LKE) → `append_temuan` (TANPA Sebab) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
 
----
+## Tahap Evaluasi (E0–E4)
 
-### STEP A — Identifikasi Role (Task 00)
-
-Cek apakah `<PENUGASAN>/_ROLE.md` sudah ada DAN sesuai user yang sedang sesi.
-
-- **Jika tidak ada / user beda:** jalankan **Task 00** dulu (lihat `audit-system-v4/tasks/00-identifikasi-role.md`). Tanya 2 hal via `AskUserQuestion`:
-  1. Nama lengkap user
-  2. Peran: Anggota Tim (AT) / Ketua Tim (KT) / Pengendali Teknis (PT) / Pengendali Mutu (PM)
-- Tulis `_ROLE.md` dengan frontmatter `nama_lengkap`, `role`, `role_kode`, `session_start`.
-- **JANGAN LANJUT ke Step B sampai `_ROLE.md` ada dan valid.**
-
----
-
-### STEP B — Inisiasi Penugasan (Task 01) — Hanya kalau belum
-
-Cek apakah `<PENUGASAN>/_PKP/sasaran-assignment.json` sudah ada.
-
-- **Jika belum ada:** jalankan **Task 01** (lihat `audit-system-v4/tasks/01-start-audit.md`). Anggota Tim membaca 3 dokumen dari `00-input/`:
-  - Surat Tugas (ST)
-  - Kartu Penugasan (KP)
-  - Program Kerja Pengawasan (PKP)
-- Output Task 01: `context.md` + `_PKP/sasaran-assignment.json` (pembagian sasaran ke anggota tim).
-- **JANGAN LANJUT ke Step C sampai sasaran-assignment.json ada.**
-
----
-
-### STEP C — Jalankan Pipeline dengan Role Gating
-
-Baca `role_kode` dari `_ROLE.md`. Jalankan `run_batch.py` dengan flag `--role` yang sesuai:
-
-**Jika role = AT (Anggota Tim) — Pipeline KKP (Task 03):**
-
-```bash
-python3 audit-system-v4/scripts/evaluasi-sakip/run_batch.py \
-    --penugasan "<FOLDER_PENUGASAN>" \
-    --role AT \
-    --lke "<PATH_KE_LKE.xlsx>" \
-    --no-render
-```
-
-Output: `_KKP/anomalies.json`, `_KKP/temuan.json`, `_KKP/KKP-{nama-anggota}.docx`. **TIDAK render LHP** — itu pekerjaan Ketua Tim.
-
-**Jika role = KT/PT/PM (Ketua Tim/Pengendali) — Pipeline LHP (Task 04):**
-
-```bash
-python3 audit-system-v4/scripts/evaluasi-sakip/run_batch.py \
-    --penugasan "<FOLDER_PENUGASAN>" \
-    --role KT \
-    --lke "<PATH_KE_LKE.xlsx>" \
-    --context "<FOLDER_PENUGASAN>/context.md"
-```
-
-Pre-check: `temuan.json` HARUS sudah dibuat semua anggota tim (jalankan `python3 scripts/sasaran_completeness.py --penugasan <DIR>` untuk verify). Output: `_LHP/LHE-DRAFT.docx` (Konsep Laporan).
-
----
-
-### Output Final (sama untuk semua role)
-
-Setelah pipeline selesai, terlepas dari role:
-- `_KKP/_pipeline_meta.json` — timing, status, jumlah anomali per severity
-- `_BUKTI-AI/Bukti-Cek-AI-*.docx` — dokumen bukti penggunaan AI (slot #6 Integral)
-- `_SUBMIT/submit-latest.json` — paket 8-tahapan untuk Integral SIMWAS
-
-**Setelah pipeline selesai, BARU Claude masuk ke peran review/judgment**: filter false positive, validasi temuan substantif, polish narasi KKP/LHP.
-
----
-
-### Troubleshooting
-
-- **`_ROLE.md` ada tapi user beda:** Run Task 00 ulang dengan user baru. Override `_ROLE.md`.
-- **`sasaran-assignment.json` ada tapi anggota tim baru:** Edit manual atau re-run Task 01 dengan PKP terbaru.
-- **Anggota Tim mau jalankan render LHP:** Tolak — minta Ketua Tim. `role_check.py` akan auto-block via Task 04.
-- **Ketua Tim mau jalankan KKP:** Tolak — minta Anggota Tim yang assigned. Ketua Tim hanya reviu KKP, bukan generate.
-- **Pipeline error:** Cek script integrity `python3 -c "import ast; ast.parse(open('audit-system-v4/scripts/evaluasi-sakip/run_batch.py').read())"`. Cek dependency: python3 ≥ 3.10, openpyxl, python-docx, pdfplumber.
-
----
-
-
-## ⚡ AUTO-EXECUTE LANGKAH 1 — ANALISIS SUBSTANTIF WAJIB POST-PIPELINE
-
-**Setelah LANGKAH 0 (pipeline rule-based) selesai, Claude WAJIB lanjut analisis substantif berikut SECARA OTOMATIS.** Tidak boleh menawarkan opsi ke auditor ("Mau saya bantu...?") — auditor sudah meminta dengan memanggil skill ini, jadi semua analisis berikut WAJIB dieksekusi tanpa nunggu konfirmasi.
-
-Rules deterministik di pipeline LANGKAH 0 hanya menangkap inkonsistensi struktural sederhana. Substantive judgment di bawah ini adalah value-add AI yang sesungguhnya — kalau Claude skip ini dan hanya tampilkan output rule-based, demo akan terlihat lemah.
-
-| # | Tugas Substantif | Detail |
-|---|------------------|--------|
-| 1. | **Verifikasi predikat APIP per kriteria** | Untuk SETIAP 79 kriteria di LKE: baca bukti dukung di folder 1_a/, 1_b/, ..., 4_c/. Tetapkan predikat APIP (AA/A/BB/B/CC/C/D/E) berdasarkan kualitas bukti, BUKAN hanya copy dari nilai mandiri. |
-| 2. | **Hitung total nilai AKIP weighted** | Setelah semua predikat APIP terisi: hitung Nilai Sub-Komponen = (Predikat/100) × Bobot. Total Nilai AKIP = jumlah semua sub-komponen. Tetapkan kategori AKIP (AA/A/BB/B/CC/C/D/E) berdasar total. |
-| 3. | **Identifikasi Area of Improvement (AoI)** | Untuk setiap sub-komponen dengan predikat ≤ B (≤70): tulis AoI konkret dengan referensi dokumen sumber. AoI menjadi basis Rekomendasi LHE. |
-| 4. | **Validasi konsistensi cascading kinerja** | Cek alignment: Renstra → Renja → PK → IKU → LKj. Bila ada IKU yang tidak ada di Renstra atau target inkonsisten → temuan PERINGATAN. |
-| 5. | **Bandingkan capaian dengan target** | Untuk setiap IKU: hitung % capaian vs target. Bila pencapaian < 75% atau > 120% → flag untuk reviu (under-achievement atau over-target/sandbagging). |
-
-**Setiap temuan substantif WAJIB di-append** ke `_KKP/temuan.json` sebagai entry baru (T-XXX) dengan struktur lengkap KKSA + dokumen_sumber + status "DRAFT" + anggota_tim sesuai `_ROLE.md`.
-
-**Setelah semua analisis substantif selesai, BARU lapor ke auditor** dengan ringkasan: total temuan rule-based + total temuan substantif + per-severity breakdown. Hindari kalimat "Mau saya lanjut ...?" — tampilkan langsung hasil.
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; LKE PermenPAN-RB 88/2021 + folder bukti dukung (1_a … 4_c) tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
+| **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan evaluasi AKIP, ruang lingkup (unit kerja & periode), kriteria (4 komponen / 12 sub-komponen / 79 kriteria LKE), metodologi penilaian predikat — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: komponen/sub-komponen yang dinilai · langkah penilaian (keberadaan/kualitas/pemanfaatan) · bukti dukung yang dicari. | KT (UI Setup) |
+| **E3 — Pelaksanaan & KKP** | Per kriteria: nilai kesesuaian → predikat APIP (skor LKE) berdasar bukti → temuan/catatan & AoI (TANPA Sebab) → `append_temuan` + `record_pkp_assessment`. | AT (auto) |
+| **E4 — Laporan (LHE)** | Render LHE + Nota Dinas (ikuti `panduan-format-umum/PANDUAN.md`); polish narasi per komponen & rekomendasi; simpulan nilai/kategori AKIP (keyakinan terbatas). | KT |
 
 ---
 
@@ -129,28 +46,24 @@ Rules deterministik di pipeline LANGKAH 0 hanya menangkap inkonsistensi struktur
 
 - **Folder disiapkan auditor**: Auditor mengumpulkan dokumen ke folder lokal yang sudah dilabel per unsur, Claude langsung baca via Cowork — tidak perlu download, tidak perlu CMD
 - **Struktur folder fleksibel**: Claude bisa baca folder per sub-komponen saja (`1_a/`) maupun yang sudah diorganisir per kriteria (`1_a/kr1/`, `1_a/kr2/`)
-- **Ekstraksi teks otomatis**: `read_local_bukti.py` ekstrak teks PDF/xlsx dari folder dan augment JSON, Claude bisa baca ratusan halaman dalam hitungan menit
+- **Ekstraksi teks otomatis**: dokumen bukti dukung di-ingest sistem v7 dan dibaca via `read_ingested_digest`, Claude bisa baca ratusan halaman dalam hitungan menit
 - **Evaluasi mandiri penuh**: Setiap predikat APIP didasarkan analisis teks dokumen nyata, bukan nilai evaluator sebelumnya
 
 ---
 
-## Hemat Token & Eksekusi (v4.0.4)
+## Hemat Token & Eksekusi
 
 Sebelum mulai analisis dokumen, ikuti panduan berikut agar eksekusi cepat tanpa mengorbankan kualitas:
 
-1. **Jangan re-read dokumen yang sudah di-digest**. Bila skill ini punya pipeline pre-digest (`scripts/[skill]/digest_*.py` + `cross_check.py`), pakai langsung field `parsed.*` di output JSON. Re-read dokumen asli hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan` atau cross-check false positive rule.
-2. **Render KKP & LHP via script terstandar** (v4.0.4):
-   - KKP DOCX: `python3 scripts/render_kkp.py --penugasan ... --all-anggota`
-   - LHP DOCX: `python3 scripts/render_lhp.py --penugasan ... --rekomendasi-file ...` (template skeleton di `templates/_skeleton-lhp/template-lhp-[skill].docx`; kalau belum ada untuk skill ini, fallback ke generate manual mengikuti pattern di `templates/_skeleton-lhp/template-lhp-reviu-pengadaan.docx`)
-3. **Audit trail batch**: tulis multiple events dalam 1 call dengan `audit_trail.py log-batch --events '[...]'`. Hindari chain `log-event` x N.
-4. **Preflight QC SAIPI** di akhir Task 01: `qc_saipi.py --preflight-context` cek context.md sebelum analisis Task 03 mulai (mencegah KRITIS context.md baru ketahuan saat KKP sudah disusun).
-5. **Auto-gen QA placeholder**: `init_qa_artifacts.py` di akhir Task 01 menulis `_QA-SAIPI/deklarasi-independensi.md`, `jawaban-needs-review.md`, `justifikasi.md` — mencegah iterasi NEEDS_REVIEW di Task 03/04.
+1. **Jangan re-read dokumen yang sudah di-ingest**. Pakai `read_ingested_digest` untuk membaca teks bukti dukung yang sudah diekstrak. Re-read dokumen asli hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan`.
+2. **KKP dirender via `render_kkp_docx`** (tool v7) setelah temuan & penilaian per kriteria di-append; LHE final dirender oleh KT pada tahap E4.
+3. **QC KKP via `run_qc_kkp`** (tool v7) untuk cek kelengkapan KKP sebelum diajukan ke KT.
 
 
 ## Peran Claude
 
 Kamu adalah evaluator AKIP Inspektorat II yang bertugas:
-1. Membaca JSON yang sudah diaugment dengan teks dokumen (`lke_with_bukti.json`)
+1. Membaca teks bukti dukung yang sudah di-ingest (via `read_ingested_digest`)
 2. Menganalisis konten dokumen per kriteria
 3. Memberikan penilaian APIP (predikat + catatan + rekomendasi) berdasarkan bukti
 4. Menghasilkan: LKE Excel terisi + LHE Word + KKP Markdown
@@ -176,22 +89,17 @@ Lihat `references/01-kriteria-lke-permen88-2021.md` untuk kriteria lengkap per s
 
 ---
 
-## Alur Kerja Lengkap
+## Alur Kerja Substansi (penilaian LKE)
 
-### FASE 0 — Ekstraksi LKE (Claude)
+> Urutan tahap (E0–E4), role, dan titik HITL diatur oleh orkestrasi v7 di atas. Bagian ini hanya menjelaskan **substansi** penilaian LKE yang dikerjakan AT di tahap E3.
 
-```bash
-# Ekstrak struktur LKE ke JSON
-python3 [skill_path]/scripts/extract_lke.py \
-  "[path_lke.xls]" \
-  "[output_folder]/lke_extracted.json"
-```
+### Struktur LKE
 
-JSON hasil berisi: unit kerja, tahun, 12 sub-komponen, 79 kriteria, semua URL bukti dukung.
+LKE PermenPAN-RB 88/2021 memuat: unit kerja, tahun, 12 sub-komponen, 79 kriteria, dan referensi bukti dukung per kriteria.
 
 ---
 
-### FASE 0.5 — Siapkan Folder Bukti Dukung (Auditor)
+### Siapkan Folder Bukti Dukung (Auditor)
 
 **Langkah ini dilakukan AUDITOR** — kumpulkan dokumen dari evsakip.komdigi.go.id ke folder lokal, lalu Claude baca via Cowork.
 
@@ -235,42 +143,31 @@ bukti_dukung/
 
 **Format file yang didukung**: PDF, XLSX, XLS, DOCX, ZIP (ZIP diekstrak otomatis).
 
-**Lokasi folder**: Letakkan `bukti_dukung/` di dalam folder penugasan, sejajar dengan `lke_extracted.json`:
+**Lokasi folder**: Letakkan `bukti_dukung/` di dalam folder penugasan, sejajar dengan file LKE:
 ```
 penugasan/SAKIP/_KKP/
-  lke_extracted.json
+  LKE_[UNIT]_[TAHUN].xlsx
   bukti_dukung/       ← di sini
     1_a/
     1_b/
     ...
 ```
 
-Setelah folder siap, beritahu Claude untuk lanjut ke FASE 1.
+Folder bukti dukung di-ingest oleh sistem v7; teks dokumen dibaca AT via `read_ingested_digest`.
 
 ---
 
-### FASE 1 — Ekstraksi Teks Dokumen (Claude)
+### Baca Teks Bukti Dukung
 
-```bash
-# Install dependency PDF reader
-pip install pdfminer.six openpyxl --break-system-packages -q
-
-# Ekstrak teks dari semua dokumen lokal → augment JSON
-python3 [skill_path]/scripts/read_local_bukti.py \
-  "[output_folder]/lke_extracted.json" \
-  "[output_folder]/bukti_dukung" \
-  "[output_folder]/lke_with_bukti.json"
-```
-
-Output: `lke_with_bukti.json` — struktur sama dengan `lke_extracted.json`, ditambah field `analisis_dokumen` berisi teks dokumen per kriteria.
+Teks dokumen bukti dukung (PDF/XLSX/DOCX) sudah diekstrak saat di-ingest. AT membacanya via `read_ingested_digest` (atau `search_bukti` untuk mencari kutipan spesifik) per sub-komponen/kriteria — tidak perlu re-read dokumen asli kecuali untuk verifikasi halaman kutipan.
 
 ---
 
-### FASE 2 — Analisis dan Penilaian Per Komponen (Claude)
+### Analisis dan Penilaian Per Komponen
 
-Proses SATU KOMPONEN sekaligus. Baca `lke_with_bukti.json` dan untuk setiap kriteria:
+Proses SATU KOMPONEN sekaligus. Untuk setiap kriteria:
 
-**Langkah 1**: Baca `analisis_dokumen[].konten` — teks dokumen sudah tersedia di JSON.
+**Langkah 1**: Baca teks dokumen bukti dukung untuk kriteria tersebut via `read_ingested_digest`.
 
 **Langkah 2**: Cocokkan dengan kriteria (lihat `references/01-kriteria-lke-permen88-2021.md`):
 
@@ -312,7 +209,7 @@ Predikat : [A/BB/B/CC/C/D/E]
 
 ---
 
-### FASE 3 — Skoring Sub-Komponen (Claude)
+### Skoring Sub-Komponen
 
 Setelah semua kriteria dinilai:
 
@@ -336,24 +233,15 @@ Setelah semua kriteria dinilai:
 
 ---
 
-### FASE 4 — Isi LKE Excel (Claude)
+### Isi LKE & Catat Penilaian
 
-Siapkan JSON evaluasi (copy `lke_with_bukti.json`, isi `penilaian_apip_baru` per kriteria), lalu:
-
-```bash
-pip install openpyxl --break-system-packages -q
-
-python3 [skill_path]/scripts/fill_lke_apip.py \
-  "[path_lke_asli.xls]" \
-  "[output_folder]/lke_with_bukti.json" \
-  "[output_folder]/LKE_[UNIT]_[TAHUN]_APIP.xlsx"
-```
+Untuk setiap kriteria, isi predikat APIP + catatan/AoI ke LKE (kolom penilaian APIP), lalu catat hasilnya melalui tool v7: `append_temuan` (temuan/AoI **TANPA Sebab** — evaluasi memberi keyakinan terbatas, tidak menggali akar masalah) dan `record_pkp_assessment` (predikat & nilai per komponen).
 
 ---
 
-### FASE 5 — LHE Word + KKP Markdown (Claude)
+### LHE & KKP
 
-Baca skill `docx` terlebih dahulu, lalu susun berdasarkan `references/02-template-lhe.md`.
+KKP dirender via `render_kkp_docx` (AT) lalu di-QC dengan `run_qc_kkp`. LHE final dirender oleh KT pada tahap E4 mengikuti `references/02-template-lhe.md` dan `panduan-format-umum/PANDUAN.md`.
 
 Struktur LHE:
 ```
@@ -415,13 +303,16 @@ Yang dinilai:
 
 ---
 
-## Scripts dan Referensi
+## Tool v7 & Referensi
 
-| File | Fungsi | Dijalankan oleh |
-|---|---|---|
-| `scripts/extract_lke.py` | LKE .xls → JSON terstruktur | Claude |
-| `scripts/read_local_bukti.py` | Folder lokal → JSON+teks dokumen | Claude |
-| `scripts/fill_lke_apip.py` | JSON evaluasi → LKE .xlsx terisi | Claude |
-| `scripts/download_bukti.py` | *(Opsional)* Download URL dari JSON → folder lokal | Auditor (jika dibutuhkan) |
-| `references/01-kriteria-lke-permen88-2021.md` | Kriteria lengkap per sub-komponen | Referensi |
-| `references/02-templa
+| Item | Fungsi |
+|---|---|
+| `read_context` | Baca KP/PKP/context.md penugasan |
+| `read_ingested_digest` / `search_bukti` | Baca teks bukti dukung yang sudah di-ingest |
+| `append_temuan` | Catat temuan/AoI per kriteria (TANPA Sebab) |
+| `record_pkp_assessment` | Catat predikat & nilai per komponen |
+| `render_kkp_docx` | Render KKP (AT) |
+| `run_qc_kkp` | QC kelengkapan KKP sebelum diajukan ke KT |
+| `references/01-kriteria-lke-permen88-2021.md` | Kriteria lengkap per sub-komponen (referensi) |
+| `references/02-template-lhe.md` | Template LHE AKIP (referensi, dipakai KT di E4) |
+| `panduan-format-umum/PANDUAN.md` | Format Nota Dinas + LHE |
