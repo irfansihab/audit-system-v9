@@ -1972,28 +1972,14 @@ function SetupPenugasanTab({
               + Tambah Sasaran
             </button>
             <button
-              onClick={() => setTemplatesOpen(true)}
-              className="px-3 py-1.5 text-sm rounded border border-amber-500 text-amber-700 hover:bg-amber-600 hover:text-white transition"
-              title="Saran sasaran dari penugasan lalu, skeleton pattern wiki, & catatan W3 — KT tidak start-from-zero."
-            >
-              ⋆ Mulai dari template
-            </button>
-            <button
               onClick={() => setPkpTplOpen((v) => !v)}
               className="px-3 py-1.5 text-sm rounded border border-violet-500 text-violet-700 hover:bg-violet-600 hover:text-white transition"
-              title="Template PKP dari wiki — daftar sasaran baku template otomatis jadi baris sasaran."
+              title="Impor sasaran/PKP dari Wiki — template & sumber terpusat di Wiki."
             >
-              📚 Template PKP wiki
-            </button>
-            <button
-              onClick={() => setSimwasOpen(true)}
-              className="px-3 py-1.5 text-sm rounded border border-indigo-500 text-indigo-600 hover:bg-indigo-600 hover:text-white transition"
-              title="Import sasaran dari payload PKP SIMWAS (paste JSON / sample). Pull API SIMWAS langsung belum aktif."
-            >
-              ↘ Impor dari SIMWAS
+              📚 Import dari Wiki
             </button>
             <span className="text-[11px] text-gray-400">
-              4 cara mulai: form kosong, template penugasan lalu, template PKP wiki, atau impor SIMWAS.
+              Tambah sasaran manual, atau impor dari Wiki (semua sumber terpusat di Wiki).
             </span>
           </div>
         )}
