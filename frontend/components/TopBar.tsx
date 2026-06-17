@@ -8,9 +8,9 @@
  * - Right: avatar + role (dropdown logout)
  */
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getSession, clearToken, Session } from '@/lib/api';
+import { toast } from 'sonner';
+import { api, getSession, clearToken, Session } from '@/lib/api';
 
 const ROLE_LABEL: Record<string, string> = {
   AT: 'Anggota Tim',
@@ -32,6 +32,13 @@ export function TopBar() {
   const [showMenu, setShowMenu] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Modal ganti password (B4)
+  const [showPw, setShowPw] = useState(false);
+  const [oldPw, setOldPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [busyPw, setBusyPw] = useState(false);
+
   useEffect(() => {
     setMounted(true);
     setSession(getSession());
@@ -40,6 +47,36 @@ export function TopBar() {
   const onLogout = () => {
     clearToken();
     router.push('/login');
+  };
+
+  const openChangePw = () => {
+    setShowMenu(false);
+    setOldPw('');
+    setNewPw('');
+    setConfirmPw('');
+    setShowPw(true);
+  };
+
+  const submitChangePw = async () => {
+    if (newPw.length < 8) {
+      toast.error('Password baru minimal 8 karakter.');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast.error('Konfirmasi password tidak cocok.');
+      return;
+    }
+    setBusyPw(true);
+    try {
+      await api.changePassword(oldPw, newPw);
+      toast.success('Password berhasil diganti.');
+      setShowPw(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message.replace(/^\d+:\s*/, '') : 'Gagal mengganti password.';
+      toast.error(msg || 'Gagal mengganti password.');
+    } finally {
+      setBusyPw(false);
+    }
   };
 
   return (
@@ -82,6 +119,12 @@ export function TopBar() {
                 </div>
               </div>
               <button
+                onClick={openChangePw}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100"
+              >
+                Ganti password
+              </button>
+              <button
                 onClick={onLogout}
                 className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
               >
@@ -91,6 +134,64 @@ export function TopBar() {
           )}
         </div>
       </div>
+
+      {/* Modal ganti password (B4) */}
+      {showPw && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4"
+          onClick={() => !busyPw && setShowPw(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 border border-gray-100"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <h3 className="font-semibold text-gray-800 mb-3">Ganti password</h3>
+            <div className="space-y-2.5">
+              <input
+                type="password"
+                autoFocus
+                placeholder="Password lama"
+                value={oldPw}
+                onChange={(e) => setOldPw(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              />
+              <input
+                type="password"
+                placeholder="Password baru (min. 8 karakter)"
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              />
+              <input
+                type="password"
+                placeholder="Ulangi password baru"
+                value={confirmPw}
+                onChange={(e) => setConfirmPw(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !busyPw && submitChangePw()}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => setShowPw(false)}
+                disabled={busyPw}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={submitChangePw}
+                disabled={busyPw || !oldPw || !newPw || !confirmPw}
+                className="px-4 py-1.5 text-sm rounded-lg text-white font-semibold bg-primary hover:bg-primary-dark transition disabled:opacity-50"
+              >
+                {busyPw ? 'Menyimpan…' : 'Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

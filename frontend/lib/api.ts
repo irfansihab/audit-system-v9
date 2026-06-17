@@ -46,8 +46,20 @@ async function request<T>(
   });
   if (!res.ok) {
     const text = await res.text();
+    // Sesi kedaluwarsa / token tak valid → bersihkan & arahkan ke login.
+    // Dikecualikan: endpoint login (401 = kredensial salah, biar pesan tampil).
+    if (
+      res.status === 401 &&
+      !path.startsWith('/auth/login') &&
+      typeof window !== 'undefined' &&
+      window.location.pathname !== '/login'
+    ) {
+      clearToken();
+      window.location.href = '/login?expired=1';
+    }
     throw new Error(`${res.status}: ${text}`);
   }
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
@@ -134,6 +146,13 @@ export const api = {
     request<Session>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+
+  /** Ganti password sendiri (B4). Perlu sesi aktif + password lama benar. */
+  changePassword: (old_password: string, new_password: string) =>
+    request<void>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ old_password, new_password }),
     }),
 
   /** Daftar user seed (opsional filter role). Dipakai layar login untuk

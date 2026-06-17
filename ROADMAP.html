@@ -193,7 +193,7 @@
     <div class="task"><div class="box"></div><div class="t"><b>B1 — Skema</b>: username (unik) + password_hash di tabel User; hash argon2/bcrypt (jangan plaintext).</div></div>
     <div class="task"><div class="box"></div><div class="t"><b>B2 — Backend auth</b>: login → JWT, seeding admin awal, ganti password. Klaim role tetap (RBAC AT/KT/PT/PM).</div></div>
     <div class="task"><div class="box"></div><div class="t"><b>B3 — Frontend</b>: form login username+password (ganti kartu peran), guard route, halaman ganti password.</div></div>
-    <div class="task"><div class="box"></div><div class="t"><b>B4 — Keamanan</b>: rate-limit + lockout, kebijakan password, logout/expiry.</div></div>
+    <div class="task"><div class="box" style="background:var(--green);border-color:var(--green)"></div><div class="t"><b>B4 — Keamanan login</b> <span class="pill keep">selesai</span><span class="sub">Lockout brute-force (5 gagal/15mnt→kunci 15mnt, 429). Ganti password (POST /auth/change-password + modal TopBar; min 8 char). Expiry JWT konfigurabel + handling 401 terpusat (auto-logout → /login?expired=1). Semua teruji curl+E2E; ambang via .env.</span></div></div>
     <div class="task"><div class="box"></div><div class="t"><b>B5 — SSO SIMWAS koeksistensi</b>: login lokal + SSO JWKS; produksi → SSO, dev → lokal.</div></div>
   </div>
 

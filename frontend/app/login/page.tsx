@@ -25,10 +25,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     api.listUsers().then(setUsers).catch(() => setUsers([]));
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('expired')) {
+      setNotice('Sesi Anda telah berakhir. Silakan masuk kembali.');
+    }
   }, []);
 
   const doLogin = async (un: string, pw: string, tag: string) => {
@@ -40,7 +44,8 @@ export default function LoginPage() {
       setSession(session);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Gagal masuk');
+      const msg = (err?.message || 'Gagal masuk').replace(/^\d+:\s*/, '');
+      setError(msg || 'Gagal masuk');
     } finally {
       setLoading(null);
     }
@@ -74,6 +79,9 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Masuk</h2>
 
+          {notice && !error && (
+            <div className="mb-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">{notice}</div>
+          )}
           {error && (
             <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
           )}

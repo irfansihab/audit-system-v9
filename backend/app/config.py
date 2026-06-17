@@ -103,6 +103,18 @@ class Settings(BaseSettings):
     # menunjukkan konsistensi (≥90% match status).
     cacm_v7_auto_promote: str = "off"
 
+    # --- Keamanan login (B4) ---------------------------------------------- #
+    # Proteksi brute-force pada jalur username+password (in-memory, per-username):
+    # bila gagal login `login_max_attempts` kali dalam `login_attempt_window_minutes`,
+    # akun dikunci selama `login_lockout_minutes`. Ringan untuk ±80 user 1 proses.
+    login_max_attempts: int = 5
+    login_attempt_window_minutes: int = 15
+    login_lockout_minutes: int = 15
+    # Masa berlaku token sesi (JWT). Habis → frontend auto-redirect ke /login.
+    session_expire_hours: int = 12
+    # Panjang minimum password baru saat ganti password.
+    password_min_length: int = 8
+
     # Token quota per user per jam (safety)
     rate_limit_runs_per_hour: int = 5
     # Batas run agen yang berjalan BERSAMAAN di seluruh sistem (G2 — skala ±80 user).

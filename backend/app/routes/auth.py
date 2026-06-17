@@ -10,11 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import create_session_token, verify_password
+from app import login_guard
+from app.auth import create_session_token, get_current_user, hash_password, verify_password
 from app.config import get_settings
 from app.database import get_db
 from app.models import Role, User
-from app.schemas import LoginRequest, SessionOut, UserOut
+from app.schemas import ChangePasswordRequest, LoginRequest, SessionOut, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -28,11 +29,26 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)) -> Sessio
     """
     # --- Jalur utama: username + password ---
     if req.username and req.password:
+        # Proteksi brute-force: tolak lebih dulu bila akun sedang terkunci.
+        locked = login_guard.locked_seconds(req.username)
+        if locked:
+            menit = (locked + 59) // 60
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Terlalu banyak percobaan gagal. Coba lagi dalam ±{menit} menit.",
+            )
         user = (
             await db.execute(select(User).where(User.username == req.username))
         ).scalar_one_or_none()
         if not user or not verify_password(req.password, user.password_hash):
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Username atau password salah.")
+            sisa = login_guard.record_failure(req.username)
+            pesan = "Username atau password salah."
+            if sisa == 0:
+                pesan = "Username atau password salah. Akun dikunci sementara karena terlalu banyak percobaan."
+            elif sisa <= 2:
+                pesan = f"Username atau password salah. Sisa {sisa} percobaan sebelum akun dikunci."
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, pesan)
+        login_guard.record_success(req.username)
         # role_default tersimpan sbg str di kolom → normalkan ke enum Role.
         role = user.role_default if isinstance(user.role_default, Role) else Role(user.role_default)
         token = create_session_token(user.id, role)
@@ -57,6 +73,30 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)) -> Sessio
         return SessionOut(user=UserOut.model_validate(user), role_aktif=req.role, token=token)
 
     raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sertakan username + password.")
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    req: ChangePasswordRequest,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Ganti password sendiri (B4). Perlu sesi aktif + password lama benar."""
+    user, _ = current
+    if not verify_password(req.old_password, user.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password lama salah.")
+    min_len = get_settings().password_min_length
+    if len(req.new_password) < min_len:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Password baru minimal {min_len} karakter.",
+        )
+    if req.new_password == req.old_password:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Password baru harus berbeda dari yang lama."
+        )
+    user.password_hash = hash_password(req.new_password)
+    await db.commit()
 
 
 @router.get("/users", response_model=list[UserOut])

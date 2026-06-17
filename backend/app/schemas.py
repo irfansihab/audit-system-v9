@@ -38,6 +38,12 @@ class SessionOut(BaseModel):
     token: str
 
 
+class ChangePasswordRequest(BaseModel):
+    """Ganti password sendiri (B4) — perlu sesi aktif."""
+    old_password: str
+    new_password: str
+
+
 # ===== Penugasan =====
 class PenugasanCreate(BaseModel):
     obyek: str

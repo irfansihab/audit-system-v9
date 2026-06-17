@@ -17,7 +17,6 @@ from app.models import Role, User
 settings = get_settings()
 
 ALGORITHM = "HS256"
-EXPIRE_HOURS = 12
 
 
 # --- Password hashing (Workstream B) -------------------------------------- #
@@ -40,7 +39,7 @@ def create_session_token(user_id: int, role: Role) -> str:
     payload = {
         "sub": str(user_id),
         "role": role.value,
-        "exp": datetime.utcnow() + timedelta(hours=EXPIRE_HOURS),
+        "exp": datetime.utcnow() + timedelta(hours=get_settings().session_expire_hours),
     }
     return jwt.encode(payload, settings.app_secret_key, algorithm=ALGORITHM)
 

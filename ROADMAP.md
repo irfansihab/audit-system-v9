@@ -87,7 +87,11 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
 - [x] **B1 — Skema** ✅ (16 Juni) — `User` +`username` (unik) +`password_hash` (bcrypt). Migrasi kolom idempoten (`ALTER ... IF NOT EXISTS`) di `init_db.seed_auth` (startup).
 - [x] **B2 — Backend auth** ✅ — `POST /auth/login` username+password → verifikasi bcrypt → JWT (role=role_default). 5 akun seed (sarah/citra AT, budi KT, inspektur PT, **doddy PM baru**), password dev `audit2026`. Legacy role-only dipertahankan TAPI dimatikan bila `APP_ENV=production`.
 - [x] **B3 — Frontend** ✅ — `/login` form username+password + **"Login cepat (dev)"** 5 kartu per role yang **auto-isi** kredensial lalu masuk. Teruji (klik→dashboard, salah password→401).
-- [ ] **B4 — Keamanan** (lanjutan): rate-limit + lockout, kebijakan password, endpoint ganti password, logout/expiry. (Akun riil & passwordnya nanti diisi user; sistem hanya mekanisme.)
+- [x] **B4 — Keamanan login** ✅ (17 Juni) — semua teruji:
+  - **Lockout brute-force** (`login_guard.py`, in-memory per-username): 5 gagal/15 mnt → kunci 15 mnt (429); pesan sisa-percobaan. Teruji curl: attempt 5→kunci, 6→429.
+  - **Ganti password** `POST /auth/change-password` (perlu sesi; verifikasi pw lama, min 8 char, ≠ lama) + **modal INTEGRAL** di dropdown TopBar. Teruji: short/same/wrong-old→400, valid→204, login pw baru OK.
+  - **Logout + expiry**: token JWT `SESSION_EXPIRE_HOURS` (default 12) konfigurabel; **handling 401 terpusat** di `api.request()` → auto-clear token + redirect `/login?expired=1` + notice "Sesi telah berakhir". Teruji E2E (token bogus → redirect+notice).
+  - Semua ambang konfigurabel via `.env` (LOGIN_*, SESSION_EXPIRE_HOURS, PASSWORD_MIN_LENGTH). Lockout hanya kena jalur username+password (quick-login dev tak terdampak).
 - [ ] **B5 — SSO SIMWAS koeksistensi**: login lokal + SSO JWKS SIMWAS v2; produksi → SSO. **Catatan produksi: matikan login cepat + ganti DEV_PASSWORD.**
 
 ## Workstream C — Fitur dipertahankan (verifikasi utuh pasca-rebrand + finalisasi)
