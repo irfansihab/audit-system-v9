@@ -93,10 +93,12 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
 - [ ] **C2 — Integrasi SIMWAS v2**: finalisasi kontrak REST (`openapi`→v8), JWKS SSO, webhook; selaras dengan B5.
 - [ ] **C3 — CACM/EWS**: modul `CACM/` + `CacmRun`/`EwsFinding` + halaman CACM dipertahankan & diverifikasi.
 - [ ] **C4 — Mutu agen & eval (lanjutan v7)**: skill **R0–R4** untuk reviu sudah selesai → **lanjutkan ke rumpun audit/evaluasi/pemantauan** (hati-hati: paradigma stop-confirm berbeda per rumpun); PKP-di-feedback; `backend/eval` (rubrik, golden, judge, verification pass).
-- [~] **C5 — TLHP sebagai pilar penuh (BARU)** — fase pertama ✅ (16 Juni):
-  - [x] Backend `routes/tlhp.py`: `GET /tlhp` (list+filter) & `/tlhp/summary`; hitung **umur/warna aging** (HIJAU/KUNING/ORANGE/MERAH) + flag **kritis** (>365 hari belum tuntas). Data dummy `fixtures/tlhp-dummy.json` (10 rekomendasi).
-  - [x] UI: **menu "Tindak Lanjut"** + halaman `app/tlhp/page.tsx` (tabel rekomendasi + aging + filter status) + widget F4 di dashboard.
-  - [ ] **Lanjutan:** data model DB (`TlhpRekomendasi`) + **ingest rekomendasi dari LHP terbit (Tahapan 7)** → menutup lingkaran laporan→TLHP; lengkapi `pemantauan-tindak-lanjut/references/` + agen; sinkron SIMWAS.
+- [~] **C5 — TLHP sebagai pilar penuh (BARU)** — fase 1 & 2 ✅ (16 Juni):
+  - [x] Backend `routes/tlhp.py`: `GET /tlhp` (list+filter) & `/tlhp/summary`; **umur/warna aging** (HIJAU/KUNING/ORANGE/MERAH) + flag **kritis** (>365 hari belum tuntas).
+  - [x] UI: **menu "Tindak Lanjut"** + halaman `app/tlhp/page.tsx` + widget F4 dashboard.
+  - [x] **Data model DB** `TlhpRekomendasi` (DB-backed; seed dummy idempoten saat startup).
+  - [x] **Auto-ingest tutup-lingkaran** ✅ — saat konsep LHP **disetujui PT/PM** (`create_lhp_review` APPROVED) → `ingest_tlhp_from_penugasan` baca `_LHP/rekomendasi.json` → buat item TLHP (anti-dup via `no_rek`). Juga manual `POST /tlhp/ingest/{id}` (KT/PT/PM). Teruji: penugasan 51 → +6 (idempoten).
+  - [ ] **Lanjutan:** lengkapi `knowledge/skills/pemantauan-tindak-lanjut/references/` (4 file kosong) + agen pemantauan TLHP; derive satker/PIC lebih cerdas; sinkron status SIMWAS.
 
 ## Workstream D — Infra & bootstrap v8
 
