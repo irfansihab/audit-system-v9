@@ -98,7 +98,6 @@ export default function DashboardPage() {
   // Hydration-safe: session di-baca dari localStorage HANYA setelah mount.
   const [session, setSessionState] = useState<Session | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [cacmPending, setCacmPending] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -113,7 +112,6 @@ export default function DashboardPage() {
       .then(setPenugasan)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-    api.getCacmPending().then((r) => setCacmPending(r.count)).catch(() => {});
     api
       .getSkills()
       .then((rows) => {
@@ -189,35 +187,7 @@ export default function DashboardPage() {
         <div className="flex justify-between items-center mb-5">
           <h1 className="text-2xl font-bold text-primary-dark">Daftar Penugasan</h1>
           <div className="flex items-center gap-3">
-            <Link
-              href="/cacm"
-              className="relative px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
-              title="CACM — Continuous Audit / Continuous Monitoring"
-            >
-              🔔 CACM
-              {cacmPending > 0 && (
-                <span
-                  className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center"
-                  title={`${cacmPending} usulan CACM menunggu review`}
-                >
-                  {cacmPending}
-                </span>
-              )}
-            </Link>
-            <Link
-              href="/knowledge"
-              className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
-              title="Knowledge — wiki pattern temuan & konteks"
-            >
-              📚 Knowledge
-            </Link>
-            <Link
-              href="/feedback"
-              className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
-              title="Dashboard agregat feedback agen cross-penugasan"
-            >
-              📊 Feedback Agen
-            </Link>
+            {/* CACM, Knowledge, Feedback Agen → dipindah ke sidebar (hindari tombol duplikat, Prinsip UX). */}
             {session?.role_aktif === 'PT' ? (
               <button
                 onClick={() => setShowForm(!showForm)}

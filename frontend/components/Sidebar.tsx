@@ -51,6 +51,7 @@ const MENU_ITEMS: MenuItem[] = [
       { href: '/knowledge#writeback', label: 'Tulis-balik Vault' },
     ],
   },
+  { href: '/feedback', label: 'Feedback Agen', icon: '💬' },
 ];
 
 export function Sidebar({
