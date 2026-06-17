@@ -1,15 +1,17 @@
 ---
 name: konsultasi-pengadaan
-version: 3.0
+version: 3.1
 jenis: Pendampingan Pengadaan Barang/Jasa (advisory berkelanjutan)
 dasar-hukum: Perpres 16/2018, Perpres 12/2021, Perlem LKPP 12/2021, Perpres 46/2025
 format_laporan: pendampingan
 model: claude-sonnet-4-6
+changelog:
+  - v3.1 (2026-06-17): Refactor orkestrasi ke v7 — tambah blok "Eksekusi di v7" + Tahap K0–K3 (pendampingan); hapus checklist gate-by-gate & blok "Hemat Token" script boilerplate (render_kkp.py/qc_saipi.py/Task — tak relevan, skill ini pakai append_kegiatan_pendampingan/render_report). Substansi log pendampingan & format laporan dipertahankan.
+  - v3.0 (2026-06-08): Output Laporan Hasil Pendampingan (log kegiatan) menggantikan Memo Konsultasi.
 ---
 
 # Skill: Pendampingan Pengadaan Barang/Jasa
 
-> **Checklist gate-by-gate:** Lihat `audit-system-v4/checklists/konsultasi-pengadaan.md`
 > **Model**: `claude-sonnet-4-6`
 
 ## Identitas
@@ -32,18 +34,25 @@ diselesaikan**, bukan jawaban terstruktur atas pertanyaan-pertanyaan.
 
 ---
 
-## Hemat Token & Eksekusi (v4.0.4)
+## Eksekusi di v7 (orkestrasi — seragam keluarga skill)
 
-Sebelum mulai analisis dokumen, ikuti panduan berikut agar eksekusi cepat tanpa mengorbankan kualitas:
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
 
-1. **Jangan re-read dokumen yang sudah di-digest**. Bila skill ini punya pipeline pre-digest (`scripts/[skill]/digest_*.py` + `cross_check.py`), pakai langsung field `parsed.*` di output JSON. Re-read dokumen asli hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan` atau cross-check false positive rule.
-2. **Render KKP & LHP via script terstandar** (v4.0.4):
-   - KKP DOCX: `python3 scripts/render_kkp.py --penugasan ... --all-anggota`
-   - LHP DOCX: `python3 scripts/render_lhp.py --penugasan ... --rekomendasi-file ...` (template skeleton di `templates/_skeleton-lhp/template-lhp-[skill].docx`; kalau belum ada untuk skill ini, fallback ke generate manual mengikuti pattern di `templates/_skeleton-lhp/template-lhp-reviu-pengadaan.docx`)
-3. **Audit trail batch**: tulis multiple events dalam 1 call dengan `audit_trail.py log-batch --events '[...]'`. Hindari chain `log-event` x N.
-4. **Preflight QC SAIPI** di akhir Task 01: `qc_saipi.py --preflight-context` cek context.md sebelum analisis Task 03 mulai (mencegah KRITIS context.md baru ketahuan saat KKP sudah disusun).
-5. **Auto-gen QA placeholder**: `init_qa_artifacts.py` di akhir Task 01 menulis `_QA-SAIPI/deklarasi-independensi.md`, `jawaban-needs-review.md`, `justifikasi.md` — mencegah iterasi NEEDS_REVIEW di Task 03/04.
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline:** *tidak ada — pendampingan berkelanjutan*. Konsultansi **tidak menghasilkan temuan/Sebab/keyakinan** — keluarannya **log kegiatan pendampingan** yang sudah diselesaikan.
+- **Mode:** AT **auto-execute** K0→K2 tanpa berhenti tiap tahap. Titik HITL: **KT review log pendampingan**, lalu **KT draft Laporan Hasil Pendampingan**.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → `append_kegiatan_pendampingan` (per kegiatan) → `render_report(skill="konsultasi-pengadaan", ...)` (KT).
 
+## Tahap Pendampingan (K0–K3)
+
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **K0 — Validasi & Konteks** | Pastikan ST + ND permintaan pendampingan ada; pahami konteks paket/proses pengadaan yang didampingi; susun `context.md` bila placeholder. | AT (auto) |
+| **K1 — Kerangka (KP)** | Ruang lingkup pendampingan (paket/periode), pihak yang didampingi, pernyataan advisory & independensi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **K2 — Pelaksanaan Pendampingan** | Log **tiap kegiatan** (rapat penyusunan KAK, reviu draft HPS, klarifikasi tender, dll) via `append_kegiatan_pendampingan`: tanggal · jenis · pihak didampingi · deskripsi · hasil · tindak lanjut. | AT (auto) |
+| **K3 — Laporan Hasil Pendampingan** | Render via `render_report(skill="konsultasi-pengadaan", ...)` → `_LHP/LHP-PENDAMPINGAN.docx` (Bab I kegiatan · II tindak lanjut · III kesimpulan). | KT |
+
+**Eskalasi:** indikasi pelanggaran yang SUDAH terjadi → sarankan eskalasi ke `audit-pengadaan`; isu sangat kompleks/material besar → rekomendasikan konsultasi ke LKPP.
 
 ## Peran Claude
 

@@ -1,11 +1,13 @@
 ---
 name: konsultansi-umum
 format_laporan: memo
-version: 1.0
+version: 1.1
 jenis: Konsultansi (umum — kriteria fleksibel)
 fungsi: Consulting — Pendapat / Saran (Tanpa Keyakinan)
 output: Memo Konsultasi (.docx) + Catatan Konsultasi (.xlsx) + JSON
 model: claude-sonnet-4-6
+changelog:
+  - v1.1 (2026-06-17): Refactor orkestrasi ke v7 — struktur seragam Tahap K0–K3 (consulting 4 fase; tanpa temuan/Sebab/keyakinan); hapus Workflow Gate-Based/STOP & TANYA (paradigma lama audit-system-v4); role+sasaran via sasaran-assignment.json; AT auto-execute, HITL = KT approve telaah → KT draft Memo. Substansi konsultansi (bahasa tanpa keyakinan, dasar hukum, batasan independensi) dipertahankan.
 ---
 
 # Skill: Konsultansi Umum (Generic, Criteria-Driven)
@@ -61,45 +63,25 @@ penugasan/[ID]/
 
 **Pertanyaan harus tertulis** — jika pertanyaan disampaikan lisan, minta auditan menulis/email-kan ulang sebelum konsultasi dimulai (untuk audit trail dan menghindari salah tangkap).
 
-## Workflow Gate-Based
+## Eksekusi di v7 (orkestrasi — seragam keluarga skill)
 
-### Gate 0 — Validasi Permintaan
-- Pastikan ada **ND permintaan tertulis** dari auditan (atau setara)
-- Pastikan pertanyaan **spesifik, tertulis, dapat dijawab**
-- Pastikan **tidak ada konflik kepentingan** (tim konsultan ≠ tim audit terhadap unit yang sama dalam waktu dekat)
-- **STOP**: konfirmasi auditor sebelum lanjut
+> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
 
-### Gate 1 — Kerangka Konsultasi (KP-K)
-File: `_KKP/01-KP-K.md`
+- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
+- **Pipeline:** *tidak ada — criteria-driven manual* (baca dokumen pertanyaan/konteks ter-ingest via `read_ingested_digest`). Konsultansi **tidak menghasilkan temuan/Sebab/keyakinan** — keluarannya **pendapat/saran** per pertanyaan.
+- **Mode:** AT **auto-execute** K0→K2 tanpa berhenti tiap tahap. Titik HITL: **KT review catatan/telaah konsultasi**, lalu **KT draft Memo Konsultasi** (bukan stop tiap tahap).
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → telaah regulasi per pertanyaan → susun pendapat (catatan konsultasi `_KKP/`) → render Memo (KT).
 
-Berisi:
-- Latar belakang permintaan (siapa, kapan, mengapa)
-- **Daftar pertanyaan** yang dirumuskan ulang secara presisi
-- Ruang lingkup pendapat (apa yang akan dijawab, apa yang TIDAK)
-- Kriteria/dasar hukum yang akan dipakai
-- Metodologi (telaah regulasi, benchmark, FGD jika ada)
-- Pernyataan independensi & batasan
-- Tim, jadwal
+## Tahap Konsultansi (K0–K3)
 
-**STOP**: konfirmasi auditor + (idealnya) konfirmasi reformulasi pertanyaan ke auditan.
+| Tahap | Aktivitas | Pelaku |
+|---|---|---|
+| **K0 — Validasi & Konteks** | Pastikan ada **ND permintaan tertulis**, pertanyaan **spesifik & dapat dijawab**, dan **tidak ada konflik kepentingan** (tim konsultan ≠ tim audit unit yang sama dalam waktu dekat); susun `context.md` bila placeholder. | AT (auto) |
+| **K1 — Kerangka Konsultasi (KP-K)** | Latar belakang permintaan, **daftar pertanyaan** dirumuskan presisi, ruang lingkup (yang dijawab & yang TIDAK), dasar hukum, metodologi, pernyataan independensi & batasan — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
+| **K2 — Telaah & Penyusunan Pendapat** | Per pertanyaan: telaah dasar hukum → analisis → **Pendapat/Saran** + asumsi/batasan + risiko jika tidak diikuti. Pendapat berimplikasi finansial/hukum signifikan ditandai untuk ditinjau KT. | AT (auto) |
+| **K3 — Memo Konsultasi** | Render Memo Konsultasi + Nota Dinas (ikuti `panduan-format-umum/PANDUAN.md`); bahasa **tanpa keyakinan**, eksplisit tidak mengikat. | KT |
 
-### Gate 2 — Telaah Regulasi & Penyusunan Pendapat
-File: `_KKP/02-Telaah.xlsx`
-
-Setiap baris = 1 pertanyaan:
-
-| ID | Pertanyaan | Dasar Hukum (ID) | Kutipan Pasal | Analisis | **Pendapat/Saran** | Catatan/Batasan |
-
-**STOP & TANYA AUDITOR** untuk pendapat yang:
-- Berimplikasi finansial signifikan
-- Berimplikasi hukum/disipliner
-- Bertentangan dengan praktik yang sedang berjalan di unit kerja
-
-### Gate 3 — Penyusunan Memo
-- `_LHP/Nota-Dinas.docx`
-- `_LHP/Memo-Konsultasi-[ID].docx`
-
-**STOP**: review final (reviu silang antar tim konsultasi sebelum penomoran).
+**Eskalasi:** jika selama konsultansi ditemukan **indikasi penyimpangan** di luar pertanyaan → hentikan memo & eskalasi terpisah ke Inspektur untuk pertimbangan audit/reviu.
 
 ## Format Catatan Konsultasi
 
@@ -153,7 +135,7 @@ Jika selama konsultansi menemukan **indikasi penyimpangan** yang berbeda dari pe
 |--------|----------|
 | Konflik kepentingan saat audit ke unit yang sama nanti | Catat di register konsultansi; tim audit di periode mendatang harus berbeda |
 | Pendapat dijadikan "perlindungan" auditan jika ada masalah | Eksplisit di memo: pendapat tidak menggantikan tanggung jawab pelaksana |
-| Skope creep — pertanyaan terus bertambah | Tetapkan ruang lingkup di Gate 1; pertanyaan baru = ND baru |
+| Skope creep — pertanyaan terus bertambah | Tetapkan ruang lingkup di Tahap K1 (KP-K); pertanyaan baru = ND baru |
 | Pendapat dijadikan justifikasi pelanggaran | Bahasa pendapat harus presisi, tidak open-ended |
 
 ## Output JSON KKP
@@ -190,5 +172,5 @@ Jika selama konsultansi menemukan **indikasi penyimpangan** yang berbeda dari pe
 
 ## Referensi Wajib Dibaca
 - `references/01-panduan-ekstraksi-kriteria.md`
-- `audit-system-v4/skills/panduan-format-umum/PANDUAN.md` — bagian "Konsultasi" dan bahasa keyakinan
+- `panduan-format-umum/PANDUAN.md` — bagian "Konsultasi" dan bahasa keyakinan
 - (jika tersedia) `references/02-bahasa-konsultansi.md`
