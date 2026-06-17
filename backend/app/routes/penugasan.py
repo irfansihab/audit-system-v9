@@ -1528,7 +1528,7 @@ async def create_lhp_review(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Catatan revisi wajib diisi saat meminta revisi.",
         )
-    await _get_penugasan_or_404(db, penugasan_id)
+    penugasan = await _get_penugasan_or_404(db, penugasan_id)
 
     review = LhpReview(
         penugasan_id=penugasan_id,
@@ -1540,4 +1540,15 @@ async def create_lhp_review(
     db.add(review)
     await db.commit()
     await db.refresh(review)
-    return {"ok": True, **_lhp_review_dict(review, user.nama_lengkap)}
+
+    # C5 — tutup lingkaran: LHP disetujui (laporan terbit) → tarik rekomendasi ke TLHP.
+    tlhp_ditambahkan = 0
+    if payload.status == "APPROVED":
+        try:
+            from app.routes.tlhp import ingest_tlhp_from_penugasan
+            tlhp_ditambahkan = await ingest_tlhp_from_penugasan(db, penugasan)
+        except Exception:  # noqa: BLE001 — best-effort, jangan gagalkan approval
+            import logging
+            logging.getLogger(__name__).exception("Auto-ingest TLHP gagal untuk penugasan %s", penugasan_id)
+
+    return {"ok": True, "tlhp_ditambahkan": tlhp_ditambahkan, **_lhp_review_dict(review, user.nama_lengkap)}

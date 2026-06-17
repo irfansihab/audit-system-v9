@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.database import Base, engine
+from app.database import Base, SessionLocal, engine
 from app.routes import agen, auth, cacm, dashboard, dokumen, feedback, files, graduasi, knowledge, penugasan, skills, tlhp
 
 settings = get_settings()
@@ -39,6 +39,15 @@ async def lifespan(app: FastAPI):
     # Buat tabel saat startup (idempoten). Untuk migrasi lebih ketat pakai Alembic.
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Seed dummy TLHP bila tabel kosong (C5 — idempoten).
+    try:
+        from app.routes.tlhp import seed_tlhp_dummy
+        async with SessionLocal() as db:
+            n = await seed_tlhp_dummy(db)
+            if n:
+                log.info("Seed TLHP dummy: %s rekomendasi", n)
+    except Exception:  # noqa: BLE001 — seed best-effort, jangan blokir startup
+        log.exception("Seed TLHP dummy gagal (lanjut)")
     yield
 
 

@@ -338,3 +338,32 @@ class WikiProposal(Base):
     applied_by_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"), nullable=True
     )
+
+
+class TlhpRekomendasi(Base):
+    """Rekomendasi hasil pengawasan yang ditindaklanjuti (TLHP, Workstream C5).
+
+    Sumber: (a) seed dummy dari fixture, (b) AUTO-INGEST dari rekomendasi LHP
+    saat konsep LHP disetujui PT/PM (`_LHP/rekomendasi.json`) → menutup lingkaran
+    laporan→TLHP. Aging (umur/warna/kritis) dihitung di route dari `tgl_lhp`.
+    """
+
+    __tablename__ = "tlhp_rekomendasi"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    no_rek: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    penugasan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("penugasan.id"), nullable=True, index=True
+    )
+    temuan_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    asal_lhp: Mapped[str] = mapped_column(String(300), default="")
+    satker: Mapped[str] = mapped_column(String(200), default="")
+    satker_kode: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    substansi: Mapped[str] = mapped_column(Text, default="")
+    pic: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    tgl_lhp: Mapped[str | None] = mapped_column(String(20), nullable=True)   # YYYY-MM-DD
+    deadline: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="BELUM", index=True)  # SUDAH/PROSES/BELUM/TIDAK_DAPAT
+    bukti_tl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sumber: Mapped[str] = mapped_column(String(20), default="dummy")  # dummy | ingest
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

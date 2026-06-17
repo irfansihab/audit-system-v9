@@ -119,7 +119,7 @@ async def dashboard_summary(
         "ews": await _ews_summary(db),
         "pkpt": _pkpt_summary(),
         "capaian_kinerja": _kinerja_summary(),
-        "tlhp": tlhp_summary(),  # F4 — modul C5 (fase dummy)
+        "tlhp": await tlhp_summary(db),  # F4 — modul C5 (DB-backed)
         # Stub — modul belum dibangun (roadmap): F3 permintaan · F5 tren temuan.
         "permintaan_belum_ditindaklanjuti": {"tersedia": False, "catatan": "Belum ada model permintaan (F3)."},
         "tren_temuan_berulang": {"tersedia": False, "catatan": "Belum dirakit (F5)."},
