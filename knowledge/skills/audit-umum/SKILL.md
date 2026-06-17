@@ -1,12 +1,13 @@
 ---
 name: audit-umum
 format_laporan: kksa
-version: 1.1
+version: 1.2
 jenis: Audit (umum — kriteria fleksibel)
 fungsi: Assurance — Keyakinan Memadai
 output: KKA (.xlsx) + LHA (.docx) + JSON KKP
 model: claude-sonnet-4-6
 changelog:
+  - v1.2 (2026-06-17): Tambah aturan "Dekomposisi sasaran generik (WAJIB)" — uraikan sasaran generik jadi checklist per-kriteria dari input/kriteria, uji per-elemen (bukan global). Selaras pola fix reviu-pengadaan.
   - v1.1 (2026-06-17): Refactor orkestrasi ke v7 — pisah substansi domain dari orkestrasi; struktur seragam Tahap A0–A4; hapus Workflow Gate-Based/STOP & TANYA AUDITOR (paradigma lama audit-system-v4); role+sasaran via sasaran-assignment.json; AT auto-execute, HITL = KT approve KKP → KT draft LHA.
 ---
 
@@ -81,6 +82,9 @@ penugasan/[ID-PENUGASAN]/
 | **A4 — Laporan (LHA)** | Render LHA + Nota Dinas (ikuti `panduan-format-umum/PANDUAN.md`); polish narasi per aspek, rekomendasi material, simpulan **keyakinan memadai**. | KT |
 
 **Eskalasi:** temuan >Rp 1 M atau indikasi pidana → flag MERAH + eskalasi ke PT/Inspektur (lihat tabel Materialitas).
+
+> ### ⚡ Dekomposisi sasaran generik (WAJIB sebelum menilai)
+> Sasaran audit sering generik (mis. *"memastikan kesesuaian dokumen dengan kriteria"*). Jangan dijawab melebar/global. **Uraikan dulu** sasaran jadi daftar **kriteria/elemen konkret** dari `input/kriteria/` (regulasi/SOP/SK yang diunggah), lalu uji kesesuaian **per kriteria/elemen** — satu temuan per elemen yang tidak sesuai (CCSAA lengkap dengan **Sebab**). Yang sesuai → nyatakan eksplisit "telah memenuhi". **Jangan menyimpulkan "sesuai" tanpa menelusuri tiap kriteria.** (Skill berdomain spesifik mis. audit-pengadaan punya checklist baku + rule deterministik; di sini checklist diturunkan dari kriteria yang diunggah.)
 
 ## Format KKA (Kertas Kerja Audit)
 

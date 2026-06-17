@@ -1061,6 +1061,48 @@ def cross_rule_e_alt_5_duplikasi_target(tor_list, rab_list):
     return results
 
 
+_LOGFRAME_LABEL = {
+    "sasaran_kegiatan": "Sasaran Kegiatan",
+    "ikk": "Indikator Kinerja Kegiatan (IKK)",
+    "ro": "Rincian Output (RO)",
+    "iro_header": "Indikator RO (IRO)",
+    "volume": "Volume RO",
+    "satuan": "Satuan Ukur Keluaran",
+}
+
+
+def rule_d7_kerangka_logis_belum_lengkap(tor: dict, rab: dict) -> dict | None:
+    """D.7 — Kerangka logis (logframe) TOR belum lengkap.
+
+    Elemen berjenjang Sasaran Kegiatan → IKK → RO → IRO → Volume → Satuan
+    wajib terisi agar keluaran terukur & dapat ditelusuri (Kriteria IR2 butir 2).
+    Deteksi presence-only dari hasil parse identitas → PERINGATAN bila ada yang
+    kosong; reviewer konfirmasi ke dokumen.
+    """
+    ident = tor.get("identitas_ro", {}) or {}
+    if not ident:
+        return None
+    missing = [lbl for key, lbl in _LOGFRAME_LABEL.items() if not ident.get(key)]
+    if not missing:
+        return None
+    return _rule(
+        "D.7", PERINGATAN, "D",
+        f"Kerangka logis TOR belum lengkap: {len(missing)} elemen kosong",
+        f"Elemen logframe belum terisi: {', '.join(missing)}.",
+        bukti={"elemen_kosong": missing,
+               "elemen_terisi": {k: ident.get(k) for k in _LOGFRAME_LABEL if ident.get(k)}},
+        draft={
+            "kondisi": (f"Kerangka logis TOR belum memuat/menyebut elemen berikut secara tegas: "
+                        f"{', '.join(missing)}. (Deteksi otomatis — reviewer konfirmasi ke dokumen.)"),
+            "kriteria": ("Kriteria IR2 butir 2 — kerangka logis penganggaran (Sasaran Kegiatan, IKK, "
+                         "Rincian Output, Indikator RO, Volume, dan Satuan) wajib lengkap & berjenjang "
+                         "agar keluaran terukur."),
+            "akibat": "Capaian output sulit diukur & ditelusuri; keterkaitan anggaran–kinerja lemah.",
+            "rekomendasi": f"Lengkapi kerangka logis TOR dengan: {', '.join(missing)}.",
+        }
+    )
+
+
 # ============================================================
 # REGISTRY
 # ============================================================
@@ -1079,6 +1121,7 @@ ALL_RULES = [
     rule_d4_formula_kpi_belum_operasional,
     rule_d5_mr_belum_lengkap,
     rule_d6_cba_vs_penerima_manfaat,
+    rule_d7_kerangka_logis_belum_lengkap,
     rule_e1_lokasi_non_target_disebut,
     rule_e2_sektor_asing_di_narasi,
     rule_e3_baseline_inkonsisten,

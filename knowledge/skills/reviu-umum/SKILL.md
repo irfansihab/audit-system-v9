@@ -1,11 +1,13 @@
 ---
 name: reviu-umum
 format_laporan: kksa
-version: 1.1
+version: 1.2
 jenis: Reviu (umum — kriteria fleksibel)
 fungsi: Assurance — Keyakinan Terbatas
 output: KKR (.xlsx) + LHR (.docx) + JSON KKP
 model: claude-sonnet-4-6
+changelog:
+  - v1.2 (2026-06-17): Tambah aturan "Dekomposisi sasaran generik (WAJIB)" — uraikan sasaran generik jadi checklist per-kriteria dari input/kriteria, nilai per-elemen (bukan global). Selaras pola fix reviu-pengadaan.
 ---
 
 # Skill: Reviu Umum (Generic, Criteria-Driven)
@@ -79,6 +81,9 @@ Auto-detect kriteria mengikuti `references/01-panduan-ekstraksi-kriteria.md`. Bi
 | **R4 — Laporan (LHR)** | Render LHR + Nota Dinas (+ Pernyataan Telah Direviu bila reviu LKj/SAKIP); polish narasi & simpulan keyakinan terbatas. | KT |
 
 **Eskalasi:** jika di R3 ditemukan indikasi penyimpangan substantif/kerugian → hentikan, laporkan ke KT untuk pertimbangan konversi ke audit-umum.
+
+> ### ⚡ Dekomposisi sasaran generik (WAJIB sebelum menilai)
+> Sasaran reviu sering generik (mis. *"memastikan kesesuaian dokumen dengan kriteria"*). Jangan dijawab melebar/global. **Uraikan dulu** sasaran jadi daftar **kriteria/elemen konkret** dari `input/kriteria/` (juklak/juknis/SOP/format yang diunggah), lalu nilai kesesuaian **per kriteria/elemen** — satu baris catatan per elemen. Tidak sesuai → catatan (Kondisi → Kriteria → Akibat → Rekomendasi); sesuai → nyatakan eksplisit "telah memenuhi". **Jangan menyimpulkan "sesuai" tanpa menelusuri tiap kriteria satu per satu.** (Skill berdomain spesifik mis. reviu-pengadaan/reviu-rka-kl punya checklist baku; di sini checklist diturunkan dari kriteria yang diunggah.)
 
 ## Format KKR (Kertas Kerja Reviu)
 
