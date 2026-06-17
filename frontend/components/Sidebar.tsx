@@ -6,7 +6,7 @@
  * Mirror style SIMWAS v2 (lihat docs/rencana-integrasi-simwas-v2.html):
  * - 240px width default, collapsible jadi 64px via tombol « di pojok atas
  * - Logo brand di atas + heading "MENUS"
- * - Items: Home, Dashboard, Penugasan > Daftar, CACM > Kriteria, Knowledge > Pattern/Template
+ * - Items: Dashboard, Penugasan > Daftar, CACM > Kriteria, Knowledge > Pattern/Template
  * - Active state: bg ungu solid, text putih
  * - Sub-menu indented dgn dot bullet
  */
@@ -18,12 +18,11 @@ type MenuItem = {
   href: string;
   label: string;
   icon: string;            // emoji untuk prototype — bisa diganti SVG nanti
-  exact?: boolean;         // aktif hanya saat path persis sama (mis. Home vs Penugasan)
+  exact?: boolean;         // aktif hanya saat path persis sama (hindari bentrok prefix href)
   children?: { href: string; label: string }[];
 };
 
 const MENU_ITEMS: MenuItem[] = [
-  { href: '/penugasan', label: 'Home', icon: '🏠', exact: true },
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
   {
     href: '/penugasan',
@@ -77,8 +76,8 @@ export function Sidebar({
   }, [pathname]);
 
   const isActive = (item: MenuItem) => {
-    // "Home" (exact) hanya aktif tepat di daftar penugasan, supaya tidak
-    // bentrok dengan menu "Penugasan" yang juga aktif saat buka detail.
+    // `exact`: aktif hanya saat path persis sama (hindari bentrok antar menu
+    // yang berbagi prefix href).
     if (item.exact) return pathname === item.href;
     return pathname === item.href || pathname.startsWith(item.href + '/');
   };
