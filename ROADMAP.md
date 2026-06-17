@@ -89,7 +89,8 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
 
 ## Workstream C — Fitur dipertahankan (verifikasi utuh pasca-rebrand + finalisasi)
 
-- [ ] **C1 — Workflow 7-tahapan**: Kartu Penugasan → PKP → KKP (AI+HITL) → LRS KK → Konsep LHP → LRS LHP → Laporan Hasil. Pastikan status-derivation (`PKP_DONE`/`KKP_DONE`/`LHP_DONE`), SasaranApprovalPanel, LhpFilesPanel tetap jalan setelah rebrand.
+- [~] **C1 — Workflow 7-tahapan**: Kartu Penugasan → PKP → KKP (AI+HITL) → LRS KK → Konsep LHP → LRS LHP → Laporan Hasil. Status-derivation + SasaranApprovalPanel + LhpFilesPanel jalan.
+  - [x] **Lembar Reviu berjenjang KT & PT** ✅ (replikasi format INTEGRAL/SIMWAS) — `models.LembarReviu` + `routes/lembar_reviu.py` (aspek baku A–D per level: KT atas KKP, PT atas LHP + kolom Penyelesaian) + `LembarReviuPanel` di Tahapan 4 (KT) & 6 (PT): status per aspek + paraf (reviewer/NIP/tanggal). Role-gated. Teruji.
 - [ ] **C2 — Integrasi SIMWAS v2**: finalisasi kontrak REST (`openapi`→v8), JWKS SSO, webhook; selaras dengan B5.
 - [ ] **C3 — CACM/EWS**: modul `CACM/` + `CacmRun`/`EwsFinding` + halaman CACM dipertahankan & diverifikasi.
 - [ ] **C4 — Mutu agen & eval (lanjutan v7)**: skill **R0–R4** untuk reviu sudah selesai → **lanjutkan ke rumpun audit/evaluasi/pemantauan** (hati-hati: paradigma stop-confirm berbeda per rumpun); PKP-di-feedback; `backend/eval` (rubrik, golden, judge, verification pass).
