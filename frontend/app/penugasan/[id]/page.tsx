@@ -200,13 +200,7 @@ export default function DetailPenugasanPage() {
           <div key={`s3-${id}`} className="space-y-6">
             <WorkspaceBanner
               title="🎯 Tahapan 3 — Kertas Kerja (KKP) — workspace Anggota Tim"
-              steps={['Generate Konteks', 'Upload Dokumen', 'Analisis AI', 'Review & Approval Temuan']}
-            />
-            <SetupPenugasanTab
-              penugasanId={id}
-              role={session.role_aktif}
-              currentUserName={session.user.nama_lengkap}
-              section="context"
+              steps={['Upload Dokumen', 'Analisis AI (konteks otomatis di belakang layar)', 'Review & Approval Temuan']}
             />
             <DokumenTab
               dokumen={dokumen}
@@ -887,7 +881,7 @@ function ChatTab({
   const [prompt, setPrompt] = useState(
     seedPrompt ??
       (role === 'AT'
-        ? `Mulai analisis ${skill} untuk penugasan ini. Jalankan pipeline V6 dan verifikasi anomali.`
+        ? `Mulai analisis ${skill} untuk penugasan ini: susun konteks dari dokumen yang diupload lalu lakukan analisis dan susun KKP.`
         : 'Susun draft LHR dari temuan.json yang sudah disetujui anggota tim.')
   );
   const [running, setRunning] = useState(false);
