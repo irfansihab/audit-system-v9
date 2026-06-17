@@ -98,6 +98,7 @@ Membantu KT mendraft sasaran reviu **berdasarkan deskripsi yang KT berikan via c
 ### Prinsip
 
 1. **LHR adalah agregasi, bukan penulisan ulang.** Baca temuan.json yang sudah disetujui KT, kelompokkan per sasaran, tulis narasi simpulan, susun rekomendasi.
+   - **Penyajian KONDISI di laporan: kronologis dulu, baru isu/deviasi (WAJIB).** Saat menarasikan tiap temuan di bab Hasil, paparkan dulu **rangkaian fakta secara kronologis** (urut waktu/tahapan: peristiwa, tanggal/nomor dokumen, nilai, pihak) **lalu di akhir** nyatakan **isu/deviasinya** (yang menyimpang dari kriteria). Jangan membuka dengan vonis penyimpangan sebelum fakta kronologis dibangun — deviasi adalah simpulan dari kronologi, bukan kalimat pembuka.
 2. **Jangan PERNAH edit V6 / bridge / script.** Pipeline gagal = berhenti & lapor.
 3. **WAJIB cek approval status** — `check_completeness` cek `DISETUJUI_KT`. Bila ada sasaran masih `AKTIF` atau `SELESAI_KKP` (belum di-approve KT), **STOP** dan minta KT approve dulu via UI Setup.
 4. **Bahasa keyakinan terbatas WAJIB.** Frase baku:

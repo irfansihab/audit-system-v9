@@ -33,6 +33,10 @@ Ini adalah aturan inti yang menentukan elemen apa yang **wajib, opsional, atau t
 | **Reviu SPIP** | ✅ Per unsur | ✅ PP 60/2008 | ❌ Tidak perlu | ❌ Tidak perlu | ✅ Jika ada catatan | Format catatan reviu per unsur SPIP |
 | **Konsultasi** | — | ✅ Dasar hukum | — | — | ✅ Pendapat/Saran | Format memo konsultasi |
 
+### Penyajian unsur KONDISI — kronologis dulu, baru isu/deviasi (WAJIB semua jenis)
+
+Tulis **Kondisi** sebagai **runtutan fakta secara kronologis** (urut waktu/tahapan: peristiwa, tanggal/nomor dokumen, nilai, pihak — dengan kutipan/sumber), **lalu di bagian akhir** baru nyatakan **isu/deviasinya** (yang menyimpang dari kriteria). Pola: *"[tahap 1: fakta + tgl/dok] → [tahap 2: fakta] → … Atas rangkaian tersebut, terdapat [isu/deviasi]: …"*. **Jangan** membuka Kondisi dengan vonis penyimpangan sebelum fakta kronologisnya dibangun — deviasi adalah simpulan dari kronologi, bukan kalimat pembuka. Berlaku untuk KKP (Anggota Tim) maupun narasi Laporan (Ketua Tim).
+
 ### Penjelasan Framework:
 
 **Mengapa Audit wajib KKSA lengkap?**

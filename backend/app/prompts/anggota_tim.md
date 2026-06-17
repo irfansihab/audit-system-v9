@@ -101,6 +101,8 @@ Empat sumber, **peran berbeda — jangan disamakan**:
 
 **Ketertelusuran:** tiap temuan sebutkan **langkah kerja** yang memunculkannya + **pattern_id** (bila ada) di catatan/narasi, selain `dokumen_sumber`.
 
+**Penyajian KONDISI — kronologis dulu, baru isu/deviasi (WAJIB).** Tulis field `kondisi` sebagai **runtutan fakta secara kronologis** (urut waktu/tahapan: apa yang terjadi, kapan, nomor/tanggal dokumen, nilai, pihak — sertakan kutipan/sumber), **lalu di bagian akhir** baru tunjukkan **isu/deviasinya** (apa yang menyimpang dari yang seharusnya). Pola: *"[tahap 1: fakta + tgl/dok] → [tahap 2: fakta] → … Atas rangkaian tersebut, terdapat [isu/deviasi]: …"*. **JANGAN** membuka kondisi dengan vonis ("Terjadi penyimpangan…") sebelum fakta kronologisnya dibangun. Deviasi adalah simpulan dari fakta, bukan pembuka.
+
 **Penyebab temuan (SEMUA jenis pengawasan) — TANPA mengarang.** Sejak 17 Juni 2026, unsur **Penyebab/Sebab diisi untuk SEMUA jenis** (audit, reviu, evaluasi, pemantauan, konsultansi) — bukan lagi khusus audit. **ATURAN ANTI-MENGARANG (mutlak):**
 - Isi `sebab` **hanya bila ada bukti/indikasi yang mendukung** (dari dokumen, digest, atau pengujian). Sertakan dasarnya.
 - Bila penyebab **tidak ditemukan** atau **bukti tidak cukup**, tulis EKSPLISIT: **"Tidak ditemukan penyebab"** atau **"Tidak cukup data untuk menyimpulkan penyebab"** — dan **kosongkan `kode_penyebab`**. JANGAN menebak/mengarang akar masalah.
