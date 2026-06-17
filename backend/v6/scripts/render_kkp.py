@@ -178,7 +178,18 @@ def render_kkp_for_anggota(penugasan_dir: Path, anggota_nama: str) -> Path:
                 elif col == "Sasaran":
                     row_vals.append(temuan["sasaran_id"])
                 elif col == "Judul Temuan":
-                    row_vals.append(temuan["judul_temuan"])
+                    judul = temuan["judul_temuan"]
+                    # Kodefikasi temuan (SIM-HP) — tampilkan di bawah judul bila ada.
+                    _kodes = []
+                    if temuan.get("kode_kondisi"):
+                        _kodes.append(f"Kondisi {temuan['kode_kondisi']}")
+                    if temuan.get("kode_penyebab"):
+                        _kodes.append(f"Penyebab {temuan['kode_penyebab']}")
+                    if temuan.get("kode_rekomendasi"):
+                        _kodes.append(f"Rekomendasi {temuan['kode_rekomendasi']}")
+                    if _kodes:
+                        judul += "\n[Kode: " + " · ".join(_kodes) + "]"
+                    row_vals.append(judul)
                 elif col == "Kondisi":
                     row_vals.append(temuan["kondisi"])
                 elif col == "Kriteria":

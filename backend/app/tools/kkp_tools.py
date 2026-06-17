@@ -245,6 +245,12 @@ def _normalize_temuan_input(raw: dict) -> dict:
     out.setdefault("sebab", None)  # reviu tidak punya sebab; bisa null
     out.setdefault("dokumen_sumber", [])
 
+    # Kodefikasi temuan (SIM-HP/APIP) — lihat get_kodefikasi_temuan. Format `<sub>.<param>`.
+    # kode_kondisi & kode_rekomendasi diisi semua skill; kode_penyebab hanya audit (ada Sebab).
+    out.setdefault("kode_kondisi", "")
+    out.setdefault("kode_penyebab", "")
+    out.setdefault("kode_rekomendasi", "")
+
     # Ketertelusuran (WAJIB diisi agen — lihat anggota_tim.md): langkah kerja PKP
     # yang memunculkan temuan + pattern wiki (bila ada). Default kosong agar tidak
     # memblok schema lama, tapi prompt mewajibkan agen mengisinya.
@@ -271,7 +277,9 @@ def _normalize_temuan_input(raw: dict) -> dict:
     "(judul_temuan, anggota_tim.nama_lengkap). Field wajib: sasaran_id, anggota_tim/"
     "assigned_to, judul, kondisi, kriteria, akibat, dokumen_sumber[{file, halaman, kutipan}]. "
     "Ketertelusuran (isi bila ada): langkah_kerja_terkait (langkah PKP yang memunculkan "
-    "temuan), pattern_id (id pattern wiki).",
+    "temuan), pattern_id (id pattern wiki). KODEFIKASI (WAJIB — lihat get_kodefikasi_temuan): "
+    "kode_kondisi (wajib), kode_rekomendasi (wajib), kode_penyebab (hanya AUDIT yg punya Sebab); "
+    "format `<sub>.<param>` mis. 1.104.",
     {
         "penugasan_folder": str,
         "temuan": dict,
@@ -352,6 +360,28 @@ async def reset_temuan(args: dict) -> dict:
     data["temuan"] = []
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"content": [{"type": "text", "text": f"OK|reset|temuan_dihapus={before}|total_now=0"}]}
+
+
+@tool(
+    "get_kodefikasi_temuan",
+    "Baca daftar KODEFIKASI TEMUAN standar (SIM-HP/APIP): kode Kondisi, Penyebab, "
+    "Rekomendasi (+ Tindak Lanjut). WAJIB dipanggil saat menyusun KKP untuk memberi "
+    "kode pada SETIAP temuan: kode_kondisi (wajib), kode_rekomendasi (wajib), "
+    "kode_penyebab (hanya AUDIT yang punya unsur Sebab). Format kode `<sub>.<param>` "
+    "mis. 1.104. Pilih parameter yang paling cocok dengan substansi temuan.",
+    {},
+)
+async def get_kodefikasi_temuan(_args: dict) -> dict:
+    from app.config import get_settings
+    path = get_settings().skills_path / "panduan-format-umum" / "kodefikasi-temuan.md"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return {
+            "content": [{"type": "text", "text": "NOT_FOUND|kodefikasi-temuan.md tidak tersedia"}],
+            "is_error": True,
+        }
+    return {"content": [{"type": "text", "text": text}]}
 
 
 async def _filter_temuan_by_review(folder: Path) -> tuple[Path | None, dict | None]:
@@ -949,7 +979,8 @@ async def build_context_md_template(args: dict) -> dict:
 KKP_TOOLS = [
     read_context, list_ingested, read_ingested_digest, get_team_members,
     write_context_md, build_context_md_template,
-    append_temuan, reset_temuan, build_draft_temuan_from_anomalies, read_draft_temuan,
+    append_temuan, reset_temuan, get_kodefikasi_temuan,
+    build_draft_temuan_from_anomalies, read_draft_temuan,
     render_kkp_docx, run_qc_kkp,
     read_temuan_json,
 ]

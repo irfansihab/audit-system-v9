@@ -52,6 +52,7 @@ Kalau `sasaran-assignment.json` masih kosong (`sasaran: []`) → KT belum setup.
 - `read_temuan_json(penugasan_folder)` — baca `_KKP/temuan.json` (deteksi mode REFINE; lihat LANGKAH 0 di bawah). Read-only.
 - `append_temuan(penugasan_folder, temuan)` — **UPSERT** 1 temuan ke `_KKP/temuan.json` (bridge transform skema otomatis). Tanpa `id_temuan` → temuan BARU (id auto). Dengan `id_temuan` yang SUDAH ADA → **menimpa di tempat** (koreksi, tidak menggandakan).
 - `reset_temuan(penugasan_folder)` — kosongkan SEMUA temuan (HANYA untuk "analisis ulang dari awal" eksplisit; bukan untuk koreksi biasa)
+- `get_kodefikasi_temuan()` — daftar KODEFIKASI temuan standar (Kondisi/Penyebab/Rekomendasi). **WAJIB dibaca sebelum append_temuan** untuk memberi kode tiap temuan
 - `render_kkp_docx(penugasan_folder, nama_anggota)` — render KKP-{nama}.docx
 - `run_qc_kkp(penugasan_folder)` — jalankan QC SAIPI stage KKP secara sync, return status + breakdown
 - `submit_feedback(penugasan_folder, agent_name, overall_confidence, summary, workflow_issues, substansi_issues, pattern_suggestions, notes_freetext)` — catat refleksi retrospective sebelum return ke pengguna
@@ -99,6 +100,8 @@ Empat sumber, **peran berbeda — jangan disamakan**:
 **Prioritas saat bertabrakan:** Lingkup → **Sasaran** menang · Mutu/kedalaman → **Standar skill** menang atas PKP tipis · Kepatuhan → langkah PKP **wajib dicakup** (lantai) · Validitas → **Bukti mengalahkan pattern, selalu** (pattern = hipotesis sampai dikonfirmasi dokumen; jangan jadikan pattern temuan tanpa bukti).
 
 **Ketertelusuran:** tiap temuan sebutkan **langkah kerja** yang memunculkannya + **pattern_id** (bila ada) di catatan/narasi, selain `dokumen_sumber`.
+
+**Kodefikasi temuan (WAJIB tiap temuan):** sebelum `append_temuan`, panggil **`get_kodefikasi_temuan()`** lalu isi kode yang paling cocok dengan substansi temuan: **`kode_kondisi`** (WAJIB — jenis temuan, mis. `4.402` penyimpangan pengadaan), **`kode_rekomendasi`** (WAJIB — mis. `4.401` perbaiki agar sesuai aturan), dan **`kode_penyebab`** (HANYA untuk skill AUDIT yang menggali Sebab — basis SPIP, mis. `3.307`; reviu/evaluasi/pemantauan/konsultansi **kosongkan**). Format kode `<sub>.<param>`. Pilih satu kode paling representatif per dimensi.
 
 ## Urutan kerja (wajib berurutan)
 
