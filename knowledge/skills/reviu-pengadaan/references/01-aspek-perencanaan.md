@@ -59,6 +59,20 @@
 | **Kualifikasi Penyedia** | Syarat penyedia | Proporsional, tidak berlebihan/tidak diskriminatif |
 | **Sumber Dana** | Anggaran yang tersedia | Sesuai DIPA, mata anggaran tepat |
 
+### ⚡ Checklist Kelengkapan Justifikasi (WAJIB — 5 elemen inti)
+
+Untuk sasaran "memastikan kesesuaian dokumen dengan kriteria", justifikasi/KAK **wajib** memuat kelima elemen ini, dan reviewer menilai kesesuaian **tiap elemen** (bukan global). Dasar: Perpres 16/2018 Ps. 11 (PPK menyusun perencanaan), Ps. 18 (perencanaan: identifikasi kebutuhan, penetapan barang/jasa, cara, jadwal, anggaran), Ps. 19 (spesifikasi teknis); Perlem LKPP 12/2021 Bab III.
+
+| # | Elemen | Ada? | Penilaian kesesuaian |
+|---|--------|------|----------------------|
+| 1 | **Kebutuhan** (identifikasi kebutuhan / latar belakang) | | Dirumuskan jelas, terhubung program/output; bukan formalitas |
+| 2 | **Spesifikasi teknis & fungsi** | | Terukur, fungsional (tanpa merek), tidak over/under-spec |
+| 3 | **Rencana cara/metode pengadaan** | | Metode ditetapkan & sesuai jenis–nilai (Ps. 38–41) |
+| 4 | **Waktu penyelesaian pekerjaan** | | Jadwal tercantum, realistis, konsisten dgn periode pengadaan aktual |
+| 5 | **Output/keluaran yang diharapkan** | | Deliverable terukur & dapat diverifikasi (kuantitas + kualitas) |
+
+> Bila elemen tidak ada/tidak memadai → catatan reviu (Kondisi-Kriteria-Akibat-Rekomendasi). Bila lengkap & sesuai → nyatakan eksplisit "telah memenuhi". Elemen 1–2 & 5 bersumber dari KAK; elemen 3 dari rencana metode (RUP/dokumen persiapan); elemen 4 dari jadwal KAK/dokumen pengadaan.
+
 ### Kriteria Reviu KAK
 **✅ Terpenuhi jika:**
 - KAK menjelaskan kebutuhan dengan jelas dan dapat dimengerti penyedia

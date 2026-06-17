@@ -1,13 +1,14 @@
 ---
 name: reviu-pengadaan
 format_laporan: kksa
-version: 1.4
+version: 1.5
 jenis: Reviu Perencanaan dan Pemilihan Pengadaan Barang/Jasa
 dasar-hukum: Perpres 16/2018 jo. Perpres 12/2021, Perlem LKPP 12/2021
 model: claude-sonnet-4-6
 auto_execute: true
 auto_execute_command: "tool: run_batch_pbj(penugasan_folder, role=\"AT\")"
 changelog:
+  - v1.5 (2026-06-17): Tambah Checklist Kelengkapan Justifikasi WAJIB (5 elemen — kebutuhan, spesifikasi teknis & fungsi, rencana metode pengadaan, waktu penyelesaian, output) + aturan dekomposisi sasaran generik di R3, dan perjelas kriteria KAK Bagian B. Fix feedback — untuk sasaran kesesuaian dokumen dengan kriteria, agen kini menilai per-elemen tanpa perlu prompt manual.
   - v1.4 (2026-06-14): Refactor orkestrasi ke v7 — pisah substansi domain dari orkestrasi; struktur seragam Tahap R0–R4; hapus referensi bash/Task/_ROLE/AskUserQuestion (legacy audit-system-v4); pipeline via tool run_batch_pbj. Lengkapi Batasan yang terpotong.
   - v1.3 (2026-05-06): Tambah orchestrator run_batch.py (reuse digest_pengadaan dari audit-pengadaan + cross_check reviu-pengadaan); set auto_execute true.
   - v1.2 (2026-04-08): Hapus cek RUP/SiRUP dari scope perencanaan; hapus SPPBJ dari
@@ -40,6 +41,21 @@ changelog:
 ### Analisis Substantif Wajib (Tahap R3)
 
 Rules deterministik (R3 pipeline) hanya menangkap inkonsistensi struktural sederhana. Analisis di bawah adalah value-add AI — **wajib** dieksekusi otomatis (jangan berhenti di output rule-based, jangan tanya "Mau saya lanjut?"):
+
+> ### ⚡ Dekomposisi sasaran generik (WAJIB sebelum menilai)
+> Sasaran reviu sering ditulis generik, mis. *"memastikan kesesuaian dokumen dengan kriteria"*. Jangan dijawab melebar. **Terjemahkan dulu jadi checklist elemen konkret** sesuai dokumen yang direviu, lalu nilai kesesuaian **per elemen** terhadap kriteria. Untuk dokumen perencanaan (KAK/justifikasi/dokumen persiapan), gunakan **Checklist Kelengkapan Justifikasi** di bawah; jika dokumen lain, pakai tabel kriteria aspek terkait (Bagian B–F).
+>
+> **Checklist Kelengkapan Justifikasi & Dokumen Persiapan Pengadaan** — untuk SETIAP reviu perencanaan, pastikan justifikasi/KAK memuat **dan** menilai kesesuaian tiap elemen ini (Perpres 16/2018 Ps. 11 & 18–19, Perlem LKPP 12/2021 Bab III):
+>
+> | # | Elemen wajib | Yang dinilai (ada? + sesuai kriteria?) |
+> |---|---|---|
+> | 1 | **Kebutuhan** (identifikasi kebutuhan / latar belakang) | Kebutuhan dirumuskan jelas & terhubung program/output; bukan sekadar formalitas |
+> | 2 | **Spesifikasi teknis & fungsi** | Detail teknis + fungsi terukur, fungsional (tidak menyebut merek), tidak over/under-spec |
+> | 3 | **Rencana cara/metode pengadaan** | Metode (tender/seleksi/penunjukan/e-purchasing/PL) ditetapkan & sesuai jenis-nilai (Ps. 38–41) |
+> | 4 | **Waktu penyelesaian pekerjaan** | Jadwal/jangka waktu pelaksanaan tercantum, realistis, konsisten dgn periode pengadaan aktual |
+> | 5 | **Output / keluaran yang diharapkan** | Deliverable terukur & dapat diverifikasi (kuantitas + kualitas) |
+>
+> Untuk tiap elemen: bila **tidak ada / tidak memadai** → buat catatan (Judul → Kondisi → Kriteria → Akibat → Rekomendasi). Bila lengkap & sesuai → nyatakan eksplisit "telah memenuhi". **Jangan menyimpulkan "sesuai" tanpa menelusuri kelima elemen ini satu per satu.**
 
 | # | Tugas Substantif | Detail |
 |---|------------------|--------|
@@ -226,9 +242,12 @@ Rekomendasi: [Tindakan perbaikan spesifik: apa yang harus dilengkapi/diperbaiki,
 > **Alasan efisiensi**: Dokumen RUP/SiRUP jarang tersedia dalam berkas penugasan, membutuhkan akses portal SiRUP yang tidak bisa dilakukan AI, dan bukan fokus utama reviu perencanaan teknis.
 
 ### B. Kerangka Acuan Kerja / Spesifikasi Teknis
+
+> **⚡ Kelengkapan justifikasi (wajib, jangan dilewati):** "lengkap" di sini = memuat **5 elemen** — (1) kebutuhan, (2) spesifikasi teknis & fungsi, (3) rencana cara/metode pengadaan, (4) waktu penyelesaian pekerjaan, (5) output yang diharapkan. Telusuri & nilai **per elemen** (lihat Checklist Kelengkapan Justifikasi di Tahap R3). Jangan menilai "lengkap/sesuai" secara global tanpa menelusuri kelimanya.
+
 | Aspek | Kriteria | Referensi |
 |-------|----------|-----------|
-| KAK/spesifikasi ada dan lengkap | Ditetapkan PPK sebelum pengadaan | Pasal 11 Perpres 16/2018 |
+| KAK/spesifikasi ada dan **memuat 5 elemen justifikasi** | Ditetapkan PPK sebelum pengadaan; kebutuhan, spek teknis & fungsi, metode, waktu, output tercantum | Pasal 11 & 18 Perpres 16/2018 |
 | Spesifikasi jelas dan terukur | Tidak ambigu, ada satuan/standar | Pasal 11 Perpres 16/2018 |
 | Tidak diskriminatif (tidak menyebut merek) | Tidak membatasi persaingan | Pasal 19 Perpres 16/2018 |
 | Sesuai kebutuhan (tidak over/under spec) | Proporsional terhadap kebutuhan | Prinsip efisiensi Pasal 6 |
