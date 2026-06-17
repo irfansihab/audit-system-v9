@@ -99,7 +99,7 @@ Alur ideal: **EWS (CACM) menemukan risiko → penugasan dibuat → agen menganal
   - [x] UI: **menu "Tindak Lanjut"** + halaman `app/tlhp/page.tsx` + widget F4 dashboard.
   - [x] **Data model DB** `TlhpRekomendasi` (DB-backed; seed dummy idempoten saat startup).
   - [x] **Auto-ingest tutup-lingkaran** ✅ — saat konsep LHP **disetujui PT/PM** (`create_lhp_review` APPROVED) → `ingest_tlhp_from_penugasan` baca `_LHP/rekomendasi.json` → buat item TLHP (anti-dup via `no_rek`). Juga manual `POST /tlhp/ingest/{id}` (KT/PT/PM). Teruji: penugasan 51 → +6 (idempoten).
-  - [ ] **Lanjutan:** lengkapi `knowledge/skills/pemantauan-tindak-lanjut/references/` (4 file kosong) + agen pemantauan TLHP; derive satker/PIC lebih cerdas; sinkron status SIMWAS.
+  - [ ] **Lanjutan TLHP — ⛔ PRIORITAS TERAKHIR** (ditunda atas arahan user 16 Juni): lengkapi `knowledge/skills/pemantauan-tindak-lanjut/references/` (4 file kosong) + agen pemantauan TLHP; derive satker/PIC lebih cerdas; sinkron status SIMWAS. Fungsi inti TLHP (data, aging, dashboard, tutup-lingkaran) sudah jalan — sisanya dikerjakan paling akhir.
 
 ## Workstream D — Infra & bootstrap v8
 
@@ -146,12 +146,12 @@ Widget (kartu) yang ditampilkan:
 
 ## Urutan eksekusi yang disarankan
 
-1. **D1 bootstrap** → pastikan v8 jalan lokal (npm/pip install) sebelum apa pun.
-2. **B (auth username/password)** + **A (konsolidasi identitas)** — fondasi v8.
-3. **G (kinerja & skala)** — tabel ringkasan, cap konkurensi agent, indeks DB. Fondasi agar ringan untuk 80 user; menopang dashboard.
-4. **C (verifikasi fitur dipertahankan)** + **C5 (TLHP)**.
-5. **F (dashboard beranda)** — setelah C5 (TLHP) & G1 (ringkasan) siap, rakit 6 widget di atas 1 endpoint ringkas.
-6. **D2–D4 infra/deploy**, lalu **E (backlog mutu)**.
+1. **D1 bootstrap** ✅ → v8 jalan lokal.
+2. **B (auth username/password)** + **A (konsolidasi identitas, A1 ✅)** — fondasi v8.
+3. **G (kinerja & skala, G1–G3 ✅)** — fondasi ringan untuk 80 user.
+4. **F (dashboard beranda) ✅** + **C (fitur dipertahankan, +Lembar Reviu KT/PT ✅)**.
+5. **D2–D4 infra/deploy**, lalu **E (backlog mutu)**.
+6. **⛔ TERAKHIR — Lanjutan TLHP** (references/agen/derive PIC/sinkron SIMWAS). Inti TLHP sudah jalan; sisanya prioritas paling akhir (arahan user).
 
 ## Cara menjalankan v8 (lokal)
 
