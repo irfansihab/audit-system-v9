@@ -403,10 +403,11 @@ async def trigger_ingestion(
 class RunHandle:
     """Pegangan satu run agen yang hidup independen dari koneksi SSE."""
 
-    def __init__(self, run_id: int, agent_name: str, penugasan_id: int):
+    def __init__(self, run_id: int, agent_name: str, penugasan_id: int, user_id: int):
         self.run_id = run_id
         self.agent_name = agent_name
         self.penugasan_id = penugasan_id
+        self.user_id = user_id
         self.events: list[dict] = []      # buffer event SSE (append-only)
         self.done = False
         self.cond = asyncio.Condition()
@@ -446,11 +447,14 @@ class RunHandle:
 # kompromi yang diterima untuk dev; run yang ke-interupsi restart akan tampak
 # "running" basi di DB sampai run berikutnya.
 _RUNS: dict[int, RunHandle] = {}
-_ACTIVE_BY_KEY: dict[tuple[int, str], int] = {}
+# Key per (penugasan, agen, USER) — supaya 2 anggota tim di penugasan yang sama
+# punya run + chat terpisah (tidak saling mencampur konteks/dokumentasi) dan bisa
+# jalan bersamaan. Antar-penugasan otomatis terisolasi (penugasan_id beda).
+_ACTIVE_BY_KEY: dict[tuple[int, str, int], int] = {}
 
 
-def _active_handle(penugasan_id: int, agent_name: str) -> RunHandle | None:
-    rid = _ACTIVE_BY_KEY.get((penugasan_id, agent_name))
+def _active_handle(penugasan_id: int, agent_name: str, user_id: int) -> RunHandle | None:
+    rid = _ACTIVE_BY_KEY.get((penugasan_id, agent_name, user_id))
     if rid is None:
         return None
     return _RUNS.get(rid)
@@ -460,7 +464,7 @@ def _active_run_count() -> int:
     """Jumlah run agen yang sedang berjalan di seluruh sistem (G2 — backpressure).
 
     `_ACTIVE_BY_KEY` hanya memuat run yang BELUM selesai (dihapus di akhir
-    `_execute_run`), dan double-run per (penugasan,agen) sudah dicegah — jadi
+    `_execute_run`), dan double-run per (penugasan,agen,user) sudah dicegah — jadi
     jumlah key = jumlah run aktif unik."""
     return len(_ACTIVE_BY_KEY)
 
@@ -527,7 +531,7 @@ async def _execute_run(handle: RunHandle, user_prompt: str, user_id: int) -> Non
     await handle.finish()
 
     # Lepas dari index "active" supaya /attach berikutnya tahu run sudah kelar.
-    _ACTIVE_BY_KEY.pop((handle.penugasan_id, handle.agent_name), None)
+    _ACTIVE_BY_KEY.pop((handle.penugasan_id, handle.agent_name, handle.user_id), None)
 
 
 async def _start_run(agent_name: str, full_prompt: str, penugasan_id: int, user_id: int) -> RunHandle:
@@ -547,9 +551,9 @@ async def _start_run(agent_name: str, full_prompt: str, penugasan_id: int, user_
         run_id = run.id
         await db.commit()
 
-    handle = RunHandle(run_id, agent_name, penugasan_id)
+    handle = RunHandle(run_id, agent_name, penugasan_id, user_id)
     _RUNS[run_id] = handle
-    _ACTIVE_BY_KEY[(penugasan_id, agent_name)] = run_id
+    _ACTIVE_BY_KEY[(penugasan_id, agent_name, user_id)] = run_id
     handle.task = asyncio.create_task(_execute_run(handle, full_prompt, user_id))
     return handle
 
@@ -600,12 +604,13 @@ async def stream_agent(
                 f"Belum bisa generate context — {rd['reason']}.",
             )
 
-    # Tolak start ganda bila masih ada run aktif untuk penugasan+agen ini.
-    existing = _active_handle(p.id, agent_name)
+    # Tolak start ganda bila user INI masih punya run aktif untuk penugasan+agen ini.
+    # (Per-user: anggota tim lain di penugasan sama tetap bisa jalan bersamaan.)
+    existing = _active_handle(p.id, agent_name, user.id)
     if existing is not None and not existing.done:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "Masih ada analisis berjalan untuk agen ini. Tunggu selesai atau buka tab Chat untuk melihat progres.",
+            "Masih ada analisis berjalan untuk Anda. Tunggu selesai atau buka tab Chat untuk melihat progres.",
         )
 
     # G2 — cap konkurensi global: lindungi server saat banyak user (±80) agar
@@ -641,7 +646,7 @@ async def attach_agent(
     """
     user, role = current
     _check_agent_role(agent_name, role)
-    handle = _active_handle(penugasan_id, agent_name)
+    handle = _active_handle(penugasan_id, agent_name, user.id)
 
     if handle is None:
         async def _idle():
@@ -658,7 +663,8 @@ async def active_agent_run(
     current: tuple[User, Role] = Depends(get_current_user),
 ) -> dict:
     """Cek cepat (non-stream) apakah ada run aktif + teks terkumpul sejauh ini."""
-    handle = _active_handle(penugasan_id, agent_name)
+    user, _role = current
+    handle = _active_handle(penugasan_id, agent_name, user.id)
     if handle is None or handle.done:
         return {"active": False}
     text = "".join(
@@ -681,11 +687,14 @@ async def get_agent_history(
     current: tuple[User, Role] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Return list semua AgentRun untuk penugasan + agent, urutan oldest → newest.
+    """Return list AgentRun untuk penugasan + agent + USER INI, oldest → newest.
 
     Dipakai oleh frontend ChatTab untuk render percakapan lampau saat mount,
-    supaya user yang login ulang tidak mulai dari kosong.
+    supaya user yang login ulang tidak mulai dari kosong. Difilter per-user:
+    2 anggota tim di penugasan yang sama punya chat terpisah (konteks &
+    dokumentasi tidak tercampur).
     """
+    user, _role = current
     if agent_name not in AGENT_BUILDERS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Agen tidak dikenal: {agent_name}")
 
@@ -695,6 +704,7 @@ async def get_agent_history(
             .where(
                 AgentRun.penugasan_id == penugasan_id,
                 AgentRun.agent_name == agent_name,
+                AgentRun.user_id == user.id,
             )
             .order_by(AgentRun.started_at.asc())
         )
