@@ -467,8 +467,22 @@ export const api = {
           kriteria?: string;
           akibat?: string;
         } | null;
+        edit_log?: Array<{
+          at: string;
+          by_nama?: string;
+          by_role?: string;
+          changes: Record<string, { from: string; to: string }>;
+          note?: string | null;
+        }> | null;
       }>;
     }>(`/penugasan/${penugasanId}/temuan-review`),
+
+  /** Submit KKP ke Ketua Tim (AT) — tandai sasaran miliknya diajukan ke KT. */
+  submitKkp: (penugasanId: number) =>
+    request<{ ok: boolean; submitted_count: number; sasaran: string[]; message: string }>(
+      `/penugasan/${penugasanId}/kkp/submit`,
+      { method: 'POST' }
+    ),
 
   /** Setujui 1 temuan (AT/KT/PT/PM). */
   approveTemuan: (penugasanId: number, temuanId: string, note?: string) =>

@@ -3067,8 +3067,9 @@ function PreloadContextPanel({ penugasanId }: { penugasanId: number }) {
 }
 
 // ====================================================================
-// TemuanReviewPanel (Prioritas 2) — HITL per-temuan. AT/KT/PT setujui /
-// tolak tiap temuan sebelum render KKP/LHR final.
+// TemuanReviewPanel — HITL KKP (model 17 Jun 2026): tanpa setujui/tolak per-temuan.
+// AT kurasi via Edit (terekam log) / iterasi chat → Submit ke Ketua Tim. KT/PT bisa
+// edit juga; persetujuan final di tingkat sasaran (SasaranApprovalPanel).
 // ====================================================================
 
 type TemuanReviewItem = Awaited<ReturnType<typeof api.listTemuanReview>>['items'][number];
@@ -3360,10 +3361,11 @@ function SasaranApprovalPanel({ penugasanId, onSaved }: { penugasanId: number; o
 
 function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
   const session = getSession();
-  const canApprove = ['AT', 'KT', 'PT', 'PM'].includes(session?.role_aktif || '');
-  const canReject = ['KT', 'PT', 'PM'].includes(session?.role_aktif || '');
-  const canBulk = ['KT', 'PT', 'PM'].includes(session?.role_aktif || '');
-  const canEdit = ['AT', 'KT', 'PT', 'PM'].includes(session?.role_aktif || '');
+  const role = session?.role_aktif || '';
+  // Model HITL baru: tak ada setujui/tolak per-temuan. Kurasi via Edit (terekam log)
+  // atau iterasi chat; bila sudah pas → Submit ke Ketua Tim (AT).
+  const canEdit = ['AT', 'KT', 'PT', 'PM'].includes(role);
+  const canSubmit = role === 'AT';
 
   const [items, setItems] = useState<TemuanReviewItem[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -3390,17 +3392,17 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
   };
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [penugasanId]);
 
-  const doApprove = async (tid: string) => {
-    setBusy(tid); setMsg(null);
-    try { await api.approveTemuan(penugasanId, tid); refresh(); }
-    catch (e: any) { setMsg(`Gagal approve ${tid}: ${e.message}`); }
-    finally { setBusy(null); }
-  };
-  const doReject = async (tid: string) => {
-    if (!(await confirmDialog({ message: `Tolak temuan ${tid}? Tidak akan masuk KKP/LHR final.`, danger: true, confirmText: 'Tolak' }))) return;
-    setBusy(tid); setMsg(null);
-    try { await api.rejectTemuan(penugasanId, tid); refresh(); }
-    catch (e: any) { setMsg(`Gagal reject ${tid}: ${e.message}`); }
+  const doSubmit = async () => {
+    if (!(await confirmDialog({
+      message: 'Submit KKP ini ke Ketua Tim untuk direview? Pastikan seluruh temuan sudah benar (boleh diedit / iterasi lewat chat dulu).',
+      confirmText: 'Submit ke Ketua Tim',
+    }))) return;
+    setBusy('submit'); setMsg(null);
+    try {
+      const r = await api.submitKkp(penugasanId);
+      setMsg(r.message || `${r.submitted_count} sasaran diajukan ke Ketua Tim.`);
+      refresh();
+    } catch (e: any) { setMsg(`Gagal submit: ${e.message}`); }
     finally { setBusy(null); }
   };
   const startEdit = (t: TemuanReviewItem) => {
@@ -3461,19 +3463,6 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
       setBusy(null);
     }
   };
-  const doBulkApprove = async () => {
-    const pending = counts['PENDING'] || 0;
-    if (!pending) return;
-    if (!(await confirmDialog({ message: `Setujui ${pending} temuan PENDING sekaligus?`, confirmText: 'Setujui semua' }))) return;
-    setBusy('bulk'); setMsg(null);
-    try {
-      const r = await api.bulkApproveTemuan(penugasanId);
-      setMsg(`${r.approved_count} temuan disetujui.`);
-      refresh();
-    } catch (e: any) { setMsg(`Gagal bulk approve: ${e.message}`); }
-    finally { setBusy(null); }
-  };
-
   if (loading) {
     return <div className="mb-4 p-3 text-xs text-gray-400 italic">Memuat status review temuan…</div>;
   }
@@ -3486,10 +3475,10 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
       <div className="flex justify-between items-start mb-2 gap-2 flex-wrap">
         <div>
           <h3 className="font-semibold text-primary-dark">
-            ✓ Review Temuan <span className="text-xs font-normal text-emerald-700">· {items.length} temuan · HITL per-temuan</span>
+            Temuan KKP <span className="text-xs font-normal text-emerald-700">· {items.length} temuan</span>
           </h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            Setujui/tolak tiap temuan sebelum render KKP & LHR final. Default <code>PENDING</code> saat agen baru tulis.
+            Periksa hasil AI. Perlu perbaikan? <b>Edit</b> langsung (terekam log) atau iterasi lewat <b>Chat AT</b>. Sudah benar semua? <b>Submit ke Ketua Tim</b>.
           </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
@@ -3501,26 +3490,17 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
         >
           {loading ? '…' : '↻ Refresh'}
         </button>
-        {canBulk && (counts['PENDING'] || 0) > 0 && (
+        {canSubmit && (
           <button
-            onClick={doBulkApprove}
+            onClick={doSubmit}
             disabled={busy !== null}
-            className="px-3 py-1.5 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 whitespace-nowrap"
+            className="px-3 py-1.5 text-xs rounded bg-primary text-white hover:bg-primary-dark disabled:opacity-50 whitespace-nowrap font-semibold"
+            title="Ajukan KKP ke Ketua Tim untuk direview"
           >
-            {busy === 'bulk' ? 'Memproses…' : `✓ Setujui semua ${counts['PENDING']} pending`}
+            {busy === 'submit' ? 'Mengirim…' : '📤 Submit ke Ketua Tim'}
           </button>
         )}
         </div>
-      </div>
-
-      <div className="text-xs text-gray-600 mb-2 flex gap-3 flex-wrap">
-        {Object.entries(counts).map(([s, n]) =>
-          n > 0 ? (
-            <span key={s} className={`px-1.5 py-0.5 rounded border ${REVIEW_STATUS_COLOR[s] || 'bg-gray-100'}`}>
-              {s}: {n}
-            </span>
-          ) : null
-        )}
       </div>
 
       {msg && <div className="mb-2 p-2 text-xs rounded bg-emerald-50 border border-emerald-200 text-emerald-800">{msg}</div>}
@@ -3552,6 +3532,21 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
                     {t.kondisi && <div><b>Kondisi:</b> {t.kondisi}</div>}
                     {t.kriteria && <div><b>Kriteria:</b> {t.kriteria}</div>}
                     {t.akibat && <div><b>Akibat:</b> {t.akibat}</div>}
+                    {Array.isArray(t.edit_log) && t.edit_log.length > 0 && (
+                      <div className="mt-1.5 pt-1.5 border-t border-gray-100">
+                        <div className="text-[10px] font-semibold text-gray-500 mb-0.5">📝 Riwayat edit manual ({t.edit_log.length})</div>
+                        <ul className="space-y-0.5">
+                          {t.edit_log.map((e, i) => (
+                            <li key={i} className="text-[10px] text-gray-500">
+                              <span className="text-gray-400">{(e.at || '').replace('T', ' ').slice(0, 16)}</span>
+                              {' · '}<b>{e.by_nama || '?'}</b>{e.by_role ? ` (${e.by_role})` : ''}
+                              {' — '}{Object.keys(e.changes || {}).join(', ')}
+                              {e.note ? ` · "${e.note}"` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
                 {editing[t.id_temuan] && (
@@ -3655,24 +3650,6 @@ function TemuanReviewPanel({ penugasanId }: { penugasanId: number }) {
                     className="text-[11px] px-2 py-0.5 rounded border border-amber-400 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
                   >
                     ✎ Edit
-                  </button>
-                )}
-                {canApprove && t.status !== 'APPROVED' && (
-                  <button
-                    onClick={() => doApprove(t.id_temuan)}
-                    disabled={busy !== null}
-                    className="text-[11px] px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {busy === t.id_temuan ? '…' : '✓ Setujui'}
-                  </button>
-                )}
-                {canReject && t.status !== 'REJECTED' && (
-                  <button
-                    onClick={() => doReject(t.id_temuan)}
-                    disabled={busy !== null}
-                    className="text-[11px] px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
-                  >
-                    ✗ Tolak
                   </button>
                 )}
               </div>

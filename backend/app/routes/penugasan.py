@@ -1170,6 +1170,7 @@ async def list_temuan_review(
             "reviewed_by_user_id": rev.reviewed_by_user_id if rev else None,
             "has_edits": bool(edited),
             "edited_fields": edited or None,  # full edit overlay (UI bisa pakai untuk diff/preview)
+            "edit_log": (rev.edit_log if rev else None) or [],  # riwayat edit manual
         })
 
     counts = {"PENDING": 0, "APPROVED": 0, "REJECTED": 0, "EDITED": 0}
@@ -1291,10 +1292,16 @@ async def edit_temuan(
         db.add(existing)
         await db.flush()
 
-    # Merge edits (existing edited_fields + new payload)
+    # Merge edits (existing edited_fields + new payload) + rekam LOG perubahan.
     edits: dict = dict(existing.edited_fields or {})
     payload_dict = payload.model_dump(exclude_none=True, exclude={"note"})
+    changes: dict[str, dict] = {}
     for k, v in payload_dict.items():
+        # Nilai lama efektif = overlay sebelumnya bila ada, else versi agen di temuan.json.
+        old_v = edits.get(k, found.get(k, ""))
+        new_v = (found.get(k, "") if v == "" else v)  # "" = revert ke versi agen
+        if str(old_v).strip() != str(new_v).strip():
+            changes[k] = {"from": (str(old_v)[:300] or "(kosong)"), "to": (str(new_v)[:300] or "(kosong)")}
         # String "" → hapus overlay key (revert ke versi agen)
         if v == "":
             edits.pop(k, None)
@@ -1307,6 +1314,19 @@ async def edit_temuan(
         existing.note = payload.note
     existing.reviewed_by_user_id = user.id
     existing.reviewed_at = datetime.utcnow()
+
+    # Append-only edit log (akuntabilitas — setiap edit manual direkam).
+    if changes:
+        log = list(existing.edit_log or [])
+        log.append({
+            "at": datetime.utcnow().isoformat() + "Z",
+            "by_user_id": user.id,
+            "by_nama": user.nama_lengkap,
+            "by_role": role.value,
+            "changes": changes,
+            "note": (payload.note or None),
+        })
+        existing.edit_log = log
     await db.commit()
 
     return {
@@ -1363,6 +1383,66 @@ async def bulk_approve_temuan(
         n_approved += 1
     await db.commit()
     return {"ok": True, "approved_count": n_approved, "total_temuan": len(temuan_list)}
+
+
+@router.post("/{penugasan_id}/kkp/submit")
+async def submit_kkp_to_kt(
+    penugasan_id: int,
+    current: tuple[User, Role] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Submit KKP ke Ketua Tim (Anggota Tim).
+
+    Model HITL baru: tidak ada approve/tolak per-temuan. AT mengkurasi temuan
+    via EDIT manual (terekam log) + iterasi chat, lalu menekan SUBMIT untuk
+    mengajukan sasaran yang ditugaskan kepadanya ke KT untuk direview/disetujui.
+
+    Efek: sasaran milik AT (assigned_to memuat namanya) ditandai `SELESAI_KKP`
+    + `diajukan_oleh`/`diajukan_pada` (akuntabilitas). KT lalu menyetujui di Tahapan 4.
+    """
+    user, role = current
+    if role != Role.AT:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Submit KKP hanya untuk Anggota Tim. Role: {role.value}.",
+        )
+    p = await _get_penugasan_or_404(db, penugasan_id)
+    folder = Path(p.folder_path)
+    sa_path = folder / "_PKP" / "sasaran-assignment.json"
+    if not sa_path.exists():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "sasaran-assignment.json belum ada.")
+    try:
+        data = json.loads(sa_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "sasaran-assignment.json corrupt.")
+
+    nama = (user.nama_lengkap or "").strip().lower()
+    now = datetime.utcnow().isoformat() + "Z"
+    sasaran = data.get("sasaran", []) if isinstance(data, dict) else []
+    submitted: list[str] = []
+    for s in sasaran:
+        if not isinstance(s, dict):
+            continue
+        assigned = {str(a).strip().lower() for a in (s.get("assigned_to") or [])}
+        if nama and nama in assigned:
+            # Jangan downgrade keputusan KT yang sudah ada.
+            if s.get("status") in (None, "", "AKTIF", "SELESAI_KKP"):
+                s["status"] = "SELESAI_KKP"
+            s["diajukan_oleh"] = user.nama_lengkap
+            s["diajukan_pada"] = now
+            submitted.append(str(s.get("sasaran_id") or ""))
+
+    sa_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {
+        "ok": True,
+        "submitted_count": len(submitted),
+        "sasaran": submitted,
+        "message": (
+            f"{len(submitted)} sasaran diajukan ke Ketua Tim untuk direview."
+            if submitted else
+            "Tidak ada sasaran yang ditugaskan kepada Anda untuk disubmit."
+        ),
+    }
 
 
 @router.delete("/{penugasan_id}/temuan/{temuan_id}")

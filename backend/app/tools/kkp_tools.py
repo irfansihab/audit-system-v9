@@ -386,16 +386,15 @@ async def get_kodefikasi_temuan(_args: dict) -> dict:
 
 
 async def _filter_temuan_by_review(folder: Path) -> tuple[Path | None, dict | None]:
-    """Filter `_KKP/temuan.json` agar hanya berisi temuan APPROVED/EDITED dari
-    `TemuanReview` (HITL). Return (backup_path, stats).
+    """Terapkan overlay edit manual (HITL) ke `_KKP/temuan.json` sebelum render.
+    Return (backup_path, stats).
 
-    Aturan:
-      - Bila tabel TemuanReview KOSONG utk penugasan ini → JANGAN filter
-        (backward compat untuk penugasan lama / penugasan yg belum direview).
-      - Bila ada ≥1 review record → strict: hanya status APPROVED atau EDITED
-        yang lolos. PENDING & REJECTED di-exclude.
-      - Bila gagal query DB (mis. session tidak tersedia) → JANGAN filter
-        (best-effort; render kembali ke perilaku lama).
+    Model HITL baru (17 Jun 2026 — tanpa approve/tolak per-temuan):
+      - SEMUA temuan di temuan.json masuk render (kurasi via edit + chat, bukan
+        approve). Overlay `edited_fields` diterapkan ke temuan yang diedit.
+      - Hanya temuan ber-status REJECTED (data lama) yang di-exclude.
+      - Bila tak ada review record sama sekali → JANGAN filter (render apa adanya).
+      - Bila gagal query DB → JANGAN filter (best-effort; perilaku lama).
 
     Saat filter aktif, file asli dibackup ke `_KKP/temuan-full-backup.json`
     dan `temuan.json` ditulis ulang dengan subset. Caller WAJIB panggil
@@ -447,8 +446,9 @@ async def _filter_temuan_by_review(folder: Path) -> tuple[Path | None, dict | No
 
     review_by_id: dict[str, TemuanReview] = {r.temuan_id: r for r in full_reviews}
 
-    approved = {tid for tid, status in reviews if status in ("APPROVED", "EDITED")}
-    pending = {tid for tid, status in reviews if status == "PENDING"}
+    # Model HITL baru (17 Jun 2026): TIDAK ada approve/tolak per-temuan. Semua temuan
+    # di temuan.json masuk render, dengan overlay edit manual diterapkan. Hanya temuan
+    # ber-status REJECTED (data lama) yang di-exclude (backward compat).
     rejected = {tid for tid, status in reviews if status == "REJECTED"}
 
     # Load + filter
@@ -461,12 +461,12 @@ async def _filter_temuan_by_review(folder: Path) -> tuple[Path | None, dict | No
     if not isinstance(full, list):
         return None, None
 
-    # Filter + overlay edited_fields ke temuan yang masuk
+    # Sertakan semua kecuali REJECTED; terapkan overlay edited_fields.
     n_edits_applied = 0
     filtered: list[dict] = []
     for t in full:
         tid = t.get("id_temuan")
-        if tid not in approved:
+        if tid in rejected:
             continue
         rev = review_by_id.get(tid)
         edits = rev.edited_fields if rev and rev.edited_fields else None
@@ -479,8 +479,7 @@ async def _filter_temuan_by_review(folder: Path) -> tuple[Path | None, dict | No
             filtered.append(t)
     stats = {
         "n_total": len(full),
-        "n_approved": len(filtered),
-        "n_pending": len(pending),
+        "n_included": len(filtered),
         "n_rejected": len(rejected),
         "n_edits_applied": n_edits_applied,
         "penugasan_id": penugasan_id,

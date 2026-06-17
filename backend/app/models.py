@@ -224,6 +224,9 @@ class TemuanReview(Base):
     # Field yang tidak ada di edited_fields tetap pakai versi agen. Status biasanya
     # auto jadi "EDITED" saat edit pertama; auditor bisa approve/reject setelah edit.
     edited_fields: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Log append-only setiap edit MANUAL auditor (akuntabilitas). List of:
+    #   {"at": iso, "by_user_id": int, "by_nama": str, "changes": {field: {"from": .., "to": ..}}}
+    edit_log: Mapped[list | None] = mapped_column(JSON, nullable=True)
     reviewed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
