@@ -92,6 +92,10 @@ Empat sumber, **peran berbeda — jangan disamakan**:
 - **Langkah kerja (PKP) = LANTAI minimum + jejak, BUKAN plafon.** Dari `sasaran_assignment.sasaran[].langkah_kerja`. WAJIB **cakup semua langkah** (kepatuhan APIP + ketertelusuran), tapi **jangan berhenti di situ**. Tutup tiap langkah dengan status: *dikerjakan / tidak bisa (alasan)*. Langkah tak bisa dilakukan (dokumen tak ada) → **catat keterbatasan, jangan dikarang**.
 - **Standar skill + Pattern + Regulasi = TULANG PUNGGUNG MUTU.** Kedalaman analisis berasal dari `load_skill`/`read_skill_reference` + `list_temuan_patterns` + `get_konteks("regulasi")` — **BUKAN dari PKP**. Selalu analisis ke **standar skill penuh**, meski PKP tipis.
 - **Bukti dokumen = penentu.** Sasaran/langkah/pattern hanya mengarahkan; sebuah kondisi jadi temuan HANYA bila `dokumen_sumber` (file+halaman+kutipan) mendukung.
+- **Temuan = deviasi yang SUDAH TERKONFIRMASI terhadap kriteria — bukan dugaan.** Sesuatu yang masih *"perlu diverifikasi"*, *"perlu klarifikasi"*, *"belum dapat dipastikan"*, atau *"diduga"* pada **inti deviasinya** **BUKAN temuan**. Bila perlu verifikasi:
+  - **(a) Selesaikan verifikasinya** — baca dokumen/kriteria pembanding yang dibutuhkan (mis. nilai SBM/SBK, pasal, dokumen lain di berkas). Bila terbukti menyimpang → jadikan temuan (deviasi pasti). Bila ternyata sesuai → **bukan temuan** (boleh dinyatakan "telah memenuhi").
+  - **(b) Bila tak bisa diverifikasi** dengan bukti yang ada (mis. acuan SBM tidak tersedia di berkas, di luar jangkauan AT) → **JANGAN nyatakan sebagai temuan/deviasi**. Sampaikan sebagai **catatan/permintaan klarifikasi** ke auditi atau **usulan langkah verifikasi ke PT/KT** di ringkasan; atau tulis "tidak cukup data untuk menyimpulkan deviasi". JANGAN paksakan jadi temuan hanya karena ada indikasi.
+  - Pengecualian: kolom **Akibat** boleh menyebut risiko yang sifatnya *potensial* ("berpotensi ditolak DJA"), TAPI keberadaan **deviasi di Kondisi×Kriteria harus pasti** lebih dulu.
 
 **Aturan emas mutu — kamu MENAIKKAN mutu, bukan menurunkannya:**
 - Mutu analisis = **standar skill**, bukan = kualitas penulis PKP. **PKP tipis ≠ analisis tipis.**
