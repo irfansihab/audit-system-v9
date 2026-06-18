@@ -78,12 +78,13 @@ def _stage_rka_inputs(folder: Path) -> tuple[Path, Path, list[str]]:
 
 @tool(
     "run_batch_rka",
-    "Jalankan pipeline V6 reviu-rka-kl (digest + cross-check anomali). "
-    "Otomatis staging TOR/RAB dari folder upload ke struktur yang dibutuhkan V6. "
-    "Pipeline ini TIDAK merender LHR (jalan dengan --no-render): LHR adalah hasil "
-    "kompilasi temuan.json yang sudah diapprove KT, dirender terpisah oleh KT via "
-    "render_lhr_rka — BUKAN dari anomali mentah. "
-    "Output: _KKP/anomalies-master.json, _KKP/tor-{N}.json, _KKP/rab-{N}.json.",
+    "Jalankan DIGEST reviu-rka-kl (mode full-AI digest-only): auto-pair TOR↔RAB lalu "
+    "parse tiap RO jadi tor-{N}.json + rab-{N}.json (7 blok substansi TOR + komponen "
+    "RAB). TANPA rule deterministik — penilaian dilakukan AGEN via checklist di SKILL "
+    "reviu-rka-kl (Kriteria IR2 PMK 107/2024: dasar hukum, kerangka logis, KPI SMART, "
+    "kelengkapan, kewajaran biaya/SBM, konsistensi TOR↔RAB). Setelah ini baca via "
+    "`read_digest` (tanpa arg ro=index semua RO; ro=<id> untuk detail) → analisis per "
+    "checklist → append_temuan. Otomatis staging TOR/RAB dari folder upload.",
     {
         "penugasan_folder": str,
         "workers": int,
@@ -110,17 +111,11 @@ async def run_batch_rka(args: dict) -> dict:
     code, out, err = await run_v6_script(
         "scripts/reviu-rka-kl/run_batch.py",
         [
-            "--penugasan",
-            str(folder),
-            "--tor-dir",
-            "input/objek/TOR",
-            "--rab-dir",
-            "input/objek/RAB",
-            "--workers",
-            str(args.get("workers", 4)),
-            # LHR di-render terpisah oleh KT dari temuan.json yang diapprove,
-            # bukan dari anomali mentah pipeline. Skip Phase 4 render di sini.
-            "--no-render",
+            "--penugasan", str(folder),
+            "--tor-dir", "input/objek/TOR",
+            "--rab-dir", "input/objek/RAB",
+            "--workers", str(args.get("workers", 4)),
+            "--digest-only",  # full-AI: digest per RO saja, tanpa cross_check/cross-RO/render
         ],
         timeout=300,
     )
@@ -129,12 +124,16 @@ async def run_batch_rka(args: dict) -> dict:
             "content": [{"type": "text", "text": f"FAILED|exit={code}|err={err[:600]}{warn_txt}"}],
             "is_error": True,
         }
-    anomalies = safe_read_json(folder / "_KKP" / "anomalies-master.json")
-    total = len(anomalies) if isinstance(anomalies, list) else len(anomalies.get("anomalies", []))
+    n_ro = len(list((folder / "_KKP").glob("tor-*.json")))
     return {
-        "content": [
-            {"type": "text", "text": f"OK|anomalies_total={total}|output={folder / '_KKP'}{warn_txt}"}
-        ]
+        "content": [{
+            "type": "text",
+            "text": (
+                f"OK|digest-only (full-AI, tanpa rule)|RO_terdigest={n_ro}|output={folder / '_KKP'}{warn_txt} "
+                f"| LANGKAH BERIKUT: `read_digest` (index RO) → `read_digest(ro=<id>)` per RO → "
+                f"analisis per checklist SKILL reviu-rka-kl → append_temuan"
+            ),
+        }]
     }
 
 
@@ -179,20 +178,20 @@ async def run_batch_audit_pbj(args: dict) -> dict:
 
 @tool(
     "run_batch_pbj",
-    "Jalankan pipeline lengkap V6 reviu-pengadaan dengan role gating. "
-    "AT → output KKP, KT → output LHR. Skript reuse digest_pengadaan dari audit-pengadaan.",
+    "Jalankan DIGEST reviu-pengadaan (mode full-AI digest-only): parse dokumen "
+    "perencanaan-pemilihan (KAK/HPS/Kontrak/RFI/dll) jadi JSON terstruktur di "
+    "_KKP/pengadaan-digest.json. TANPA rule deterministik — penilaian dilakukan AGEN "
+    "via checklist di SKILL reviu-pengadaan (kelengkapan/kesesuaian administratif, "
+    "justifikasi, identifikasi kebutuhan, dll). Setelah ini baca fakta via `read_digest`, "
+    "lalu analisis per checklist → append_temuan (KKP: Judul|Kondisi|Kriteria|Sebab|Akibat).",
     {"penugasan_folder": str, "role": str, "context_path": str},
 )
 async def run_batch_pbj(args: dict) -> dict:
-    extra: list[str] = []
-    role = args.get("role", "AT").upper()
-    if role == "AT":
-        extra = ["--role", "AT"]
-    else:
-        extra = ["--role", "KT"]
+    folder = Path(args["penugasan_folder"])
+    role = (args.get("role") or "AT").upper()
     code, out, err = await run_v6_script(
         "scripts/reviu-pengadaan/run_batch.py",
-        ["--penugasan", args["penugasan_folder"], *extra],
+        ["--penugasan", args["penugasan_folder"], "--digest-only", "--role", role],
         timeout=300,
     )
     if code != 0:
@@ -200,13 +199,18 @@ async def run_batch_pbj(args: dict) -> dict:
             "content": [{"type": "text", "text": f"FAILED|exit={code}|err={err[:600]}"}],
             "is_error": True,
         }
-    folder = Path(args["penugasan_folder"])
-    anomalies = safe_read_json(folder / "_KKP" / "anomalies.json")
-    total = len(anomalies) if isinstance(anomalies, list) else len(anomalies.get("anomalies", []))
+    digest = safe_read_json(folder / "_KKP" / "pengadaan-digest.json")
+    jenis = list((digest or {}).get("dokumen", {}).keys()) if isinstance(digest, dict) else []
+    missing = (digest or {}).get("missing_types", []) if isinstance(digest, dict) else []
     return {
-        "content": [
-            {"type": "text", "text": f"OK|role={role}|anomalies_total={total}|output={folder / '_KKP'}"}
-        ]
+        "content": [{
+            "type": "text",
+            "text": (
+                f"OK|role={role}|digest-only (full-AI, tanpa rule)|dokumen_terdeteksi={jenis}"
+                f"|missing={missing}|output={folder / '_KKP' / 'pengadaan-digest.json'} "
+                f"| LANGKAH BERIKUT: `read_digest` → analisis per checklist SKILL reviu-pengadaan"
+            ),
+        }]
     }
 
 
@@ -363,47 +367,88 @@ async def run_digest_generic(args: dict) -> dict:
     }
 
 
+_DIGEST_BIG_KEYS = {"_raw_first_chars", "raw_text_pages", "raw_text", "raw", "pages_text"}
+
+
+def _strip_big(d, _depth=0):
+    """Buang field teks-mentah besar + truncate, supaya digest muat di output tool."""
+    if isinstance(d, dict):
+        return {k: _strip_big(v, _depth + 1) for k, v in d.items() if k not in _DIGEST_BIG_KEYS}
+    if isinstance(d, list):
+        return [_strip_big(x, _depth + 1) for x in d[:25]]
+    if isinstance(d, str):
+        return d[:500]
+    return d
+
+
 @tool(
     "read_digest",
-    "Baca DIGEST terstruktur pengadaan (_KKP/pengadaan-digest.json) hasil "
-    "run_batch_audit_pbj/run_batch_pbj mode digest-only. Mengembalikan fakta per "
-    "dokumen yang sudah diparse (KAK/HPS/Kontrak/BAST/pemeriksaan/pembayaran: nilai, "
-    "periode, SLA, jaminan, elemen_justifikasi, lingkup_komponen, identifikasi_kebutuhan, "
-    "rincian pemeriksaan, dll) + missing_types + unclassified. Pakai INI sebagai sumber "
-    "fakta utama (hemat token, JANGAN baca ulang semua PDF) lalu nilai via checklist "
-    "SKILL. read_pdf_page hanya untuk verifikasi halaman/kutipan tertentu.",
-    {"penugasan_folder": str},
+    "Baca DIGEST terstruktur hasil run_batch_* mode digest-only (full-AI). "
+    "PENGADAAN (audit/reviu-pengadaan): _KKP/pengadaan-digest.json → fakta per dokumen "
+    "(KAK/HPS/Kontrak/BAST/pemeriksaan/pembayaran: nilai, periode, SLA, jaminan, "
+    "elemen_justifikasi, lingkup_komponen, identifikasi_kebutuhan, dll). "
+    "RKA-K/L: tor-*.json + rab-*.json per RO → tanpa arg `ro` mengembalikan INDEX semua RO "
+    "(id + ringkas TOR/RAB); dengan arg `ro=<id>` mengembalikan digest LENGKAP RO itu "
+    "(7 blok substansi TOR + komponen RAB). Pakai INI sebagai sumber fakta utama (hemat "
+    "token, JANGAN baca ulang semua PDF); read_pdf_page hanya verifikasi halaman/kutipan.",
+    {"penugasan_folder": str, "ro": str},
 )
 async def read_digest(args: dict) -> dict:
-    folder = Path(args["penugasan_folder"])
-    digest = safe_read_json(folder / "_KKP" / "pengadaan-digest.json")
-    if not isinstance(digest, dict):
-        return {
-            "content": [{"type": "text", "text": (
-                "FAILED|pengadaan-digest.json tidak ada di _KKP/ — jalankan "
-                "run_batch_audit_pbj/run_batch_pbj (digest-only) dulu."
-            )}],
-            "is_error": True,
-        }
-    # Ringkas: buang _raw_first_chars yang besar; sisakan field parsed kunci.
-    ringkas: dict = {}
-    for jenis, entries in (digest.get("dokumen") or {}).items():
-        ringkas[jenis] = []
-        for e in entries or []:
-            parsed = {k: v for k, v in (e.get("parsed") or {}).items()
-                      if k != "_raw_first_chars"}
-            ringkas[jenis].append({
+    kkp = Path(args["penugasan_folder"]) / "_KKP"
+    ro_sel = str(args.get("ro") or "").strip()
+
+    # --- PBJ: pengadaan-digest.json ---
+    digest = safe_read_json(kkp / "pengadaan-digest.json")
+    if isinstance(digest, dict) and digest.get("dokumen"):
+        ringkas: dict = {}
+        for jenis, entries in (digest.get("dokumen") or {}).items():
+            ringkas[jenis] = [{
                 "filename": e.get("filename"),
                 "classified_by": e.get("classified_by", "nama"),
-                "parsed": parsed,
+                "parsed": {k: v for k, v in (e.get("parsed") or {}).items()
+                           if k not in _DIGEST_BIG_KEYS},
+            } for e in (entries or [])]
+        payload = {
+            "jenis": "pengadaan",
+            "dokumen": ringkas,
+            "missing_types": digest.get("missing_types", []),
+            "unclassified_files": digest.get("unclassified_files", [])[:10],
+        }
+        return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)[:8000]}]}
+
+    # --- RKA-K/L: tor-*.json + rab-*.json per RO ---
+    tors = sorted(kkp.glob("tor-*.json"))
+    rabs = sorted(kkp.glob("rab-*.json"))
+    if tors or rabs:
+        ids = sorted({p.stem.split("-", 1)[1] for p in (tors + rabs)})
+        if ro_sel:  # detail satu RO
+            tor = _strip_big(safe_read_json(kkp / f"tor-{ro_sel}.json") or {})
+            rab = _strip_big(safe_read_json(kkp / f"rab-{ro_sel}.json") or {})
+            payload = {"jenis": "rka-kl", "ro": ro_sel, "tor": tor, "rab": rab}
+            return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)[:8000]}]}
+        # index semua RO (ringkas)
+        idx = []
+        for rid in ids:
+            tor = safe_read_json(kkp / f"tor-{rid}.json") or {}
+            rab = safe_read_json(kkp / f"rab-{rid}.json") or {}
+            idx.append({
+                "ro": rid,
+                "tor_nama": (tor.get("nama_ro") or tor.get("nama") or tor.get("judul") or "")[:120],
+                "tor_keys": [k for k in tor.keys() if k not in _DIGEST_BIG_KEYS][:15],
+                "rab_total": rab.get("total") or rab.get("nilai_total"),
+                "rab_komponen": rab.get("komponen_count") or len(rab.get("komponen", []) or []),
             })
-    payload = {
-        "dokumen": ringkas,
-        "missing_types": digest.get("missing_types", []),
-        "unclassified_files": digest.get("unclassified_files", [])[:10],
+        payload = {"jenis": "rka-kl", "total_ro": len(ids), "index": idx,
+                   "catatan": "Panggil read_digest(ro=<id>) untuk digest lengkap satu RO."}
+        return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)[:8000]}]}
+
+    return {
+        "content": [{"type": "text", "text": (
+            "FAILED|digest tak ada di _KKP/ — jalankan run_batch_* (digest-only) dulu "
+            "(pengadaan-digest.json untuk PBJ, atau tor-/rab-*.json untuk RKA-K/L)."
+        )}],
+        "is_error": True,
     }
-    text = json.dumps(payload, ensure_ascii=False)
-    return {"content": [{"type": "text", "text": text[:8000]}]}
 
 
 PIPELINE_TOOLS = [

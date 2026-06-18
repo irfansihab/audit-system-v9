@@ -117,6 +117,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--input-dir", default=None, help="Subpath dokumen pengadaan relatif --penugasan")
     ap.add_argument("--render", action="store_true",
                     help="Auto-render LHR via render_lhp.py generic (default OFF — auditor pakai skill isi-laporan)")
+    ap.add_argument("--digest-only", action="store_true",
+                    help="Mode full-AI: hanya Phase 1 digest (skip cross_check rule). "
+                         "Agen menilai via checklist SKILL atas digest, bukan anomali rule.")
     ap.add_argument("--role", default=None, choices=["AT", "KT", "PT", "PM"],
                     help="Role auditor: AT=Anggota Tim (KKP only), KT/PT/PM=Ketua Tim/Pengendali (LHP). "
                          "Default: auto-detect dari _ROLE.md, fallback AT.")
@@ -167,6 +170,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  output: {digest_json}")
     print(f"  ({time.time()-t1:.2f}s)")
     print()
+
+    # ---------- Mode full-AI (digest-only): berhenti di sini ----------
+    if args.digest_only:
+        print("[digest-only] mode full-AI — cross_check rule dilewati.")
+        print(f"  Agen menilai via checklist SKILL atas {digest_json.name}.")
+        print(f"  Selesai dalam {time.time()-t_start:.2f}s")
+        return 0
 
     # ---------- Phase 2: cross_check (reviu-pengadaan rules) ----------
     print("[Phase 2] cross_check (reviu-pengadaan rules) ...")

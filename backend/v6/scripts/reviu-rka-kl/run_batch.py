@@ -185,7 +185,7 @@ def process_one_ro(args_tuple: tuple) -> dict[str, Any]:
 
     args_tuple: (ro_id, tor_path, rab_path, kkp_dir, no_raw)
     """
-    ro_id, tor_path, rab_path, kkp_dir, no_raw = args_tuple
+    ro_id, tor_path, rab_path, kkp_dir, no_raw, digest_only = args_tuple
     kkp_dir = Path(kkp_dir)
     tor_path = Path(tor_path)
     rab_path = Path(rab_path)
@@ -232,10 +232,10 @@ def process_one_ro(args_tuple: tuple) -> dict[str, Any]:
         cmd_rab.append("--no-raw")
     ok_rab = _run(cmd_rab, "digest_rab")
 
-    # 3) cross_check single (hanya jika kedua digest sukses)
+    # 3) cross_check single (hanya jika kedua digest sukses) — SKIP di mode digest-only (full-AI)
     n_anom = 0
     ok_cc = False
-    if ok_tor and ok_rab:
+    if ok_tor and ok_rab and not digest_only:
         cmd_cc = [
             py,
             str(CROSS_CHECK),
@@ -253,7 +253,7 @@ def process_one_ro(args_tuple: tuple) -> dict[str, Any]:
                 errors.append(f"parse anomalies-{ro_id}.json: {e}")
 
     duration = time.time() - t0
-    status = "ok" if (ok_tor and ok_rab and ok_cc) else "error"
+    status = "ok" if (ok_tor and ok_rab and (ok_cc or digest_only)) else "error"
     return {
         "ro_id": ro_id,
         "status": status,
@@ -420,6 +420,9 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Pass --no-raw ke digest_tor/digest_rab (hemat storage)",
     )
+    ap.add_argument("--digest-only", action="store_true",
+                    help="Mode full-AI: hanya digest TOR/RAB per RO (skip cross_check rule + "
+                         "cross-RO + render). Agen menilai via checklist SKILL atas tor-/rab-*.json.")
     ap.add_argument("--judul", default=None)
     ap.add_argument("--nomor", default=None)
     ap.add_argument("--tanggal", default=None)
@@ -477,7 +480,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[Phase 2] Parallel pipeline (digest + single cross-check) - workers={n_workers} ...")
     t_phase2 = time.time()
     job_args = [
-        (p.ro_id, str(p.tor_path), str(p.rab_path), str(kkp_dir), args.no_raw)
+        (p.ro_id, str(p.tor_path), str(p.rab_path), str(kkp_dir), args.no_raw, args.digest_only)
         for p in pairs
     ]
     results: list[dict[str, Any]] = []
@@ -514,6 +517,13 @@ def main(argv: list[str] | None = None) -> int:
     n_err = total - n_ok
     print(f"  ({phase2_secs:.2f}s - {n_ok}/{total} sukses)")
     print()
+
+    # ---------- Mode full-AI (digest-only): berhenti setelah digest per-RO ---------- #
+    if args.digest_only:
+        print("[digest-only] mode full-AI — cross_check rule, cross-RO, & render dilewati.")
+        print(f"  Digest per RO: tor-*.json + rab-*.json di {kkp_dir}")
+        print(f"  Agen menilai via checklist SKILL reviu-rka-kl. ({n_ok}/{total} RO sukses)")
+        return 0 if n_ok > 0 else 6
 
     # ---------- Phase 3 ---------- #
     print("[Phase 3] Cross-RO batch check ...")
