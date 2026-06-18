@@ -123,6 +123,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Path context.md (default: <penugasan>/context.md)",
     )
     ap.add_argument("--no-render", action="store_true", help="Skip Phase 3 render LHA")
+    ap.add_argument("--digest-only", action="store_true",
+                    help="Mode full-AI: hanya Phase 1 digest (skip cross_check rule + render). "
+                         "Agen menilai via checklist SKILL atas digest, bukan anomali rule.")
     ap.add_argument("--role", default=None, choices=["AT", "KT", "PT", "PM"],
                     help="Role auditor: AT=Anggota Tim (KKP only), KT/PT/PM=Ketua Tim/Pengendali (LHP). "
                          "Default: auto-detect dari _ROLE.md, fallback AT.")
@@ -176,6 +179,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  output: {digest_json}")
     print(f"  ({time.time()-t1:.2f}s)")
     print()
+
+    # ---------- Mode full-AI (digest-only): berhenti di sini ----------
+    if args.digest_only:
+        print("[digest-only] mode full-AI — cross_check rule & render dilewati.")
+        print(f"  Agen menilai via checklist SKILL atas {digest_json.name}.")
+        print(f"  Selesai dalam {time.time()-t_start:.2f}s")
+        return 0
 
     # ---------- Phase 2: cross_check ----------
     print("[Phase 2] cross_check ...")

@@ -186,18 +186,13 @@ Tetap **spesifik** (angka, pasal, nama dokumen, halaman) — formal **bukan** be
 5. **Jalankan pipeline V6:**
    - reviu-rka-kl → `run_batch_rka(penugasan_folder, workers=4, judul, nomor, tanggal, penerima)`
    - reviu-pengadaan → `run_batch_pbj(penugasan_folder, role="AT")`
-   - **audit-pengadaan** → `run_batch_audit_pbj(penugasan_folder, role="AT")` (14 rules siklus penuh)
-     - Beda dgn reviu yang hanya ngecek perencanaan, audit-pengadaan WAJIB analisis seluruh siklus:
-       Perencanaan → Pemilihan → Kontrak → **Pelaksanaan (BAST, output vs spec)** → **Pembayaran (SPM, kewajaran)**.
-     - Setiap temuan WAJIB memuat 5 elemen lengkap: **Judul | Kondisi | Kriteria | Sebab | Akibat** + Sumber.
-     - Kolom **Sebab** (akar masalah administratif/prosedural) adalah pembeda utama audit dari reviu — JANGAN kosongkan.
-     - Tugas analisis substantif yang WAJIB (di atas rules deterministik):
-       * Kewajaran HPS vs RFI/benchmark vendor (Perpres 16/2018 Ps. 26 ayat 5: min 2 sumber harga)
-       * Verifikasi output pelaksanaan vs spek kontrak (foto, laporan progres, BAST)
-       * Kewajaran pembayaran (SPM, SP2D, kwitansi) + denda keterlambatan bila relevan
-       * Hitung perkiraan kerugian negara untuk temuan pembayaran (Rp × Volume × Selisih) bila ada
+   - **audit-pengadaan — MODE FULL-AI (digest-only, TANPA rule)** → `run_batch_audit_pbj(penugasan_folder, role="AT")` hanya menghasilkan **DIGEST terstruktur** (`_KKP/pengadaan-digest.json`), bukan anomali rule. Lalu:
+     - **`read_digest(penugasan_folder)`** → ambil fakta terparse seluruh siklus (KAK/HPS/Kontrak/BAST/dokumen pemeriksaan/pembayaran: nilai, periode, SLA, jaminan, elemen_justifikasi, lingkup_komponen, identifikasi_kebutuhan, rincian pemeriksaan). **Ini sumber fakta utama** — `read_pdf_page` hanya untuk verifikasi/kutipan halaman tertentu.
+     - **Nilai SENDIRI via CHECKLIST di SKILL audit-pengadaan** (bukan dari anomali). WAJIB analisis seluruh siklus: Perencanaan → Pemilihan → Kontrak → **Pelaksanaan (output vs kontrak via dokumen pemeriksaan PPK/PPHP/tim teknis)** → **Pembayaran (kewajaran, bayar vs output diterima)**. Kerjakan semua butir checklist; tutup tiap butir (sesuai / tidak sesuai / tidak cukup data).
+     - Setiap temuan **Judul | Kondisi | Kriteria | Sebab | Akibat** + Sumber. **Sebab WAJIB** (pembeda audit, jangan kosong). Rekomendasi di LHA (bukan KKP). Hitung perkiraan kerugian negara bila relevan.
+     - **JANGAN** panggil `read_anomalies` / `build_draft_temuan_from_anomalies` untuk skill ini (tak ada anomali rule).
 6. **Bila pipeline FAILED:** lapor exit code + 600 karakter pertama stderr ke pengguna. **STOP.** Jangan coba jalankan rules manual.
-7. **Bila pipeline OK:** panggil **`read_anomalies(penugasan_folder)`** untuk dapat daftar LENGKAP anomali (rule_id, severity, judul, deskripsi, bukti, draft K/K/A). **Telusuri SEMUA anomali** (jangan hanya sebagian) — terutama HIGH/CRITICAL:
+7. **Bila pipeline OK (HANYA reviu-rka-kl & reviu-pengadaan — yang masih pakai rule):** panggil **`read_anomalies(penugasan_folder)`** untuk dapat daftar LENGKAP anomali (rule_id, severity, judul, deskripsi, bukti, draft K/K/A). *(audit-pengadaan mode digest-only — LEWATI langkah 7 ini; pakai `read_digest` + checklist SKILL seperti di butir audit-pengadaan langkah 5.)* **Telusuri SEMUA anomali** (jangan hanya sebagian) — terutama HIGH/CRITICAL:
    - Buka PDF di halaman yang dirujuk via `read_pdf_page(pdf_path, halaman)`.
    - Verifikasi: TERIMA, TOLAK (false positive), atau MODIFIKASI.
 

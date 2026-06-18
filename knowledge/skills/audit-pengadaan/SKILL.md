@@ -8,6 +8,7 @@ model: claude-sonnet-4-6
 auto_execute: true
 auto_execute_command: "tool: run_batch_audit_pbj(penugasan_folder, role=\"AT\")"
 changelog:
+  - v3.0 (2026-06-18): **MODE FULL-AI (digest-only) — PILOT.** `run_batch_audit_pbj` kini hanya digest (flag `--digest-only`); cross_check 14 rule TIDAK dipakai. Agen baca fakta via tool baru `read_digest` lalu menilai SENDIRI seluruh siklus via **Checklist Pemeriksaan** (substansi 14 rule + identifikasi kebutuhan dikonversi jadi butir checklist — tak ada yang hilang). Orkestrasi anggota_tim: audit-pengadaan lewati read_anomalies. Tujuan: kurangi keribetan & kerapuhan rule regex; LLM menilai lebih tahan variasi. (reviu-pengadaan & reviu-rka-kl menyusul bila pilot terbukti; cross_check.py disimpan di git, tak dipanggil.)
   - v2.7 (2026-06-18): Deteksi dokumen pemeriksaan dibuat UMUM lintas direktorat — nama dokumen beda-beda, jadi klasifikasi tak lagi bergantung nama file. Tambah `classify_content()` di digest: bila nama file tak dikenal, ISI file dibaca & diklasifikasi dari FUNGSI dokumen (sinyal "memeriksa/pemeriksaan/penerimaan hasil" + konteks "kesesuaian/kuantitas/spesifikasi"). Pola nama `ba_pemeriksaan` dilonggarkan. Diuji: dok bernama lokal (serah terima/cek fisik/penerimaan) tertangkap; kontrak/HPS/laporan tidak salah tangkap.
   - v2.6 (2026-06-18): Perkuat deteksi output-vs-kontrak & kelebihan bayar atas output kurang. Kenali **dokumen PEMERIKSAAN hasil pekerjaan** (PPK/PPHP/PjPHP/tim teknis) sebagai jenis dokumen tersendiri di digest (pivot audit — beda dari BAST yang sering formalitas). +2 rule deterministik: PL.2 (pembayaran tanpa dokumen pemeriksaan — KRITIS) & PL.3 (pemeriksaan tanpa rincian kuantitas/spek — formalitas). Tugas substantif #5 dipusatkan ke dokumen pemeriksaan + perbandingan tiga arah kontrak↔diterima↔dibayar (kelebihan bayar = (qty dibayar − qty diterima) × harga satuan). Cross-check kini 14 rules.
   - v2.5 (2026-06-18): Audit dibuka dengan SURVEY PENDAHULUAN (Tahap A0) — orientasi paket, pemetaan risiko per tahap siklus, inventarisasi dokumen, analytical review awal, hipotesis area pengujian → mengarahkan fokus 8 tugas substantif. Selaras prinsip "semua audit didahului survey pendahuluan". A0 row & tool-inti diperbarui; orkestrasi di anggota_tim.md.
@@ -23,9 +24,9 @@ changelog:
 > **Skill ini = substansi domain.** Cara menjalankan (role, pipeline, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (itu paradigma lama audit-system-v4).
 
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
-- **Pipeline A3:** `run_batch_audit_pbj(penugasan_folder, role="AT")` — `digest_pengadaan` + 14 rules cross-check untuk **SELURUH siklus** (perencanaan→pemilihan→kontrak→pelaksanaan→pembayaran). Output `_KKP/anomalies.json` + `_KKP/pengadaan-digest.json`. Ini **akselerator deteksi struktural saja** — analisis substantif (8 tugas di bawah) tetap WAJIB.
+- **MODE FULL-AI (digest-only — TANPA rule deterministik).** `run_batch_audit_pbj(penugasan_folder, role="AT")` kini hanya menjalankan **digest** (`digest_pengadaan` → `_KKP/pengadaan-digest.json`), **bukan** cross-check rule. Agen membaca fakta via **`read_digest`** lalu **menilai SENDIRI seluruh siklus via Checklist Pemeriksaan** di bawah (judgment, bukan output rule). Ini menggantikan paradigma "verifikasi anomali rule".
 - **Mode:** AT **auto-execute** A0→A3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHA** (bukan stop tiap tahap).
-- **Tool inti:** `read_context` → **Survey Pendahuluan** (orientasi via `read_ingested_digest`: pahami paket, petakan risiko per tahap, rumuskan hipotesis) → `run_batch_audit_pbj` → verifikasi false positive + analisis substantif → `append_temuan` (CCSAA, **wajib Sebab**) → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → **Survey Pendahuluan** (orientasi: pahami paket, petakan risiko per tahap, hipotesis) → `run_batch_audit_pbj` (digest-only) → **`read_digest`** → **Checklist Pemeriksaan + 8 tugas substantif** → `append_temuan` (K/K/S/A, **wajib Sebab**) → `render_kkp_docx` → `run_qc_kkp`. `read_pdf_page` hanya untuk verifikasi/kutipan halaman tertentu.
 
 ## Tahap Audit (A0–A4)
 
@@ -34,7 +35,7 @@ changelog:
 | **A0 — Validasi, Konteks & Survey Pendahuluan** | Pastikan tujuan/objek dari KP jelas & dokumen pengadaan tersedia di `00-input/` (KAK/HPS/Kontrak/BAST/SPM/dll.); **lakukan Survey Pendahuluan** (pahami paket → petakan risiko per tahap siklus → inventarisasi dokumen → analytical review awal → hipotesis area pengujian); tuangkan di `context.md` dan jadikan fokus pengujian A3. Lihat seksi **Survey Pendahuluan**. | AT (auto) |
 | **A1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan audit, ruang lingkup (tahap siklus mana yang diaudit), kriteria (Perpres 16/2018 dst.), metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **A2 — Program Kerja Pengujian (PKP)** | Per sasaran/tahap pengadaan: Aspek · Tujuan Pengujian · Prosedur · Sampel · Bukti yang Dicari. | KT (UI Setup) |
-| **A3 — Pelaksanaan & KKP** | `run_batch_audit_pbj` (14 rules) → verifikasi false positive → **8 tugas analisis substantif WAJIB** (kewajaran HPS, output-vs-kontrak, kerugian negara — lihat tabel di bawah) → temuan **CCSAA** (wajib **Sebab**) via `append_temuan`. | AT (auto) |
+| **A3 — Pelaksanaan & KKP** | `run_batch_audit_pbj` (digest-only) → `read_digest` → **Checklist Pemeriksaan + 8 tugas analisis substantif WAJIB** (kewajaran HPS, output-vs-kontrak via dokumen pemeriksaan, kerugian negara — lihat di bawah) → temuan K/K/S/A (wajib **Sebab**) via `append_temuan`. | AT (auto) |
 | **A4 — Laporan (LHA)** | Render LHA + Nota Dinas; ringkasan per area, rekomendasi material, simpulan **keyakinan memadai**. | KT |
 
 **Eskalasi:** indikasi kerugian negara material (>Rp 1 M) atau pidana → flag MERAH + eskalasi ke PT/Inspektur.
@@ -56,22 +57,22 @@ Audit pengadaan **dibuka dengan Survey Pendahuluan**: orientasi untuk memahami p
 
 ## Analisis Substantif Wajib (inti Tahap A3)
 
-**Pipeline rule-based hanya menangkap inkonsistensi struktural sederhana.** Substantive judgment di bawah ini adalah value-add AI yang sesungguhnya dan **WAJIB dieksekusi AT secara otomatis** setelah `run_batch_audit_pbj` — bukan opsi. Jangan hanya menampilkan output rule-based.
+Tugas substantif di bawah adalah **inti penilaian audit (judgment AI)** dan **WAJIB dieksekusi AT** setelah membaca digest (`read_digest`) + menelusuri Checklist Pemeriksaan — bukan opsi. Jangan berhenti di fakta digest; lakukan analisisnya.
 
 | # | Tugas Substantif | Detail |
 |---|------------------|--------|
-| 1. | **Verifikasi false positive rules** | Buka PDF di halaman yang dirujuk RP.x / D.x / P.x / K.x. Konfirmasi temuan rule-based benar atau false positive (mis. parser glitch tangkap angka salah). Hapus false positive dari _KKP/temuan.json. |
+| 1. | **Verifikasi fakta digest ke sumber** | Digest = hasil parser otomatis (bisa salah parse, mis. angka/periode/klasifikasi keliru). Sebelum menjadikan temuan, konfirmasi fakta kunci dari `read_digest` ke dokumen via `read_pdf_page`. Jangan jadikan temuan dari fakta yang belum terverifikasi. |
 | 2. | **Analisis kewajaran HPS vs RFI/Benchmark Vendor** | Baca semua RFI di 00-input/. Validasi: vendor memberikan harga atau hanya refusal? Bandingkan range harga RFI vs HPS final. Bila HPS jauh di luar range RFI atau hanya berbasis 1 RFI valid → temuan KRITIS multi-source (Perpres 16/2018 Pasal 26 ayat 5). |
 | 3. | **Konsistensi dasar hukum HPS dengan Tahun Anggaran** | Baca header HPS bagian DASAR PERHITUNGAN. Cek SBM dirujuk = SBM TA pelaksanaan? Cek Pedoman Pelaksanaan Anggaran = TA pelaksanaan? Bila SBM/Pedoman tahun rujukan ≠ TA DIPA → temuan PERINGATAN. |
 | 4. | **Konsistensi spek KAK ↔ komponen HPS** | Setiap kebutuhan teknis di KAK harus traceable ke line item HPS. Setiap line item HPS harus traceable ke kebutuhan KAK. Bila ada gap signifikan → temuan PERINGATAN. |
-| 5. | **Verifikasi HASIL PEKERJAAN vs Kontrak/KAK/Spesifikasi Teknis** ⭐ | **Inti audit pengadaan — WAJIB, jangan dilewati meski pipeline rules tidak menandai (output-vs-spek tidak di-model rules).** Baca dokumen hasil di `04-pelaksanaan/` — **terutama DOKUMEN PEMERIKSAAN/penerimaan hasil pekerjaan oleh PPK/PPHP/PjPHP/tim teknis** (di sinilah kuantitas & spesifikasi barang yang DITERIMA diverifikasi; **jangan andalkan BAST** yang sering hanya tanda tangan formalitas), serta laporan akhir/progres, foto, hasil uji/commissioning. Lakukan **perbandingan tiga arah**: kuantitas/spesifikasi **di Kontrak/KAK** ↔ yang **DITERIMA (per dokumen pemeriksaan)** ↔ yang **DIBAYAR**. Bandingkan **item-per-item** terhadap **spesifikasi teknis & deliverable di KAK/TOR + lampiran spesifikasi pada Kontrak (termasuk addendum)**. Periksa minimal: (a) **volume/kuantitas terpasang/terserahkan** vs kontrak (verifikasi bukan dari invoice saja); (b) **spesifikasi teknis** (merek/tipe/kapasitas/standar) sesuai yang dipersyaratkan; (c) **kelengkapan deliverable** (semua output KAK ada); (d) **kualitas/fungsionalitas** & hasil uji; (e) **SLA/target kinerja** tercapai; (f) **masa pemeliharaan/garansi** dipenuhi; (g) untuk konstruksi/jasa: **progres fisik vs pembayaran termin**. Tandai gap: kurang volume, spek tidak sesuai/di-downgrade, deliverable tidak lengkap, **dokumen pemeriksaan tidak ada / hanya tanda tangan tanpa rincian verifikasi**, atau **pembayaran tidak sesuai output yang DITERIMA** (mis. kontrak 20 unit, diperiksa/diterima 18, namun dibayar penuh untuk 20 → **kelebihan bayar = (kuantitas dibayar − kuantitas diterima) × harga satuan**) → buat temuan + teruskan nilainya ke Task #7 (kerugian). Acuan: `references/06-checklist-audit-pengadaan.md` Section D (Pelaksanaan/Penerimaan) & E (Serah Terima). Bila dokumen hasil tidak ada padahal pekerjaan dinyatakan selesai/dibayar → temuan KRITIS (output tak terverifikasi). |
+| 5. | **Verifikasi HASIL PEKERJAAN vs Kontrak/KAK/Spesifikasi Teknis** ⭐ | **Inti audit pengadaan — WAJIB, jangan dilewati (output-vs-spek dinilai dari dokumen pemeriksaan + judgment, bukan flag otomatis).** Baca dokumen hasil di `04-pelaksanaan/` — **terutama DOKUMEN PEMERIKSAAN/penerimaan hasil pekerjaan oleh PPK/PPHP/PjPHP/tim teknis** (di sinilah kuantitas & spesifikasi barang yang DITERIMA diverifikasi; **jangan andalkan BAST** yang sering hanya tanda tangan formalitas), serta laporan akhir/progres, foto, hasil uji/commissioning. Lakukan **perbandingan tiga arah**: kuantitas/spesifikasi **di Kontrak/KAK** ↔ yang **DITERIMA (per dokumen pemeriksaan)** ↔ yang **DIBAYAR**. Bandingkan **item-per-item** terhadap **spesifikasi teknis & deliverable di KAK/TOR + lampiran spesifikasi pada Kontrak (termasuk addendum)**. Periksa minimal: (a) **volume/kuantitas terpasang/terserahkan** vs kontrak (verifikasi bukan dari invoice saja); (b) **spesifikasi teknis** (merek/tipe/kapasitas/standar) sesuai yang dipersyaratkan; (c) **kelengkapan deliverable** (semua output KAK ada); (d) **kualitas/fungsionalitas** & hasil uji; (e) **SLA/target kinerja** tercapai; (f) **masa pemeliharaan/garansi** dipenuhi; (g) untuk konstruksi/jasa: **progres fisik vs pembayaran termin**. Tandai gap: kurang volume, spek tidak sesuai/di-downgrade, deliverable tidak lengkap, **dokumen pemeriksaan tidak ada / hanya tanda tangan tanpa rincian verifikasi**, atau **pembayaran tidak sesuai output yang DITERIMA** (mis. kontrak 20 unit, diperiksa/diterima 18, namun dibayar penuh untuk 20 → **kelebihan bayar = (kuantitas dibayar − kuantitas diterima) × harga satuan**) → buat temuan + teruskan nilainya ke Task #7 (kerugian). Acuan: `references/06-checklist-audit-pengadaan.md` Section D (Pelaksanaan/Penerimaan) & E (Serah Terima). Bila dokumen hasil tidak ada padahal pekerjaan dinyatakan selesai/dibayar → temuan KRITIS (output tak terverifikasi). |
 | 6. | **Analisis Sebab (Kolom Khas Audit)** | Untuk SETIAP temuan substantif, isi kolom Sebab dengan akar masalah administratif/prosedural. Kolom ini WAJIB untuk audit (vs reviu yang tidak butuh). |
 | 7. | **Verifikasi kerugian negara** | Untuk temuan terkait pembayaran/kontrak/hasil pekerjaan, hitung perkiraan kerugian negara bila relevan (Rp x Volume x Selisih) — termasuk kelebihan bayar akibat hasil < kontrak dari Task #5. |
 | 8. | **Cek konflik kepentingan** | Bila auditor punya akses data historis pengadaan auditee, cek pola: vendor yang sama berulang kali menang? Pejabat yang sama tanda tangan kontrak besar? |
 
 **Setiap temuan substantif WAJIB di-`append_temuan`** sebagai entry baru (di KKP: Kondisi/Kriteria/**Sebab**/Akibat + `dokumen_sumber` + nilai Rp + level risiko; **Rekomendasi TIDAK ditulis di KKP — disusun Ketua Tim di LHA**). Status awal DRAFT — final saat KT approve KKP.
 
-**Setelah semua analisis substantif selesai, lapor ringkasan** (total temuan rule-based + substantif + per-severity). Hindari kalimat "Mau saya lanjut ...?" — AT auto-execute, tampilkan langsung hasil.
+**Setelah semua analisis selesai, lapor ringkasan** (total temuan + per-severity). Hindari kalimat "Mau saya lanjut ...?" — AT auto-execute, tampilkan langsung hasil.
 
 ---
 
@@ -97,55 +98,39 @@ Fokus utama audit pengadaan:
 
 Dasar hukum: Perpres 16/2018 jo. Perpres 12/2021, Perlem LKPP 12/2021, Perlem LKPP 4/2024, Perpres 46/2025
 
-## Pipeline Deteksi (di balik `run_batch_audit_pbj`)
+## Digest (di balik `run_batch_audit_pbj` — mode full-AI digest-only)
 
-Tool `run_batch_audit_pbj` menjalankan pipeline deterministik sebagai **akselerator Langkah pertama A3** sebelum analisis substantif. Komponen yang dibungkus:
+`run_batch_audit_pbj` menjalankan **hanya `digest_pengadaan`** → `_KKP/pengadaan-digest.json`: scan folder, klasifikasi jenis dokumen (KAK/HPS/Kontrak/BAST/**pemeriksaan**/Pembayaran/dll.) **by nama file + fallback by ISI** (nama dokumen beda tiap direktorat — dikenali dari fungsi di teksnya), parse jadi fakta terstruktur (nilai, periode, SLA, jaminan, elemen_justifikasi, lingkup_komponen, identifikasi_kebutuhan, rincian pemeriksaan). **TIDAK ada rule deterministik.** Agen baca fakta via **`read_digest`**, lalu **menilai sendiri** via Checklist di bawah (judgment). Render KKP/LHA terpisah (`render_kkp_docx` / KT).
 
-| Komponen | Fungsi | Output |
-|---|---|---|
-| `digest_pengadaan` | Scan folder, klasifikasi jenis dokumen (KAK/HPS/Kontrak/BAST/Pembayaran/**pemeriksaan**/dll.) **by nama file + fallback by ISI** (dokumen bernama lokal beda tiap direktorat, mis. dokumen pemeriksaan — dikenali dari fungsi di teksnya), parse ke JSON | `_KKP/pengadaan-digest.json` |
-| `cross_check` | 14 rules deterministik (Perencanaan/Kontrak/Pelaksanaan/Pembayaran/Dokumentasi) | `_KKP/anomalies.json` |
+## Checklist Pemeriksaan (agen menilai dari digest — WAJIB ditelusuri semua)
 
-Render KKP/LHA dilakukan terpisah via tool `render_kkp_docx` (AT) dan oleh KT untuk LHA — bukan oleh pipeline ini.
+Telusuri dari `read_digest` (verifikasi/kutip via `read_pdf_page` bila perlu). Tiap butir nyatakan **sesuai / tidak sesuai / tidak cukup data**; yang **tidak sesuai → temuan** (K/K/S/A, wajib Sebab). Berlaku semua jenis pengadaan — kerjakan butir yang relevan dengan paket.
 
-### 14 Rules deteksi struktural
+**Dokumentasi**
+- [ ] Dokumen kunci (KAK/HPS/Kontrak) tersedia? (tidak ada → keterbatasan/temuan; cek `missing_types`)
+- [ ] Banyak file tak terklasifikasi? telaah `unclassified_files`
 
-Rule dirancang **berlaku untuk seluruh jenis pengadaan** (barang/konstruksi/jasa/konsultansi). Dibagi dua kelompok berdasarkan keberlakuannya:
+**Perencanaan**
+- [ ] HPS didukung dokumen pembentuk harga (RFI/quotation/survei)? minimal 2 sumber (Perpres 16/2018 Ps. 26(5))
+- [ ] Periode KAK = HPS?
+- [ ] Komponen ruang lingkup KAK (migrasi/instalasi/pelatihan/pemeliharaan/garansi/pengujian/lisensi) teralokasi di HPS?
+- [ ] Justifikasi/KAK memuat 5 elemen (kebutuhan · spek teknis & fungsi · metode · waktu · output)?
+- [ ] **Identifikasi kebutuhan memadai** — kuantitas didasari analisis kebutuhan (jumlah pegawai/ABK/unit kerja/aset existing/standar), **bukan asal sebut angka**? *(kewajaran vs realita — mis. 50 unit untuk 30 pegawai — perlu data kepegawaian/aset; bila tak terbukti dari dokumen → catat + verifikasi lebih lanjut)*
+- [ ] (bila ber-SLA) nilai SLA konsisten KAK vs HPS?
 
-**A. Rule UNIVERSAL (berlaku semua jenis pengadaan):**
+**Kontrak**
+- [ ] Nilai kontrak ≤ HPS (wajar pasca-negosiasi)?
+- [ ] (bila > Rp200 jt & jenis wajib) Jaminan Pelaksanaan tercantum? *(jasa konsultansi/e-purchasing dikecualikan — konfirmasi jenis)*
+- [ ] (bila ber-SLA) klausul SLA ada di kontrak sesuai KAK?
 
-| ID | Aspek | Rule |
-|---|---|---|
-| D.1 | Dokumentasi | Dokumen kunci (KAK/HPS/Kontrak) tidak ditemukan |
-| D.2 | Dokumentasi | Banyak file unclassified di folder |
-| P.1 | Perencanaan | HPS tanpa dokumen pembentuk harga |
-| P.2 | Perencanaan | Periode KAK ≠ HPS |
-| **P.4** | Perencanaan | **Komponen ruang lingkup di KAK tak teralokasi di HPS** (migrasi/instalasi/pelatihan/pemeliharaan/garansi/pengujian/lisensi) — umum lintas jenis, bukan hanya migrasi |
-| **P.5** | Perencanaan | **Justifikasi/KAK belum memuat 5 elemen wajib** (kebutuhan, spek teknis & fungsi, metode pengadaan, waktu penyelesaian, output) |
-| K.1 | Kontrak | Nilai kontrak ≥ HPS (tidak wajar) |
-| **K.3** | Kontrak | Kontrak **> Rp200 jt** tanpa Jaminan Pelaksanaan (ber-guard ambang nilai; konsultansi/e-purchasing dikecualikan — konfirmasi jenis) |
-| PL.1 | Pelaksanaan | Pembayaran dilakukan namun BAST tidak ditemukan |
-| **PL.2** | Pelaksanaan | **Pembayaran tanpa dokumen PEMERIKSAAN hasil pekerjaan** (PPK/PPHP/tim teknis) — output diterima tak terverifikasi independen (KRITIS) |
-| **PL.3** | Pelaksanaan | **Dokumen pemeriksaan tanpa rincian kuantitas/spesifikasi** — indikasi pemeriksaan formalitas |
-| B.1 | Pembayaran | Pembayaran tanpa rujukan BAST/Invoice/Kwitansi |
+**Pelaksanaan & Pembayaran (INTI — output vs kontrak)**
+- [ ] Ada **dokumen pemeriksaan hasil pekerjaan** (PPK/PPHP/tim teknis)? *(tak ada padahal dibayar → KRITIS — bukan BAST yang sering formalitas)*
+- [ ] Dokumen pemeriksaan **berincian** kuantitas/spesifikasi (bukan sekadar tanda tangan)?
+- [ ] **Output diterima sesuai kontrak/KAK/spek**? (volume, spesifikasi merek/tipe/kapasitas, kelengkapan deliverable, kualitas/uji, SLA, garansi)
+- [ ] **Pembayaran sesuai output yang DITERIMA** (bukan sekadar nilai kontrak)? bandingkan **kontrak ↔ diterima (pemeriksaan) ↔ dibayar**; selisih → **kelebihan bayar = (qty dibayar − qty diterima) × harga satuan**
+- [ ] Pembayaran (LS/SPTB) didukung BAST/Invoice/Kwitansi?
 
-**B. Rule KONDISIONAL (hanya menyala bila fiturnya ada di dokumen — aman untuk jenis lain, tak false-fire):**
-
-| ID | Aspek | Rule | Berlaku bila |
-|---|---|---|---|
-| P.3 | Perencanaan | SLA KAK ≠ HPS | KAK **dan** HPS sama-sama memuat nilai SLA (pengadaan ber-SLA: jasa berkelanjutan/TI) |
-| K.2 | Kontrak | Kontrak tanpa klausul SLA padahal KAK mensyaratkan | KAK menyebut SLA (pengadaan ber-SLA) |
-
-> Rule kondisional **tidak** muncul untuk pengadaan yang tak punya fitur terkait (mis. pengadaan barang sederhana tanpa SLA) — jadi tak mengganggu. K.3 kini ber-guard nilai sehingga **tidak** menandai kontrak kecil/jenis yang dikecualikan dari kewajiban jaminan.
-
-### Peran Claude Setelah Pipeline
-
-Pipeline meng-handle deteksi struktural deterministik. Claude menangani:
-- **Kewajaran harga substantif** — harga satuan wajar vs benchmark pasar
-- **Analisis Sebab** — akar masalah administratif/prosedural (kolom khas audit, tidak di-model rules)
-- **Verifikasi kerugian negara** — perhitungan manual apabila ada indikasi
-- **False positive filtering** — rules kadang over-flag periode/SLA karena parser best-effort
-- **Temuan substantif baru** yang tidak di-model oleh rules
+Lihat **8 Tugas Substantif** (di atas) untuk kedalaman: kewajaran HPS vs benchmark, output-vs-kontrak, hitung kerugian negara, konflik kepentingan.
 
 ---
 
@@ -176,11 +161,11 @@ Pipeline meng-handle deteksi struktural deterministik. Claude menangani:
 
 ## Hemat Token
 
-**ATURAN PENTING**: Setelah `run_batch_audit_pbj` menghasilkan `pengadaan-digest.json` + `anomalies.json`, AT **TIDAK BOLEH** membuka ulang seluruh PDF KAK/HPS/Kontrak/BAST/SPM untuk fakta yang sudah di-parse. Baca via `read_ingested_digest` — field `dokumen.kak[*].parsed.*`, `dokumen.hps[*].parsed.*`, `dokumen.kontrak[*].parsed.*`, dst sudah memuat: nomor dokumen, tanggal, nilai (Rp), periode, SLA, kapasitas, pihak penandatangan.
+**ATURAN PENTING**: Setelah `run_batch_audit_pbj` menghasilkan `pengadaan-digest.json` (digest-only), AT **TIDAK BOLEH** membuka ulang seluruh PDF KAK/HPS/Kontrak/BAST/SPM untuk fakta yang sudah di-parse. Baca via **`read_digest`** — field `dokumen.kak[*].parsed.*`, `dokumen.hps[*].parsed.*`, `dokumen.kontrak[*].parsed.*`, dst sudah memuat: nomor dokumen, tanggal, nilai (Rp), periode, SLA, jaminan, elemen_justifikasi, lingkup_komponen, identifikasi_kebutuhan, rincian pemeriksaan.
 
-**Boleh re-read** PDF (via `search_bukti`/`read_file`) hanya untuk:
+**Boleh re-read** PDF (via `read_pdf_page`) hanya untuk:
 - Verifikasi halaman spesifik yang akan dikutip ke `dokumen_sumber[*].kutipan` saat `append_temuan`
-- Cross-validasi suspected false positive dari rules
+- Mengonfirmasi fakta digest yang janggal/meragukan (parser bisa salah)
 - Mendapatkan kalimat tepat untuk Pasal/butir yang menjadi sumber temuan
 
 **Render & QC** memakai tool v7 — bukan script: KKP DOCX via `render_kkp_docx` (kolom Sebab otomatis untuk audit), QC via `run_qc_kkp`. LHA dirender terpisah oleh KT.

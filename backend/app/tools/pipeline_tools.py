@@ -140,22 +140,20 @@ async def run_batch_rka(args: dict) -> dict:
 
 @tool(
     "run_batch_audit_pbj",
-    "Jalankan pipeline V6 audit-pengadaan: digest_pengadaan + cross_check 12 rules "
-    "(P.1-5, K.1-3, PL.1, B.1, D.1-2) untuk SELURUH SIKLUS pengadaan (perencanaan → "
-    "pemilihan → kontrak → pelaksanaan → pembayaran). Beda dengan reviu-pengadaan "
-    "(perencanaan saja), audit-pengadaan WAJIB menganalisis hasil pekerjaan (BAST, "
-    "SPM, kewajaran pembayaran) dan WAJIB isi kolom Sebab di setiap temuan KKP. "
-    "Output: _KKP/anomalies.json + _KKP/pengadaan-digest.json. KKP format CCSAA "
-    "lengkap: Judul | Kondisi | Kriteria | Sebab | Akibat | Sumber.",
+    "Jalankan DIGEST audit-pengadaan (mode full-AI digest-only): parse SELURUH dokumen "
+    "siklus pengadaan (KAK/HPS/Kontrak/BAST/dokumen pemeriksaan/pembayaran) jadi JSON "
+    "terstruktur di _KKP/pengadaan-digest.json. TANPA rule deterministik — penilaian "
+    "dilakukan AGEN via checklist di SKILL audit-pengadaan (output-vs-kontrak, kewajaran "
+    "HPS, kerugian negara, dll). Setelah ini, baca fakta via `read_digest`, lalu analisis "
+    "per checklist → append_temuan (KKP: Judul|Kondisi|Kriteria|Sebab|Akibat|Sumber).",
     {"penugasan_folder": str, "role": str},
 )
 async def run_batch_audit_pbj(args: dict) -> dict:
     folder = Path(args["penugasan_folder"])
     role = (args.get("role") or "AT").upper()
-    extra = ["--no-render"] if role == "AT" else []  # LHA dirender KT terpisah
     code, out, err = await run_v6_script(
         "scripts/audit-pengadaan/run_batch.py",
-        ["--penugasan", str(folder), *extra],
+        ["--penugasan", str(folder), "--digest-only"],
         timeout=300,
     )
     if code != 0:
@@ -163,14 +161,17 @@ async def run_batch_audit_pbj(args: dict) -> dict:
             "content": [{"type": "text", "text": f"FAILED|exit={code}|err={err[:600]}"}],
             "is_error": True,
         }
-    anomalies = safe_read_json(folder / "_KKP" / "anomalies.json")
-    total = len(anomalies) if isinstance(anomalies, list) else len(anomalies.get("anomalies", []))
+    digest = safe_read_json(folder / "_KKP" / "pengadaan-digest.json")
+    jenis = list((digest or {}).get("dokumen", {}).keys()) if isinstance(digest, dict) else []
+    missing = (digest or {}).get("missing_types", []) if isinstance(digest, dict) else []
     return {
         "content": [{
             "type": "text",
             "text": (
-                f"OK|role={role}|anomalies_total={total}|output={folder / '_KKP'} "
-                f"| AUDIT-MODE: WAJIB analisis hasil pekerjaan + isi kolom Sebab di KKP"
+                f"OK|role={role}|digest-only (full-AI, tanpa rule)|dokumen_terdeteksi={jenis}"
+                f"|missing={missing}|output={folder / '_KKP' / 'pengadaan-digest.json'} "
+                f"| LANGKAH BERIKUT: `read_digest` → analisis per checklist SKILL "
+                f"(WAJIB output-vs-kontrak + isi Sebab di KKP)"
             ),
         }]
     }
@@ -362,7 +363,50 @@ async def run_digest_generic(args: dict) -> dict:
     }
 
 
+@tool(
+    "read_digest",
+    "Baca DIGEST terstruktur pengadaan (_KKP/pengadaan-digest.json) hasil "
+    "run_batch_audit_pbj/run_batch_pbj mode digest-only. Mengembalikan fakta per "
+    "dokumen yang sudah diparse (KAK/HPS/Kontrak/BAST/pemeriksaan/pembayaran: nilai, "
+    "periode, SLA, jaminan, elemen_justifikasi, lingkup_komponen, identifikasi_kebutuhan, "
+    "rincian pemeriksaan, dll) + missing_types + unclassified. Pakai INI sebagai sumber "
+    "fakta utama (hemat token, JANGAN baca ulang semua PDF) lalu nilai via checklist "
+    "SKILL. read_pdf_page hanya untuk verifikasi halaman/kutipan tertentu.",
+    {"penugasan_folder": str},
+)
+async def read_digest(args: dict) -> dict:
+    folder = Path(args["penugasan_folder"])
+    digest = safe_read_json(folder / "_KKP" / "pengadaan-digest.json")
+    if not isinstance(digest, dict):
+        return {
+            "content": [{"type": "text", "text": (
+                "FAILED|pengadaan-digest.json tidak ada di _KKP/ — jalankan "
+                "run_batch_audit_pbj/run_batch_pbj (digest-only) dulu."
+            )}],
+            "is_error": True,
+        }
+    # Ringkas: buang _raw_first_chars yang besar; sisakan field parsed kunci.
+    ringkas: dict = {}
+    for jenis, entries in (digest.get("dokumen") or {}).items():
+        ringkas[jenis] = []
+        for e in entries or []:
+            parsed = {k: v for k, v in (e.get("parsed") or {}).items()
+                      if k != "_raw_first_chars"}
+            ringkas[jenis].append({
+                "filename": e.get("filename"),
+                "classified_by": e.get("classified_by", "nama"),
+                "parsed": parsed,
+            })
+    payload = {
+        "dokumen": ringkas,
+        "missing_types": digest.get("missing_types", []),
+        "unclassified_files": digest.get("unclassified_files", [])[:10],
+    }
+    text = json.dumps(payload, ensure_ascii=False)
+    return {"content": [{"type": "text", "text": text[:8000]}]}
+
+
 PIPELINE_TOOLS = [
     run_batch_rka, run_batch_pbj, run_batch_audit_pbj, run_digest_generic,
-    read_pdf_page, read_anomalies, read_preload_context,
+    read_pdf_page, read_anomalies, read_digest, read_preload_context,
 ]
