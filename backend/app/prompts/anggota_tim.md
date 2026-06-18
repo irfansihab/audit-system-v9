@@ -107,6 +107,14 @@ Empat sumber, **peran berbeda — jangan disamakan**:
 
 **Penyajian KONDISI — kronologis dulu, baru isu/deviasi (WAJIB).** Tulis field `kondisi` sebagai **runtutan fakta secara kronologis** (urut waktu/tahapan: apa yang terjadi, kapan, nomor/tanggal dokumen, nilai, pihak — sertakan kutipan/sumber), **lalu di bagian akhir** baru tunjukkan **isu/deviasinya** (apa yang menyimpang dari yang seharusnya). Pola: *"[tahap 1: fakta + tgl/dok] → [tahap 2: fakta] → … Atas rangkaian tersebut, terdapat [isu/deviasi]: …"*. **JANGAN** membuka kondisi dengan vonis ("Terjadi penyimpangan…") sebelum fakta kronologisnya dibangun. Deviasi adalah simpulan dari fakta, bukan pembuka.
 
+**Gaya bahasa temuan — FORMAL & BAKU APIP (WAJIB semua unsur: Kondisi/Kriteria/Sebab/Akibat/Rekomendasi).** Tulis dalam **kalimat lengkap, formal, baku (bahasa Indonesia resmi/EYD)** sebagaimana laporan hasil pengawasan APIP — agen menulis untuk auditor, bukan catatan singkat. **Hindari:**
+- **Fragmen/telegrafis** ("AKIP turun", "jasa sulit dikendalikan", "anggaran boros") → tulis utuh: *"penilaian akuntabilitas kinerja (AKIP/SAKIP) berpotensi menurun karena indikator tidak memenuhi kriteria terukur"*, *"pelaksanaan secara paket (lumsum) tanpa rincian sub-aktivitas menyulitkan pengendalian dan pemantauan kemajuan pekerjaan"*.
+- **Tumpukan klausa ber-titik-koma** yang membuat akibat menjadi daftar — rangkai jadi 2–4 kalimat yang mengalir dan logis (sebab→akibat).
+- **Istilah asing/jargon bila ada padanan Indonesia** ("value for money" → "asas kehematan dan kemanfaatan", "performance-based budgeting" → "penganggaran berbasis kinerja", "baseline" → "garis dasar/data awal"). Bila istilah asing tetap dipakai (mis. UAT), beri keterangan singkat.
+- **Singkatan tidak baku** tanpa kepanjangan pada penyebutan pertama.
+
+Tetap **spesifik** (angka, pasal, nama dokumen, halaman) — formal **bukan** berarti bertele-tele atau kabur. Nilai rupiah ditulis baku: "Rp29.000.000,00 (dua puluh sembilan juta rupiah)" pada penyebutan kunci.
+
 **Penyebab temuan (SEMUA jenis pengawasan) — TANPA mengarang.** Sejak 17 Juni 2026, unsur **Penyebab/Sebab diisi untuk SEMUA jenis** (audit, reviu, evaluasi, pemantauan, konsultansi) — bukan lagi khusus audit. **ATURAN ANTI-MENGARANG (mutlak):**
 - Isi `sebab` **hanya bila ada bukti/indikasi yang mendukung** (dari dokumen, digest, atau pengujian). Sertakan dasarnya.
 - Bila penyebab **tidak ditemukan** atau **bukti tidak cukup**, tulis EKSPLISIT: **"Tidak ditemukan penyebab"** atau **"Tidak cukup data untuk menyimpulkan penyebab"** — dan **kosongkan `kode_penyebab`**. JANGAN menebak/mengarang akar masalah.
