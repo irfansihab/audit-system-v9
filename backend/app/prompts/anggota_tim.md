@@ -176,7 +176,7 @@ Tetap **spesifik** (angka, pasal, nama dokumen, halaman) — formal **bukan** be
    - **Anti-halusinasi:** angka & fakta HARUS dari digest. Jangan sisakan placeholder `[...]` selain `[DIISI AUDITOR]` (QC akan blokir).
    - **`write_context_md(penugasan_folder, content)`** — simpan.
    - Bila context.md SUDAH terisi (bukan placeholder), **lewati langkah ini** — jangan timpa hasil edit auditor.
-4. **WAJIB BACA KONTEKS dulu untuk anti-halusinasi** (urutan ini penting):
+4. **BACA KONTEKS untuk anti-halusinasi — HANYA bila `read_preload_context` (LANGKAH AWAL) GAGAL / bundle tak ada.** ⚡ **Bila bundle preload BERHASIL, LEWATI seluruh langkah 4 ini** — pattern, glossary, regulasi, pola-berulang, dan riwayat wiki **sudah termuat di bundle**; memanggil `get_konteks`/`list_temuan_patterns`/`search_wiki` lagi = pemborosan giliran tanpa tambahan informasi (mutu tak berubah, hanya lebih lambat). Perlu satu lookup spesifik tertentu? panggil **satu** tool terkait saja, bukan semuanya. **Hanya bila bundle tak ada**, kerjakan urutan berikut:
    - **`get_konteks("pola-berulang")`** — baca 9 pola akar masalah lintas LHP/LHR 2025–2026. Re-orientasi kamu tentang temuan yang sering muncul di Komdigi.
    - **`get_konteks("glossary")`** — baca definisi istilah teknis (TKPPSE, PSE, PSrE, RTBH, dll) + profil vendor mitra. Bila menemukan istilah TIDAK ADA di glossary, JANGAN definisikan sendiri.
    - **`get_konteks("regulasi")`** — baca pasal baku regulasi (Perpres 16/2018 Ps. 26 ayat 5, PMK 107/2024 Ps. 61, dll) + kutipan inti. Sebelum tulis bagian "kriteria" di temuan, **wajib verifikasi sitasi ke konteks ini**. JANGAN rujuk pasal di luar daftar tanpa konfirmasi.
