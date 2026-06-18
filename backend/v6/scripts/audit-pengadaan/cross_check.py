@@ -160,32 +160,53 @@ def rule_p3_kak_hps_sla_beda(digest: dict) -> dict | None:
     )
 
 
-def rule_p4_kak_migrasi_hps_tidak(digest: dict) -> dict | None:
-    """P.4 — KAK menyebut migrasi tapi HPS tidak alokasikan komponen migrasi."""
+# Label manusiawi komponen ruang lingkup (selaras digest_pengadaan._LINGKUP_LABEL).
+_LINGKUP_LABEL = {
+    "migrasi": "migrasi data/sistem", "instalasi": "instalasi/pemasangan",
+    "pelatihan": "pelatihan/alih pengetahuan", "pemeliharaan": "pemeliharaan/perawatan",
+    "garansi": "garansi/masa pemeliharaan", "pengujian": "pengujian/commissioning",
+    "lisensi": "lisensi/langganan",
+}
+
+
+def rule_p4_lingkup_kak_tak_di_hps(digest: dict) -> dict | None:
+    """P.4 — Komponen ruang lingkup signifikan disebut di KAK tapi tak teralokasi di HPS.
+
+    UMUM lintas jenis pengadaan (barang/konstruksi/jasa/konsultansi): migrasi,
+    instalasi, pelatihan, pemeliharaan, garansi, pengujian, lisensi. Heuristik
+    presence-only — auditor wajib konfirmasi ke dokumen.
+    """
     kak = _parsed(_first(digest, "kak"))
     hps = _parsed(_first(digest, "hps"))
     if not (kak and hps):
         return None
-    if not kak.get("migrasi_disebut"):
+    kak_l = kak.get("lingkup_komponen") or {}
+    hps_l = hps.get("lingkup_komponen") or {}
+    if not kak_l:
         return None
-    if hps.get("migrasi_disebut"):
+    gap = [k for k, v in kak_l.items() if v and not hps_l.get(k)]
+    if not gap:
         return None
+    label_str = ", ".join(_LINGKUP_LABEL.get(k, k) for k in gap)
     return _rule(
         "P.4", PERINGATAN, "Perencanaan",
-        "KAK menyebut migrasi namun HPS tidak mengalokasikan komponen migrasi",
-        "Komponen biaya migrasi tidak tercermin di HPS.",
-        bukti={"kak_migrasi": True, "hps_migrasi": False},
+        f"Komponen ruang lingkup di KAK tak teralokasi di HPS: {label_str}",
+        "Komponen biaya yang disyaratkan KAK tidak tercermin di HPS.",
+        bukti={
+            "komponen_gap": gap,
+            "kak_komponen": [k for k, v in kak_l.items() if v],
+            "hps_komponen": [k for k, v in hps_l.items() if v],
+        },
         draft={
-            "kondisi": "KAK mencantumkan kebutuhan proses migrasi (data/sistem/layanan) sebagai bagian "
-                       "dari ruang lingkup, namun HPS tidak memuat komponen biaya migrasi yang dapat "
-                       "dikenali.",
+            "kondisi": f"KAK mencantumkan komponen ruang lingkup berikut sebagai bagian pekerjaan: "
+                       f"{label_str}; namun HPS tidak memuat komponen biaya yang dapat dikenali untuk "
+                       f"komponen tersebut.",
             "kriteria": "Perpres 16/2018 Pasal 26 — HPS harus mencakup seluruh komponen biaya yang "
                         "diperlukan untuk pelaksanaan pekerjaan sesuai KAK.",
-            "sebab": "Migrasi mungkin dianggap bagian dari layanan reguler, atau ada misalignment "
-                     "antara penyusun KAK dan penyusun HPS terkait ruang lingkup biaya.",
-            "akibat": "Biaya migrasi berpotensi ditanggung K/L sebagai addendum setelah kontrak "
-                      "berjalan (membesarkan pagu), atau penyedia menolak melakukan migrasi karena "
-                      "tidak termasuk kontrak.",
+            "sebab": "Komponen tersebut mungkin dianggap bagian dari pekerjaan utama, atau terdapat "
+                     "misalignment ruang lingkup antara penyusun KAK dan penyusun HPS.",
+            "akibat": "Biaya komponen berpotensi menjadi addendum yang membesarkan pagu, atau penyedia "
+                      "menolak melaksanakannya karena tidak termasuk dalam nilai kontrak.",
         }
     )
 
@@ -250,25 +271,38 @@ def rule_k2_kontrak_tanpa_sla(digest: dict) -> dict | None:
 
 
 def rule_k3_kontrak_tanpa_jaminan(digest: dict) -> dict | None:
-    """K.3 — Kontrak tidak mencantumkan Jaminan Pelaksanaan yang ditetapkan."""
+    """K.3 — Kontrak > Rp200 jt tanpa klausul Jaminan Pelaksanaan.
+
+    Ber-guard AMBANG NILAI: Jaminan Pelaksanaan hanya WAJIB untuk pengadaan
+    barang/konstruksi/jasa lainnya > Rp200 juta (Perpres 16/2018 Ps. 33).
+    Bila nilai kontrak tak diketahui atau <= ambang → TIDAK di-flag (hindari
+    false positive untuk kontrak kecil, jasa konsultansi, & e-purchasing yang
+    dikecualikan dari kewajiban jaminan).
+    """
     kontrak = _parsed(_first(digest, "kontrak"))
     if not kontrak:
         return None
     if kontrak.get("jaminan_pelaksanaan"):
         return None
+    nilai = kontrak.get("nilai_kontrak")
+    if not nilai or nilai <= 200_000_000:
+        return None
     return _rule(
         "K.3", PERINGATAN, "Kontrak",
-        "Kontrak tidak mencantumkan persentase Jaminan Pelaksanaan",
-        "Jaminan pelaksanaan (umumnya 5% nilai kontrak) tidak tercantum.",
-        bukti={"kontrak": (kontrak or {}).get("nomor")},
+        f"Kontrak Rp {nilai:,} (> Rp200 jt) tanpa klausul Jaminan Pelaksanaan",
+        "Jaminan Pelaksanaan (umumnya 5% nilai kontrak) tidak tercantum padahal nilai mewajibkan.",
+        bukti={"nilai_kontrak": nilai, "kontrak": (kontrak or {}).get("nomor")},
         draft={
-            "kondisi": "Klausul persentase Jaminan Pelaksanaan tidak ditemukan di teks kontrak.",
-            "kriteria": "Perpres 16/2018 Pasal 33 — Jaminan Pelaksanaan 5% dari nilai kontrak "
-                        "untuk pengadaan > Rp 200 juta.",
-            "sebab": "Draf kontrak menggunakan template yang tidak memuat klausul jaminan, atau "
-                     "nilai kontrak di bawah ambang yang mewajibkan jaminan.",
+            "kondisi": f"Nilai kontrak Rp {nilai:,} melampaui ambang Rp200 juta, namun klausul "
+                       f"persentase Jaminan Pelaksanaan tidak ditemukan di teks kontrak.",
+            "kriteria": "Perpres 16/2018 Pasal 33 — Jaminan Pelaksanaan 5% nilai kontrak untuk "
+                        "pengadaan barang/pekerjaan konstruksi/jasa lainnya > Rp200 juta "
+                        "(dikecualikan antara lain jasa konsultansi & e-purchasing — auditor "
+                        "konfirmasi jenis pengadaan).",
+            "sebab": "Draf kontrak memakai template tanpa klausul jaminan, atau jaminan diserahkan "
+                     "terpisah namun tidak dirujuk dalam kontrak.",
             "akibat": "K/L tidak memiliki jaminan finansial apabila penyedia wanprestasi; risiko "
-                      "kesulitan recovery atas kerugian negara.",
+                      "kesulitan pemulihan atas kerugian negara.",
         }
     )
 
@@ -404,7 +438,7 @@ ALL_RULES = [
     rule_p1_hps_tanpa_pembentuk_harga,
     rule_p2_kak_hps_periode_beda,
     rule_p3_kak_hps_sla_beda,
-    rule_p4_kak_migrasi_hps_tidak,
+    rule_p4_lingkup_kak_tak_di_hps,
     rule_p5_kelengkapan_justifikasi,
     rule_k1_nilai_kontrak_vs_hps,
     rule_k2_kontrak_tanpa_sla,

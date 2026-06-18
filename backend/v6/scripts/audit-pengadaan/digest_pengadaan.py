@@ -159,13 +159,40 @@ def _extract_periode(text: str) -> str | None:
     return None
 
 
+# Komponen ruang lingkup yang lazim disebut di KAK namun kerap terlupa
+# dialokasikan di HPS. Dipakai rule P.4 versi UMUM (lintas jenis pengadaan:
+# barang/konstruksi/jasa/konsultansi) — bukan lagi spesifik migrasi/TI.
+_LINGKUP_KOMPONEN = {
+    "migrasi": r"\bmigrasi\b|migration",
+    "instalasi": r"instalasi|pemasangan|\binstall",
+    "pelatihan": r"pelatihan|training|bimbingan\s+teknis|bimtek",
+    "pemeliharaan": r"pemeliharaan|maintenance|perawatan|masa\s+pemeliharaan",
+    "garansi": r"garansi|warranty|jaminan\s+purna\s*jual",
+    "pengujian": r"uji\s*coba|commissioning|pengujian|\bUAT\b|\bSIT\b",
+    "lisensi": r"lisensi|license|langganan|subscription",
+}
+
+# Label manusiawi untuk narasi temuan (dipakai cross_check P.4).
+_LINGKUP_LABEL = {
+    "migrasi": "migrasi data/sistem", "instalasi": "instalasi/pemasangan",
+    "pelatihan": "pelatihan/alih pengetahuan", "pemeliharaan": "pemeliharaan/perawatan",
+    "garansi": "garansi/masa pemeliharaan", "pengujian": "pengujian/commissioning",
+    "lisensi": "lisensi/langganan",
+}
+
+
+def _detect_lingkup_komponen(text: str) -> dict:
+    """Deteksi presence-only komponen ruang lingkup di teks dokumen (heuristik keyword)."""
+    return {k: bool(re.search(pat, text, re.I)) for k, pat in _LINGKUP_KOMPONEN.items()}
+
+
 def parse_kak(pages: list[str]) -> dict:
     text = "\n".join(pages)
     out = {
         "nomor": None, "tanggal": None, "nama_pekerjaan": None,
         "nilai_hps": None, "periode": None, "sla_disebut": False,
         "sla_value": None, "sla_all_values": [], "migrasi_disebut": False,
-        "kapasitas_disebut": None, "halaman": len(pages),
+        "lingkup_komponen": {}, "kapasitas_disebut": None, "halaman": len(pages),
     }
     m = re.search(r"Nomor\s*:?\s*(\S+)", text[:1500])
     if m:
@@ -191,9 +218,10 @@ def parse_kak(pages: list[str]) -> dict:
         # Normalize titik → koma untuk konsistensi pembanding
         unique_sla = sorted(set(s.replace(".", ",") for s in all_sla))
         out["sla_all_values"] = [f"{v}%" for v in unique_sla]
-    # migrasi
+    # migrasi (dipertahankan utk kompatibilitas) + komponen ruang lingkup umum
     if re.search(r"\bmigrasi\b|migration", text, re.I):
         out["migrasi_disebut"] = True
+    out["lingkup_komponen"] = _detect_lingkup_komponen(text)
     # kapasitas
     km = re.search(r"(\d+(?:[,.]\d+)?)\s*(Tbps|Gbps|Mbps|TB|GB)", text, re.I)
     if km:
@@ -237,7 +265,7 @@ def parse_hps(pages: list[str]) -> dict:
         "nomor": None, "tanggal": None, "total": None,
         "komponen_count": 0, "sla_disebut": False, "sla_value": None,
         "sla_all_values": [],
-        "periode": None, "migrasi_disebut": False,
+        "periode": None, "migrasi_disebut": False, "lingkup_komponen": {},
         "ada_dokumen_pembentuk_harga": False, "halaman": len(pages),
     }
     m = re.search(r"Nomor\s*:?\s*(\S+)", text[:1500])
@@ -261,9 +289,10 @@ def parse_hps(pages: list[str]) -> dict:
         out["sla_all_values"] = [f"{v}%" for v in unique_sla]
     # periode — STRICT (lihat _extract_periode)
     out["periode"] = _extract_periode(text)
-    # migrasi
+    # migrasi (kompatibilitas) + komponen ruang lingkup umum (untuk P.4)
     if re.search(r"\bmigrasi\b|migration", text, re.I):
         out["migrasi_disebut"] = True
+    out["lingkup_komponen"] = _detect_lingkup_komponen(text)
     # dokumen pembentuk harga (quotation vendor, market research)
     if re.search(r"penawaran\s+vendor|quotation|market\s+research|RFI", text, re.I):
         out["ada_dokumen_pembentuk_harga"] = True

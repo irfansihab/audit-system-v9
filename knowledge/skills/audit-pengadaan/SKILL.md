@@ -1,13 +1,14 @@
 ---
 name: audit-pengadaan
 format_laporan: kksa
-version: 2.3
+version: 2.4
 jenis: Audit Kepatuhan Pengadaan Barang/Jasa
 dasar-hukum: Perpres 16/2018 jo. Perpres 12/2021, Perlem LKPP 12/2021, Perlem LKPP 4/2024, Perpres 46/2025
 model: claude-sonnet-4-6
 auto_execute: true
 auto_execute_command: "tool: run_batch_audit_pbj(penugasan_folder, role=\"AT\")"
 changelog:
+  - v2.4 (2026-06-18): Pipeline berlaku SELURUH jenis pengadaan. P.4 digeneralisasi dari "migrasi" (spesifik TI) → "komponen ruang lingkup KAK tak teralokasi di HPS" (migrasi/instalasi/pelatihan/pemeliharaan/garansi/pengujian/lisensi) via deteksi `lingkup_komponen` di digest. K.3 diberi guard ambang nilai (hanya flag kontrak > Rp200 jt — hindari false positive kontrak kecil/konsultansi/e-purchasing). P.3 & K.2 ditandai KONDISIONAL (pengadaan ber-SLA; sudah ber-guard, tak false-fire). Tabel rule dipisah Universal vs Kondisional. Tetap 12 rules.
   - v2.3 (2026-06-17): Tambah rule deterministik P.5 — kelengkapan 5 elemen justifikasi/dokumen persiapan (kebutuhan, spek teknis & fungsi, metode pengadaan, waktu penyelesaian, output) di pipeline cross_check; selaras fix reviu-pengadaan v1.5. Cross-check kini 12 rules.
   - v2.2 (2026-06-17): Refactor orkestrasi ke v7 — pisah substansi domain dari orkestrasi; struktur seragam Tahap A0–A4; hapus AUTO-EXECUTE LANGKAH/STEP A-C/Task 00-01/_ROLE.md/bash/AskUserQuestion (legacy audit-system-v4); pipeline via tool run_batch_audit_pbj. Substansi (8 tugas substantif, 11 rules, output-vs-kontrak, kerugian negara) dipertahankan.
 ---
@@ -91,20 +92,31 @@ Render KKP/LHA dilakukan terpisah via tool `render_kkp_docx` (AT) dan oleh KT un
 
 ### 12 Rules deteksi struktural
 
+Rule dirancang **berlaku untuk seluruh jenis pengadaan** (barang/konstruksi/jasa/konsultansi). Dibagi dua kelompok berdasarkan keberlakuannya:
+
+**A. Rule UNIVERSAL (berlaku semua jenis pengadaan):**
+
 | ID | Aspek | Rule |
 |---|---|---|
 | D.1 | Dokumentasi | Dokumen kunci (KAK/HPS/Kontrak) tidak ditemukan |
 | D.2 | Dokumentasi | Banyak file unclassified di folder |
 | P.1 | Perencanaan | HPS tanpa dokumen pembentuk harga |
 | P.2 | Perencanaan | Periode KAK ≠ HPS |
-| P.3 | Perencanaan | SLA KAK ≠ HPS |
-| P.4 | Perencanaan | KAK menyebut migrasi tapi HPS tidak |
-| **P.5** | **Perencanaan** | **Justifikasi/KAK belum memuat 5 elemen wajib** (kebutuhan, spek teknis & fungsi, metode pengadaan, waktu penyelesaian, output) — deteksi otomatis kelengkapan justifikasi |
+| **P.4** | Perencanaan | **Komponen ruang lingkup di KAK tak teralokasi di HPS** (migrasi/instalasi/pelatihan/pemeliharaan/garansi/pengujian/lisensi) — umum lintas jenis, bukan hanya migrasi |
+| **P.5** | Perencanaan | **Justifikasi/KAK belum memuat 5 elemen wajib** (kebutuhan, spek teknis & fungsi, metode pengadaan, waktu penyelesaian, output) |
 | K.1 | Kontrak | Nilai kontrak ≥ HPS (tidak wajar) |
-| K.2 | Kontrak | Kontrak tanpa klausul SLA padahal KAK mensyaratkan |
-| K.3 | Kontrak | Kontrak tanpa Jaminan Pelaksanaan |
+| **K.3** | Kontrak | Kontrak **> Rp200 jt** tanpa Jaminan Pelaksanaan (ber-guard ambang nilai; konsultansi/e-purchasing dikecualikan — konfirmasi jenis) |
 | PL.1 | Pelaksanaan | Pembayaran dilakukan namun BAST tidak ditemukan |
 | B.1 | Pembayaran | Pembayaran tanpa rujukan BAST/Invoice/Kwitansi |
+
+**B. Rule KONDISIONAL (hanya menyala bila fiturnya ada di dokumen — aman untuk jenis lain, tak false-fire):**
+
+| ID | Aspek | Rule | Berlaku bila |
+|---|---|---|---|
+| P.3 | Perencanaan | SLA KAK ≠ HPS | KAK **dan** HPS sama-sama memuat nilai SLA (pengadaan ber-SLA: jasa berkelanjutan/TI) |
+| K.2 | Kontrak | Kontrak tanpa klausul SLA padahal KAK mensyaratkan | KAK menyebut SLA (pengadaan ber-SLA) |
+
+> Rule kondisional **tidak** muncul untuk pengadaan yang tak punya fitur terkait (mis. pengadaan barang sederhana tanpa SLA) — jadi tak mengganggu. K.3 kini ber-guard nilai sehingga **tidak** menandai kontrak kecil/jenis yang dikecualikan dari kewajiban jaminan.
 
 ### Peran Claude Setelah Pipeline
 
