@@ -69,7 +69,7 @@ Kriteria evaluasi sering kompleks: pedoman teknis + lembar kerja evaluasi (LKE) 
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
 - **Pipeline E3:** *tidak ada tool v7 — criteria-driven manual* (digest generik via `read_ingested_digest`).
 - **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE**.
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian per kriteria → `append_temuan` (Sebab: diisi bila terbukti, jika tidak "Tidak ditemukan penyebab"/"Tidak cukup data" — jangan mengarang) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian per kriteria → `append_temuan` (Sebab: diisi bila terbukti, jika tidak "Tidak ditemukan penyebab"/"Tidak cukup data" — jangan mengarang) → `render_kkp_docx` → `run_qc_kkp`.
 
 ## Tahap Evaluasi (E0–E4)
 
@@ -78,7 +78,7 @@ Kriteria evaluasi sering kompleks: pedoman teknis + lembar kerja evaluasi (LKE) 
 | **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; kriteria + instrumen (LKE/rubrik bila ada) + objek tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
 | **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan evaluasi, ruang lingkup, **dimensi/aspek penilaian** + **rubrik/skor** (bila ada), metodologi (telaah dokumen, wawancara, observasi, analisis data) — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: aspek/sub-aspek/indikator yang dinilai · bobot · sumber data · metode · langkah · bukti. | KT (UI Setup) |
-| **E3 — Pelaksanaan & KKE** | Per aspek/indikator: kumpulkan bukti → nilai sesuai rubrik (skor + % capaian) → temuan/catatan (Sebab: diisi bila terbukti, jika tidak "Tidak ditemukan penyebab"/"Tidak cukup data" — jangan mengarang) untuk hal yang butuh rekomendasi sistem → `append_temuan` + `record_pkp_assessment`. Skor di bawah ambang / temuan signifikan ditandai agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
+| **E3 — Pelaksanaan & KKE** | Per aspek/indikator: kumpulkan bukti → nilai sesuai rubrik (skor + % capaian) → temuan/catatan (Sebab: diisi bila terbukti, jika tidak "Tidak ditemukan penyebab"/"Tidak cukup data" — jangan mengarang) untuk hal yang butuh rekomendasi sistem → `append_temuan`. Skor di bawah ambang / temuan signifikan ditandai agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
 | **E4 — Laporan (LHE)** | Render LHE + Nota Dinas (ikuti `panduan-format-umum/PANDUAN.md`); simpulan keyakinan **terbatas** (nilai/predikat sesuai metodologi); rekomendasi terpilih di Bab G. | KT |
 
 **Eskalasi:** temuan strategis (mempengaruhi capaian misi/sasaran organisasi) → flag + eskalasi ke Inspektur (lihat tabel Materialitas).

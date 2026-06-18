@@ -73,7 +73,7 @@ Dalam pemantauan, "kriteria" sering berupa:
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
 - **Pipeline P3:** *tidak ada tool v7 — manual* (digest generik via `read_ingested_digest`).
 - **Mode:** AT **auto-execute** P0→P3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft Laporan Pemantauan**.
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → pantau status per objek → `append_temuan` (status + Sebab bila terbukti; jika tidak "tidak ditemukan penyebab"/"tidak cukup data", jangan mengarang) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → pantau status per objek → `append_temuan` (status + Sebab bila terbukti; jika tidak "tidak ditemukan penyebab"/"tidak cukup data", jangan mengarang) → `render_kkp_docx` → `run_qc_kkp`.
 
 ## Tahap Pemantauan (P0–P4)
 
@@ -82,7 +82,7 @@ Dalam pemantauan, "kriteria" sering berupa:
 | **P0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; acuan target/rencana (kriteria pemantauan) + data realisasi terkini tersedia; tetapkan periode pelaporan (cut-off date); susun `context.md` bila placeholder. | AT (auto) |
 | **P1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan pemantauan, ruang lingkup (objek + periode), indikator status, metodologi (sumber data, frekuensi) — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **P2 — Program Kerja Pengawasan (PKP)** | Per sasaran: item/kegiatan yang dipantau · target & tenggat · penanggung jawab · sumber data realisasi · indikator/kriteria status. | KT (UI Setup) |
-| **P3 — Pelaksanaan** | Per item: bandingkan realisasi vs target, hitung % capaian, tetapkan status warna (🟢/🟡/🔴) → `append_temuan` (status/catatan + rekomendasi percepatan; Sebab deviasi anti-mengarang: diisi bila terbukti, jika tidak "Tidak ditemukan penyebab"/"Tidak cukup data") → `record_pkp_assessment`. Item 🔴 ditandai agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
+| **P3 — Pelaksanaan** | Per item: bandingkan realisasi vs target, hitung % capaian, tetapkan status warna (🟢/🟡/🔴) → `append_temuan` (status/catatan + rekomendasi percepatan; Sebab deviasi anti-mengarang: diisi bila terbukti, jika tidak "Tidak ditemukan penyebab"/"Tidak cukup data"). Item 🔴 ditandai agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
 | **P4 — Laporan Pemantauan** | Render Laporan Pemantauan + Nota Dinas; rekap status agregat & isu (🔴/🟡) yang perlu tindak lanjut/intervensi. | KT |
 
 ## Format KKPemantauan

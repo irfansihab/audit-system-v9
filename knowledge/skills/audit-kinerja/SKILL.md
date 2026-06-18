@@ -87,7 +87,7 @@ audit-kinerja-[program]/  ← SUB-SKILL (dibuat terpisah per program)
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT membaca **skill induk ini + sub-skill program** (bila tersedia) untuk kriteria spesifik.
 - **Pipeline A3:** *tidak ada — criteria-driven* (kriteria dari proses bisnis/SOP/PK program; baca dokumen ter-ingest via `read_ingested_digest`).
 - **Mode:** AT **auto-execute** A0→A3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHA**. (Survey Pendahuluan & penajaman sasaran di A0–A1 melibatkan KT/PT.)
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` (+ riset online via WebSearch/WebFetch bila tersedia) → analisis 8-aspek + why-tree → `append_temuan` (CCSAA, **wajib Sebab**) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` (+ riset online via WebSearch/WebFetch bila tersedia) → analisis 8-aspek + why-tree → `append_temuan` (CCSAA, **wajib Sebab**) → `render_kkp_docx` → `run_qc_kkp`.
 
 ## Tahap Audit Kinerja (A0–A4)
 
@@ -96,7 +96,7 @@ audit-kinerja-[program]/  ← SUB-SKILL (dibuat terpisah per program)
 | **A0 — Validasi, Konteks & Survey Pendahuluan** | Pastikan tujuan/objek dari ST/KP jelas; kumpulkan dokumen desain program (TOR/PK/proses bisnis); lakukan **Survey Pendahuluan** (pemahaman program, pemetaan risiko per 8 aspek, analytical review, research online) → Memo SP. | AT (auto) + KT/PT |
 | **A1 — Kerangka Penugasan (KP)** | Sasaran & ruang lingkup **diambil dari Memo SP** (bukan verbatim ST); tiap sasaran menyebut aspek yang disasar (dari 8 aspek). | KT (UI) / PT |
 | **A2 — Program Kerja Pengawasan (PKP)** | Langkah kerja per sasaran diturunkan dari hipotesis audit awal di Memo SP; tiap langkah menyebut aspek yang disasar. | KT (UI Setup) |
-| **A3 — Pelaksanaan & KKP** | Petakan sasaran/langkah → aspek; uji **hanya aspek yang tercermin di KP/PKP**; telusuri **Sebab antaraspek (why-tree)**; temuan **CCSAA** (wajib **Sebab**) + dimensi 2E + aspek → `append_temuan` + `record_pkp_assessment`. | AT (auto) |
+| **A3 — Pelaksanaan & KKP** | Petakan sasaran/langkah → aspek; uji **hanya aspek yang tercermin di KP/PKP**; telusuri **Sebab antaraspek (why-tree)**; temuan **CCSAA** (wajib **Sebab**) + dimensi 2E + aspek → `append_temuan`. | AT (auto) |
 | **A4 — Laporan (LHA Kinerja)** | Render LHA; temuan dilaporkan per dimensi 2E (tiap temuan ditandai aspeknya); simpulan **keyakinan memadai**. | KT |
 
 **Eskalasi:** indikasi ekonomisitas/kewajaran harga → eskalasi `audit-pengadaan`; indikasi fraud → catat & eskalasi ke pimpinan.

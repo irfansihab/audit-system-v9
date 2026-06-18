@@ -21,7 +21,7 @@ changelog:
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
 - **Pipeline A3:** `run_batch_audit_pbj(penugasan_folder, role="AT")` — `digest_pengadaan` + 12 rules cross-check untuk **SELURUH siklus** (perencanaan→pemilihan→kontrak→pelaksanaan→pembayaran). Output `_KKP/anomalies.json` + `_KKP/pengadaan-digest.json`. Ini **akselerator deteksi struktural saja** — analisis substantif (8 tugas di bawah) tetap WAJIB.
 - **Mode:** AT **auto-execute** A0→A3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHA** (bukan stop tiap tahap).
-- **Tool inti:** `read_context` → `run_batch_audit_pbj` → verifikasi false positive + analisis substantif → `append_temuan` (CCSAA, **wajib Sebab**) → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → `run_batch_audit_pbj` → verifikasi false positive + analisis substantif → `append_temuan` (CCSAA, **wajib Sebab**) → `render_kkp_docx` → `run_qc_kkp`.
 
 ## Tahap Audit (A0–A4)
 
@@ -30,7 +30,7 @@ changelog:
 | **A0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; dokumen pengadaan tersedia di `00-input/` (KAK/HPS/Kontrak/BAST/SPM/dll.); susun `context.md` bila masih placeholder. | AT (auto) |
 | **A1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan audit, ruang lingkup (tahap siklus mana yang diaudit), kriteria (Perpres 16/2018 dst.), metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **A2 — Program Kerja Pengujian (PKP)** | Per sasaran/tahap pengadaan: Aspek · Tujuan Pengujian · Prosedur · Sampel · Bukti yang Dicari. | KT (UI Setup) |
-| **A3 — Pelaksanaan & KKP** | `run_batch_audit_pbj` (12 rules) → verifikasi false positive → **8 tugas analisis substantif WAJIB** (kewajaran HPS, output-vs-kontrak, kerugian negara — lihat tabel di bawah) → temuan **CCSAA** (wajib **Sebab**) via `append_temuan` + `record_pkp_assessment`. | AT (auto) |
+| **A3 — Pelaksanaan & KKP** | `run_batch_audit_pbj` (12 rules) → verifikasi false positive → **8 tugas analisis substantif WAJIB** (kewajaran HPS, output-vs-kontrak, kerugian negara — lihat tabel di bawah) → temuan **CCSAA** (wajib **Sebab**) via `append_temuan`. | AT (auto) |
 | **A4 — Laporan (LHA)** | Render LHA + Nota Dinas; ringkasan per area, rekomendasi material, simpulan **keyakinan memadai**. | KT |
 
 **Eskalasi:** indikasi kerugian negara material (>Rp 1 M) atau pidana → flag MERAH + eskalasi ke PT/Inspektur.
@@ -50,7 +50,7 @@ changelog:
 | 7. | **Verifikasi kerugian negara** | Untuk temuan terkait pembayaran/kontrak/hasil pekerjaan, hitung perkiraan kerugian negara bila relevan (Rp x Volume x Selisih) — termasuk kelebihan bayar akibat hasil < kontrak dari Task #5. |
 | 8. | **Cek konflik kepentingan** | Bila auditor punya akses data historis pengadaan auditee, cek pola: vendor yang sama berulang kali menang? Pejabat yang sama tanda tangan kontrak besar? |
 
-**Setiap temuan substantif WAJIB di-`append_temuan`** sebagai entry baru (CCSAA lengkap: Kondisi/Kriteria/**Sebab**/Akibat/Rekomendasi + `dokumen_sumber` + nilai Rp + level risiko). Lalu `record_pkp_assessment` per sasaran. Status awal DRAFT — final saat KT approve KKP.
+**Setiap temuan substantif WAJIB di-`append_temuan`** sebagai entry baru (CCSAA lengkap: Kondisi/Kriteria/**Sebab**/Akibat/Rekomendasi + `dokumen_sumber` + nilai Rp + level risiko). Status awal DRAFT — final saat KT approve KKP.
 
 **Setelah semua analisis substantif selesai, lapor ringkasan** (total temuan rule-based + substantif + per-severity). Hindari kalimat "Mau saya lanjut ...?" — AT auto-execute, tampilkan langsung hasil.
 

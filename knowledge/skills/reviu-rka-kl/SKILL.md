@@ -27,7 +27,7 @@ changelog:
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
 - **Pipeline R3:** tool **`run_batch_rka(penugasan_folder, workers=4, judul, nomor, tanggal, penerima)`** (40 rules: digest TOR/RAB → cross-check → anomalies-master). KT/PT/PM tidak men-generate KKP — hanya approve & draft LHR.
 - **Mode:** AT **auto-execute** R0→R3 tanpa berhenti tiap tahap (jangan tanya "Mau saya lanjut?"). Titik HITL: **KT approve KKP**, lalu **KT draft LHR**.
-- **Tool inti:** `read_context` → `run_batch_rka` → `read_anomalies` → analisis substantif → `append_temuan` → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → `run_batch_rka` → `read_anomalies` → analisis substantif → `append_temuan` → `render_kkp_docx` → `run_qc_kkp`.
 
 ## Tahap Reviu (R0–R4)
 
@@ -36,7 +36,7 @@ changelog:
 | **R0 — Validasi & Konteks** | Pastikan struktur input (TOR/RAB/RKA-Satker) ada; **catat juga bila ada LAMPIRAN/data dukung TOR yang diupload (opsional)** — dipakai di R3 untuk memperkuat substansi; tentukan tahap pagu (indikatif/anggaran/alokasi) dari KP; susun `context.md` bila placeholder. | AT (auto) |
 | **R1 — Kerangka Reviu (KP-R)** | Tujuan, lingkup, metodologi (desk review) — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **R2 — Program Kerja (PKP-R)** | Matriks 6 aspek Pasal 61(2) × N RO per sasaran. | KT (UI Setup) |
-| **R3 — Pelaksanaan** | `run_batch_rka` (40 rules) → verifikasi false positive (terutama C.alt-2, E.alt-2) → **analisis substantif wajib** (tabel di bawah) → `append_temuan` (K/K/S/A/R — **Sebab** diisi bila terbukti; jika tidak: "Tidak ditemukan penyebab"/"Tidak cukup data", jangan mengarang) + `record_pkp_assessment`. | AT (auto) |
+| **R3 — Pelaksanaan** | `run_batch_rka` (40 rules) → verifikasi false positive (terutama C.alt-2, E.alt-2) → **analisis substantif wajib** (tabel di bawah) → `append_temuan` (K/K/S/A/R — **Sebab** diisi bila terbukti; jika tidak: "Tidak ditemukan penyebab"/"Tidak cukup data", jangan mengarang). | AT (auto) |
 | **R4 — Laporan (LHR)** | Polish LHR (Bab C Hasil Reviu, Bab E Rekomendasi) + Nota Dinas; konfirmasi simpulan keyakinan terbatas. | KT |
 
 ### Analisis Substantif Wajib (Tahap R3)
@@ -67,7 +67,7 @@ Rules deterministik (R3 pipeline) hanya menangkap inkonsistensi struktural seder
 | 5. | **Analisis penandaan anggaran** | Setiap RO wajib punya penandaan (Prioritas Nasional, Gender, Stunting, dll. sesuai kategori yang berlaku). Bila penandaan kosong atau tidak relevan dengan substansi RO → temuan PERINGATAN. |
 | 6. | **Tambahkan temuan substantif via `append_temuan`** | Setiap temuan baru di-append dengan status "DRAFT", `sasaran_id` sesuai sasaran yang ditugaskan, `assigned_to` = nama AT. Sertakan `langkah_kerja_terkait` + `pattern_id` (ketertelusuran). |
 
-**Setiap temuan substantif WAJIB di-append** via `append_temuan` dengan struktur lengkap K/K/S/A/R (Sebab diisi bila terbukti; bila tidak → "Tidak ditemukan penyebab"/"Tidak cukup data", jangan mengarang) + `dokumen_sumber` + status "DRAFT". Setelah selesai, panggil **`record_pkp_assessment`** (kememadaian PKP per sasaran).
+**Setiap temuan substantif WAJIB di-append** via `append_temuan` dengan struktur lengkap K/K/S/A/R (Sebab diisi bila terbukti; bila tidak → "Tidak ditemukan penyebab"/"Tidak cukup data", jangan mengarang) + `dokumen_sumber` + status "DRAFT".
 
 **Setelah semua analisis substantif selesai, BARU lapor ke auditor** dengan ringkasan: total temuan rule-based + total temuan substantif + per-severity breakdown. Hindari kalimat "Mau saya lanjut ...?" — tampilkan langsung hasil.
 
@@ -287,7 +287,7 @@ Alur eksekusi mengikuti **Tahap R0–R4** (lihat bagian "Tahap Reviu (R0–R4)" 
 
 - **R0** validasi input (TOR/RAB/RKA-Satker) + konteks — AT auto.
 - **R1/R2** Kerangka & Program Kerja — disetup KT via UI (`sasaran-assignment.json`).
-- **R3** pipeline `run_batch_rka` (40 rules) → verifikasi false positive → analisis substantif → `append_temuan` + `record_pkp_assessment` — AT auto, tanpa berhenti.
+- **R3** pipeline `run_batch_rka` (40 rules) → verifikasi false positive → analisis substantif → `append_temuan` — AT auto, tanpa berhenti.
 - **R4** polish LHR + Nota Dinas — KT.
 
 **HITL** bukan "stop tiap tahap": AT auto-execute R0→R3, lalu **KT approve KKP** dan **KT draft LHR**.

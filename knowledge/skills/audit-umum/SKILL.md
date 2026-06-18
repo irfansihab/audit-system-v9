@@ -69,7 +69,7 @@ penugasan/[ID-PENUGASAN]/
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
 - **Pipeline A3:** *tidak ada — criteria-driven manual* (digest generik `digest_generic` otomatis berjalan saat upload; baca via `read_ingested_digest`).
 - **Mode:** AT **auto-execute** A0→A3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHA** (bukan stop tiap tahap).
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → analisis CCSAA → `append_temuan` → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → analisis CCSAA → `append_temuan` → `render_kkp_docx` → `run_qc_kkp`.
 
 ## Tahap Audit (A0–A4)
 
@@ -78,7 +78,7 @@ penugasan/[ID-PENUGASAN]/
 | **A0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; kriteria (`input/kriteria/`) + objek (`input/objek/`) tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
 | **A1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan audit (3–5 poin SMART), ruang lingkup (yang diaudit & yang TIDAK), kriteria (matriks ekstraksi), metodologi (sampling/populasi/pendekatan risiko) — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **A2 — Program Kerja Pengujian (PKP)** | Per sasaran: Aspek · Tujuan Pengujian · Prosedur · Sampel · Bukti yang Dicari. | KT (UI Setup) |
-| **A3 — Pelaksanaan & KKA** | Per langkah/aspek: uji objek vs kriteria → temuan **CCSAA** (Kondisi/Kriteria/**Sebab**/Akibat/Rekomendasi) + nilai Rp & level risiko → `append_temuan` + `record_pkp_assessment`. Temuan material (>Rp 500 jt) ditandai `level_risiko` agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
+| **A3 — Pelaksanaan & KKA** | Per langkah/aspek: uji objek vs kriteria → temuan **CCSAA** (Kondisi/Kriteria/**Sebab**/Akibat/Rekomendasi) + nilai Rp & level risiko → `append_temuan`. Temuan material (>Rp 500 jt) ditandai `level_risiko` agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
 | **A4 — Laporan (LHA)** | Render LHA + Nota Dinas (ikuti `panduan-format-umum/PANDUAN.md`); polish narasi per aspek, rekomendasi material, simpulan **keyakinan memadai**. | KT |
 
 **Eskalasi:** temuan >Rp 1 M atau indikasi pidana → flag MERAH + eskalasi ke PT/Inspektur (lihat tabel Materialitas).

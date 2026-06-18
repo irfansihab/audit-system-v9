@@ -68,7 +68,7 @@ Auto-detect kriteria mengikuti `references/01-panduan-ekstraksi-kriteria.md`. Bi
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
 - **Pipeline R3:** *tidak ada — criteria-driven manual* (digest generik `digest_generic` otomatis berjalan saat upload; baca via `read_ingested_digest`).
 - **Mode:** AT **auto-execute** R0→R3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHR** (bukan stop tiap tahap).
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → susun catatan → `append_temuan` → `record_pkp_assessment` → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → susun catatan → `append_temuan` → `render_kkp_docx` → `run_qc_kkp`.
 
 ## Tahap Reviu (R0–R4)
 
@@ -77,7 +77,7 @@ Auto-detect kriteria mengikuti `references/01-panduan-ekstraksi-kriteria.md`. Bi
 | **R0 — Validasi & Konteks** | Pastikan scope dari KP jelas, kriteria (`input/kriteria/`) + objek (`input/objek/`) tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
 | **R1 — Kerangka Reviu (KP-R)** | Latar belakang, tujuan, ruang lingkup (aspek), dasar kriteria, metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **R2 — Program Kerja (PKP-R)** | Daftar aspek reviu per sasaran: Aspek · Kriteria · Pertanyaan Reviu · Bukti. | KT (UI Setup) |
-| **R3 — Pelaksanaan** | Per aspek: telaah dokumen vs kriteria → klasifikasi **TERPENUHI / TERPENUHI DENGAN CATATAN / TIDAK TERPENUHI** → `append_temuan` (K/K/S/A/R — **Sebab** diisi bila terbukti; jika tidak: "Tidak ditemukan penyebab"/"Tidak cukup data", jangan mengarang) + `record_pkp_assessment`. | AT (auto) |
+| **R3 — Pelaksanaan** | Per aspek: telaah dokumen vs kriteria → klasifikasi **TERPENUHI / TERPENUHI DENGAN CATATAN / TIDAK TERPENUHI** → `append_temuan` (K/K/S/A/R — **Sebab** diisi bila terbukti; jika tidak: "Tidak ditemukan penyebab"/"Tidak cukup data", jangan mengarang). | AT (auto) |
 | **R4 — Laporan (LHR)** | Render LHR + Nota Dinas (+ Pernyataan Telah Direviu bila reviu LKj/SAKIP); polish narasi & simpulan keyakinan terbatas. | KT |
 
 **Eskalasi:** jika di R3 ditemukan indikasi penyimpangan substantif/kerugian → hentikan, laporkan ke KT untuk pertimbangan konversi ke audit-umum.
