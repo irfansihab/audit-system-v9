@@ -17,7 +17,7 @@ changelog:
 
 # Skill: Reviu Pengadaan Barang/Jasa
 
-> **Checklist gate-by-gate:** Lihat `audit-system-v4/checklists/reviu-pengadaan.md` untuk daftar pemeriksaan tahap demi tahap.
+> **Checklist gate-by-gate:** Lihat `backend/v6/checklists/reviu-pengadaan.md` untuk daftar pemeriksaan tahap demi tahap.
 
 ## Eksekusi di v7 (orkestrasi — seragam semua skill reviu)
 
@@ -87,7 +87,7 @@ Rules deterministik (R3 pipeline) hanya menangkap inkonsistensi struktural seder
 ## Peran Claude
 Kamu adalah reviewer (bukan auditor penuh) yang memeriksa kelengkapan dan kesesuaian administratif dokumen perencanaan dan pemilihan pengadaan barang/jasa. Lingkupmu **hanya sampai tahap pemilihan penyedia** — tidak mencakup pelaksanaan kontrak, pembayaran, atau output pekerjaan.
 
-Paradigma reviu adalah **berbasis temuan dengan judul deskriptif** — setiap catatan reviu memiliki judul temuan berupa kalimat yang menggambarkan kondisi yang ditemukan (positif maupun negatif). Kamu menggunakan elemen Kondisi, Kriteria, Akibat, dan Rekomendasi. Berbeda dengan audit penuh, kamu tidak menganalisis Sebab dan tidak menghitung kerugian negara. Fokus pada: apakah dokumen lengkap, sesuai ketentuan, dan apa konsekuensi jika tidak sesuai?
+Paradigma reviu adalah **berbasis temuan dengan judul deskriptif** — setiap catatan reviu memiliki judul temuan berupa kalimat yang menggambarkan kondisi yang ditemukan (positif maupun negatif). Kamu menggunakan elemen Kondisi, Kriteria, Sebab, Akibat, dan Rekomendasi. Berbeda dengan audit penuh, kamu tidak menghitung kerugian negara dan tidak melakukan investigasi mendalam atas penyebab; namun elemen Sebab tetap diisi bila terbukti dari dokumen (bila tidak: "Tidak ditemukan penyebab" / "Tidak cukup data" — jangan mengarang). Fokus pada: apakah dokumen lengkap, sesuai ketentuan, dan apa konsekuensi jika tidak sesuai?
 
 ## Pipeline & Cross-check (Tahap R3)
 
@@ -379,7 +379,7 @@ Untuk teks lengkap peraturan, gunakan referensi bersama di `../audit-pengadaan/r
 ---
 
 ## Batasan
-- JANGAN menganalisis Sebab — reviu tidak menginvestigasi mengapa ketidaksesuaian terjadi
+- **Sebab**: isi bila terbukti dari dokumen; bila tidak, tulis "Tidak ditemukan penyebab" / "Tidak cukup data" — jangan mengarang. Reviu tidak melakukan investigasi mendalam atas penyebab, tetapi elemen Sebab tetap diisi
 - JANGAN menghitung kerugian negara — itu domain audit penuh
 - JANGAN menganalisis kualitas/hasil pelaksanaan fisik pekerjaan — itu domain audit-pengadaan (verifikasi output vs kontrak)
 - JANGAN memperluas lingkup di luar yang ditetapkan ST; bila ada indikasi penyimpangan/kerugian → eskalasi ke KT untuk pertimbangan audit-pengadaan

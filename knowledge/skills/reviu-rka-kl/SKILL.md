@@ -14,9 +14,9 @@ changelog:
 
 # Skill: Reviu Rencana Kerja dan Anggaran (RKA-K/L)
 **Versi 3.0** (Mei 2026) — Sesuai PMK 107 Tahun 2024 (Perubahan PMK 62/PMK.02/2023)
-> **Checklist gate-by-gate:** Lihat `audit-system-v4/checklists/reviu-rka-kl.md` untuk daftar pemeriksaan tahap demi tahap.
+> **Checklist gate-by-gate:** Lihat `backend/v6/checklists/reviu-rka-kl.md` untuk daftar pemeriksaan tahap demi tahap.
 
-**Update v3.0:** pipeline 40 rules (21 + 18 alt), auto-execute via `run_batch.py`, render LHR multi-RO, parser pdftotext (10x speedup), end-to-end ≤ 13 detik untuk 12 RO.
+**Update v3.0:** pipeline 40 rules (22 + 18 alt), auto-execute via `run_batch.py`, render LHR multi-RO, parser pdftotext (10x speedup), end-to-end ≤ 13 detik untuk 12 RO.
 
 ---
 
@@ -212,7 +212,7 @@ Rekomendasi: [Tindakan konkret: sesuaikan dengan SBM, lengkapi KAK,
 **Penting:**
 - Hindari kata "temuan" — gunakan "catatan"
 - Sebutkan angka/kode spesifik, bukan generalisasi
-- JANGAN menganalisis Sebab — reviu tidak investigasi penyebab
+- **Sebab diisi anti-mengarang** — identifikasi penyebab bila terbukti dari dokumen; bila tidak ada/tidak cukup data, tulis "Tidak ditemukan penyebab" / "Tidak cukup data". Reviu tidak melakukan investigasi mendalam, tetapi elemen Sebab tetap diisi (jangan mengarang)
 - JANGAN menilai kebijakan (apakah program ini perlu ada)
 
 ---
@@ -228,23 +228,25 @@ Rekomendasi: [Tindakan konkret: sesuaikan dengan SBM, lengkapi KAK,
 | `run_batch.py` | **Orchestrator end-to-end** (auto-pair TOR-RAB + parallel + render) | folder penugasan | semua output | **WAJIB pakai ini sebagai entry** |
 | `digest_tor.py` | Parse TOR PDF → JSON terstruktur (7 blok substansi Kriteria IR2 + raw_text_pages) | TOR.pdf | `tor-{N}.json` | pdftotext -layout (10x faster, robust >5MB) |
 | `digest_rab.py` | Parse RAB PDF → JSON komponen→akun→rincian | RAB.pdf | `rab-{N}.json` | pdftotext -layout |
-| `cross_check.py` | **40 rules** (21 original + 18 alt-rules) deterministik | tor+rab JSON | `anomalies-{N}.json` atau `anomalies-master.json` (mode `--batch`) | +18 alt-rules codified dari pola manual supplement |
+| `cross_check.py` | **40 rules** (22 original + 18 alt-rules) deterministik | tor+rab JSON | `anomalies-{N}.json` atau `anomalies-master.json` (mode `--batch`) | +18 alt-rules codified dari pola manual supplement |
 | `render_lhr.py` | Render LHR DOCX dari anomalies-master | anomalies-master + KP context | `LHR-DRAFT.docx` | multi-RO mode dengan A.3 dedup |
 
 **Self-check AST preflight** terpasang di setiap script (proteksi dari corrupt sync OneDrive).
 
-### Distribusi Rules (39 total)
+### Distribusi Rules (40 total)
 
-| Aspek | Original (21) | Alt (18) | Total |
+| Aspek | Original (22) | Alt (18) | Total |
 |-------|---------------|----------|-------|
 | A — SBM/SBK | A.1, A.2, A.3 | — | 3 |
 | B — Kaidah | B.1, B.2, B.3 | B.alt-1..5 | 8 |
 | C — Penandaan | C.1 | C.alt-1..3 | 4 |
-| D — Kelengkapan | D.1..D.6 | — | 6 |
+| D — Kelengkapan | D.1..D.7 | — | 7 |
 | E — Rincian Baru | E.1..E.6 | E.alt-1..6 | 12 |
 | F — Tematik | F.1, F.2 | F.alt-1..4 | 6 |
 
-Detail lengkap rules (judul, severity, kondisi trigger): `audit-system-v4/scripts/reviu-rka-kl/cross_check.py` (cari komentar `# Rule X.Y` atau function `rule_x_y_*`).
+> D.7 (kelengkapan kerangka logis) ditambahkan v3.2 — masuk kelompok original aspek D.
+
+Detail lengkap rules (judul, severity, kondisi trigger): `backend/v6/scripts/reviu-rka-kl/cross_check.py` (cari komentar `# Rule X.Y` atau function `rule_x_y_*`).
 
 ### Performa Benchmark (smoke test 12 RO DIT PED, Mei 2026)
 
@@ -351,7 +353,7 @@ F. APRESIASI
 
 ## Batasan
 
-- JANGAN menganalisis Sebab — reviu tidak menginvestigasi penyebab
+- **Sebab**: isi bila terbukti dari dokumen; bila tidak, nyatakan "Tidak ditemukan penyebab" / "Tidak cukup data" — jangan mengarang dan jangan lakukan investigasi mendalam
 - JANGAN menghitung kerugian negara — RKA-K/L belum dilaksanakan
 - JANGAN menilai kebijakan (apakah program ini perlu ada) — hanya kualitas perencanaan
 - Jika SBM/SBK tidak tersedia sebagai referensi: **nyatakan keterbatasan** dalam LHR
