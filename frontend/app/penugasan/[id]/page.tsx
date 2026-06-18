@@ -807,7 +807,12 @@ function DokumenTab({
                     <StatusBadge status={d.status} />
                   </td>
                   <td className="p-3 text-xs text-gray-500">
-                    {d.ingested_json_path ? d.ingested_json_path.split('/').pop() : '—'}
+                    {/* Nama file JSON hasil digest hanya tampil untuk ADMIN. */}
+                    {role === 'ADMIN' && d.ingested_json_path
+                      ? d.ingested_json_path.split('/').pop()
+                      : d.ingested_json_path
+                        ? '✓ ter-digest'
+                        : '—'}
                   </td>
                   {canUpload && (
                     <td className="p-3">
@@ -1146,7 +1151,8 @@ function ChatTab({
                   <div className="text-sm whitespace-pre-wrap text-gray-800">
                     {run.output_summary || '(tidak ada output)'}
                   </div>
-                  {run.tool_calls && run.tool_calls.length > 0 && (
+                  {/* Audit trail (rincian tool call) hanya untuk ADMIN. */}
+                  {role === 'ADMIN' && run.tool_calls && run.tool_calls.length > 0 && (
                     <details className="mt-2">
                       <summary className="text-xs uppercase text-gray-500 font-semibold cursor-pointer hover:text-gray-700 select-none">
                         Audit trail · {run.tool_calls.length} tool call{run.tool_calls.length === 1 ? '' : 's'}

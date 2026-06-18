@@ -55,6 +55,13 @@ EXT_MIME = {
     ".jsonl": "application/x-ndjson",
 }
 
+# File JSON/JSONL mentah (hasil digest, temuan.json, audit trail) HANYA untuk role
+# ADMIN. Role lain (AT/KT/PT/PM) tidak melihat/membaca file ini lewat UI — mereka
+# memakai output terkurasi (KKP/LHP docx, temuan terstruktur via endpoint khusus).
+# Agen backend membaca file ini LANGSUNG dari disk (bukan via endpoint ini), jadi
+# tidak terdampak.
+ADMIN_ONLY_EXTS = {".json", ".jsonl"}
+
 
 async def _get_penugasan_or_404(db: AsyncSession, penugasan_id: int) -> Penugasan:
     p = (
@@ -105,6 +112,7 @@ async def list_files(
             ]
         }
     """
+    is_admin = current[1] == Role.ADMIN
     p = await _get_penugasan_or_404(db, penugasan_id)
     folder = Path(p.folder_path)
     if not folder.exists():
@@ -118,6 +126,9 @@ async def list_files(
         files: list[dict[str, Any]] = []
         for f in sorted(sub.rglob("*")):
             if not f.is_file() or f.name.startswith("."):
+                continue
+            # File JSON mentah hanya untuk ADMIN (digest/temuan/audit trail).
+            if not is_admin and f.suffix.lower() in ADMIN_ONLY_EXTS:
                 continue
             try:
                 stat = f.stat()
@@ -137,6 +148,8 @@ async def list_files(
     root_files: list[dict[str, Any]] = []
     for f in sorted(folder.iterdir()):
         if (f.is_file() and not f.name.startswith(".")):
+            if not is_admin and f.suffix.lower() in ADMIN_ONLY_EXTS:
+                continue
             try:
                 stat = f.stat()
             except OSError:
@@ -180,6 +193,9 @@ async def download_file(
     if not target.exists() or not target.is_file():
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"File tidak ditemukan: {path}")
 
+    if current[1] != Role.ADMIN and target.suffix.lower() in ADMIN_ONLY_EXTS:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "File JSON mentah hanya dapat diakses role ADMIN.")
+
     mime = EXT_MIME.get(target.suffix.lower(), "application/octet-stream")
     # quote filename untuk handle karakter non-ASCII di nama file
     fname_quoted = quote(target.name)
@@ -212,6 +228,8 @@ async def preview_file(
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"File tidak ditemukan: {path}")
 
     ext = target.suffix.lower()
+    if current[1] != Role.ADMIN and ext in ADMIN_ONLY_EXTS:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "File JSON mentah hanya dapat diakses role ADMIN.")
     if ext not in {".md", ".json", ".txt", ".jsonl", ".csv", ".log"}:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,

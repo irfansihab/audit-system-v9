@@ -13,6 +13,7 @@ class Role(str, Enum):
     KT = "KT"  # Ketua Tim
     PT = "PT"  # Pengendali Teknis
     PM = "PM"  # Pengendali Mutu
+    ADMIN = "ADMIN"  # Administrator — akses file JSON mentah (digest/temuan/audit trail)
 
 
 class Skill(str, Enum):
@@ -50,7 +51,7 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(200), nullable=True)
     nama_lengkap: Mapped[str] = mapped_column(String(200))
     nip: Mapped[str] = mapped_column(String(18))
-    role_default: Mapped[Role] = mapped_column(String(4), default=Role.AT)
+    role_default: Mapped[Role] = mapped_column(String(16), default=Role.AT)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

@@ -51,6 +51,13 @@ SEED_USERS = [
         "nip": "197203102000031001",
         "role_default": Role.PM,
     },
+    {
+        "username": "admin",
+        "email": "admin@komdigi.go.id",
+        "nama_lengkap": "Administrator",
+        "nip": "100000000000000000",
+        "role_default": Role.ADMIN,
+    },
 ]
 
 
@@ -68,6 +75,8 @@ async def seed_auth(db) -> None:
     for ddl in (
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(80)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(200)",
+        # Role ADMIN (5 char) butuh kolom > VARCHAR(4) lama.
+        "ALTER TABLE users ALTER COLUMN role_default TYPE VARCHAR(16)",
         "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users(username)",
         # HITL KKP: log append-only edit manual temuan (akuntabilitas).
         "ALTER TABLE temuan_review ADD COLUMN IF NOT EXISTS edit_log JSONB",
