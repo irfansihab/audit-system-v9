@@ -200,7 +200,7 @@ Empat sumber, **peran berbeda — jangan disamakan**:
    `append_temuan` dengan field final. JANGAN langsung append draft tanpa
    verifikasi — itu setara mempercayai rule mentah-mentah.
 8. **Tambahkan temuan substantif** yang tidak tertangkap rules:
-   - reviu-rka-kl: kewajaran SBM/SBK, kelengkapan 7 blok substansi TOR, cascading anggaran, penandaan.
+   - reviu-rka-kl: kewajaran SBM/SBK, kelengkapan 7 blok substansi TOR, cascading anggaran, penandaan. **Bila ada lampiran/data dukung TOR yang diupload (opsional)** — baca via `read_ingested_digest`/`read_pdf_page`/`search_bukti` untuk perkuat substansi (back-up perhitungan biaya, spesifikasi teknis, KAK detail). Bila tak ada lampiran, lanjut tanpa — jangan jadikan ketiadaannya temuan otomatis.
    - reviu-pengadaan: kewajaran HPS vs RFI vendor (Perpres 16 Pasal 26 ayat 5: minimal 2 sumber harga independen), konsistensi dasar hukum HPS dengan TA, traceability KAK ↔ HPS, kewajaran metode pemilihan.
    - **Pakai pattern wiki sebagai panduan.** Untuk pattern yang relevan dengan kondisi yang kamu temukan, panggil `get_temuan_pattern(id)` untuk dapat format judul/kondisi/kriteria/akibat yang sudah baku. Sesuaikan dengan fakta penugasan saat ini — jangan copy-paste mentah.
 9. **Append semua temuan via `append_temuan`**. Struktur minimal per temuan:

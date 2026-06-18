@@ -33,7 +33,7 @@ changelog:
 
 | Tahap | Aktivitas | Pelaku |
 |---|---|---|
-| **R0 — Validasi & Konteks** | Pastikan struktur input (TOR/RAB/RKA-Satker) ada; tentukan tahap pagu (indikatif/anggaran/alokasi) dari KP; susun `context.md` bila placeholder. | AT (auto) |
+| **R0 — Validasi & Konteks** | Pastikan struktur input (TOR/RAB/RKA-Satker) ada; **catat juga bila ada LAMPIRAN/data dukung TOR yang diupload (opsional)** — dipakai di R3 untuk memperkuat substansi; tentukan tahap pagu (indikatif/anggaran/alokasi) dari KP; susun `context.md` bila placeholder. | AT (auto) |
 | **R1 — Kerangka Reviu (KP-R)** | Tujuan, lingkup, metodologi (desk review) — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **R2 — Program Kerja (PKP-R)** | Matriks 6 aspek Pasal 61(2) × N RO per sasaran. | KT (UI Setup) |
 | **R3 — Pelaksanaan** | `run_batch_rka` (40 rules) → verifikasi false positive (terutama C.alt-2, E.alt-2) → **analisis substantif wajib** (tabel di bawah) → `append_temuan` (K/K/S/A/R — **Sebab** diisi bila terbukti; jika tidak: "Tidak ditemukan penyebab"/"Tidak cukup data", jangan mengarang) + `record_pkp_assessment`. | AT (auto) |
@@ -62,6 +62,7 @@ Rules deterministik (R3 pipeline) hanya menangkap inkonsistensi struktural seder
 | 1. | **Verifikasi false positive rules deterministik** | Pipeline jalankan 40 rules. Untuk setiap anomali HIGH/CRITICAL: `read_pdf_page` TOR/RAB di halaman yang dirujuk, verifikasi anomali real atau parser glitch. Buang false positive. |
 | 2. | **Analisis kewajaran SBM/SBK** | Untuk setiap RO: bandingkan harga satuan di RAB vs SBM/SBK yang berlaku TA tersebut. Bila harga > batas SBM atau ada komponen yang tidak ada di SBM → temuan KRITIS. |
 | 3. | **Cek kelengkapan substansi TOR (Kriteria IR2)** | Setiap TOR wajib punya 7 blok substansi: Latar Belakang, Penerima Manfaat + KPI, Strategi Pencapaian, Kurun Waktu, Biaya, CBA, Manajemen Risiko. Tampilkan TOR yang kurang. |
+| 3b. | **Baca LAMPIRAN TOR bila diupload (OPSIONAL)** | Lampiran TOR (mis. rincian/back-up perhitungan biaya, spesifikasi teknis, KAK/ToR detail, data dukung, gambar/desain, surat dukungan) **memperkuat substansi**. **Bila ada** dokumen lampiran/pendukung TOR yang diupload → baca via `read_ingested_digest` lalu `read_pdf_page`/`search_bukti` untuk verifikasi perhitungan biaya, spesifikasi, dan kelengkapan 7 blok. Gunakan sebagai bukti pendukung kondisi/kriteria. **Bila tidak ada lampiran → lewati, jangan jadikan ketiadaannya sebagai temuan otomatis** (lampiran opsional, kecuali Kriteria IR2/PMK secara eksplisit mewajibkan back-up tertentu). |
 | 4. | **Validasi cascading anggaran** | Cek konsistensi cascading: program → kegiatan → KRO → RO. Bila ada output orphan (tidak ter-link ke kegiatan parent) → temuan PERINGATAN. |
 | 5. | **Analisis penandaan anggaran** | Setiap RO wajib punya penandaan (Prioritas Nasional, Gender, Stunting, dll. sesuai kategori yang berlaku). Bila penandaan kosong atau tidak relevan dengan substansi RO → temuan PERINGATAN. |
 | 6. | **Tambahkan temuan substantif via `append_temuan`** | Setiap temuan baru di-append dengan status "DRAFT", `sasaran_id` sesuai sasaran yang ditugaskan, `assigned_to` = nama AT. Sertakan `langkah_kerja_terkait` + `pattern_id` (ketertelusuran). |
