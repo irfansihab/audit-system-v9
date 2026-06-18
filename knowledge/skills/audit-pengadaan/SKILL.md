@@ -8,6 +8,7 @@ model: claude-sonnet-4-6
 auto_execute: true
 auto_execute_command: "tool: run_batch_audit_pbj(penugasan_folder, role=\"AT\")"
 changelog:
+  - v2.5 (2026-06-18): Audit dibuka dengan SURVEY PENDAHULUAN (Tahap A0) — orientasi paket, pemetaan risiko per tahap siklus, inventarisasi dokumen, analytical review awal, hipotesis area pengujian → mengarahkan fokus 8 tugas substantif. Selaras prinsip "semua audit didahului survey pendahuluan". A0 row & tool-inti diperbarui; orkestrasi di anggota_tim.md.
   - v2.4 (2026-06-18): Pipeline berlaku SELURUH jenis pengadaan. P.4 digeneralisasi dari "migrasi" (spesifik TI) → "komponen ruang lingkup KAK tak teralokasi di HPS" (migrasi/instalasi/pelatihan/pemeliharaan/garansi/pengujian/lisensi) via deteksi `lingkup_komponen` di digest. K.3 diberi guard ambang nilai (hanya flag kontrak > Rp200 jt — hindari false positive kontrak kecil/konsultansi/e-purchasing). P.3 & K.2 ditandai KONDISIONAL (pengadaan ber-SLA; sudah ber-guard, tak false-fire). Tabel rule dipisah Universal vs Kondisional. Tetap 12 rules.
   - v2.3 (2026-06-17): Tambah rule deterministik P.5 — kelengkapan 5 elemen justifikasi/dokumen persiapan (kebutuhan, spek teknis & fungsi, metode pengadaan, waktu penyelesaian, output) di pipeline cross_check; selaras fix reviu-pengadaan v1.5. Cross-check kini 12 rules.
   - v2.2 (2026-06-17): Refactor orkestrasi ke v7 — pisah substansi domain dari orkestrasi; struktur seragam Tahap A0–A4; hapus AUTO-EXECUTE LANGKAH/STEP A-C/Task 00-01/_ROLE.md/bash/AskUserQuestion (legacy audit-system-v4); pipeline via tool run_batch_audit_pbj. Substansi (8 tugas substantif, 11 rules, output-vs-kontrak, kerugian negara) dipertahankan.
@@ -22,19 +23,34 @@ changelog:
 - **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
 - **Pipeline A3:** `run_batch_audit_pbj(penugasan_folder, role="AT")` — `digest_pengadaan` + 12 rules cross-check untuk **SELURUH siklus** (perencanaan→pemilihan→kontrak→pelaksanaan→pembayaran). Output `_KKP/anomalies.json` + `_KKP/pengadaan-digest.json`. Ini **akselerator deteksi struktural saja** — analisis substantif (8 tugas di bawah) tetap WAJIB.
 - **Mode:** AT **auto-execute** A0→A3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHA** (bukan stop tiap tahap).
-- **Tool inti:** `read_context` → `run_batch_audit_pbj` → verifikasi false positive + analisis substantif → `append_temuan` (CCSAA, **wajib Sebab**) → `render_kkp_docx` → `run_qc_kkp`.
+- **Tool inti:** `read_context` → **Survey Pendahuluan** (orientasi via `read_ingested_digest`: pahami paket, petakan risiko per tahap, rumuskan hipotesis) → `run_batch_audit_pbj` → verifikasi false positive + analisis substantif → `append_temuan` (CCSAA, **wajib Sebab**) → `render_kkp_docx` → `run_qc_kkp`.
 
 ## Tahap Audit (A0–A4)
 
 | Tahap | Aktivitas | Pelaku |
 |---|---|---|
-| **A0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; dokumen pengadaan tersedia di `00-input/` (KAK/HPS/Kontrak/BAST/SPM/dll.); susun `context.md` bila masih placeholder. | AT (auto) |
+| **A0 — Validasi, Konteks & Survey Pendahuluan** | Pastikan tujuan/objek dari KP jelas & dokumen pengadaan tersedia di `00-input/` (KAK/HPS/Kontrak/BAST/SPM/dll.); **lakukan Survey Pendahuluan** (pahami paket → petakan risiko per tahap siklus → inventarisasi dokumen → analytical review awal → hipotesis area pengujian); tuangkan di `context.md` dan jadikan fokus pengujian A3. Lihat seksi **Survey Pendahuluan**. | AT (auto) |
 | **A1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan audit, ruang lingkup (tahap siklus mana yang diaudit), kriteria (Perpres 16/2018 dst.), metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **A2 — Program Kerja Pengujian (PKP)** | Per sasaran/tahap pengadaan: Aspek · Tujuan Pengujian · Prosedur · Sampel · Bukti yang Dicari. | KT (UI Setup) |
 | **A3 — Pelaksanaan & KKP** | `run_batch_audit_pbj` (12 rules) → verifikasi false positive → **8 tugas analisis substantif WAJIB** (kewajaran HPS, output-vs-kontrak, kerugian negara — lihat tabel di bawah) → temuan **CCSAA** (wajib **Sebab**) via `append_temuan`. | AT (auto) |
 | **A4 — Laporan (LHA)** | Render LHA + Nota Dinas; ringkasan per area, rekomendasi material, simpulan **keyakinan memadai**. | KT |
 
 **Eskalasi:** indikasi kerugian negara material (>Rp 1 M) atau pidana → flag MERAH + eskalasi ke PT/Inspektur.
+
+## Survey Pendahuluan (WAJIB membuka audit — Tahap A0)
+
+Audit pengadaan **dibuka dengan Survey Pendahuluan**: orientasi untuk memahami paket, memetakan risiko, dan menajamkan fokus pengujian **sebelum** pipeline & analisis substantif. Tujuannya mengarahkan 8 tugas substantif ke area paling berisiko — bukan memeriksa semua hal merata.
+
+**Langkah (dari `read_ingested_digest` + `read_context` — hemat token, belum buka semua PDF):**
+1. **Pahami paket** — nama pekerjaan; nilai HPS/kontrak/pagu; **metode pemilihan** (tender/seleksi/e-purchasing/penunjukan langsung); **jenis pengadaan** (barang/konstruksi/jasa lainnya/konsultansi); penyedia; Tahun Anggaran; jangka waktu.
+2. **Petakan risiko per tahap siklus** — Perencanaan · Pemilihan · Kontrak · Pelaksanaan · Pembayaran: tandai tahap paling rawan untuk paket ini.
+3. **Inventarisasi dokumen** — daftar dokumen tersedia/tidak per tahap (mendahului D.1/D.2); nyatakan keterbatasan lingkup bila dokumen kunci tidak ada.
+4. **Analytical review awal** — HPS vs pagu; nilai kontrak vs HPS; indikasi harga di luar kewajaran; addendum signifikan (>10%); pola hubungan penyedia.
+5. **Hipotesis area pengujian** — 2–4 area fokus + dugaan temuan yang akan diuji → menentukan penekanan 8 tugas substantif (mis. **konstruksi** → tekankan output-fisik-vs-kontrak & progres-vs-termin; **jasa konsultansi** → tekankan kelengkapan deliverable & kualitas; **barang** → tekankan volume/spesifikasi terpasang).
+
+**Output:** ringkasan Survey Pendahuluan dituangkan di `context.md` (Gambaran Umum & Hasil Survey) dan dilaporkan di awal. **Bukan temuan** — Survey hanya orientasi & hipotesis, tidak menyimpulkan penyimpangan; hipotesis diverifikasi di A3.
+
+**Kaitan dengan jenis pengadaan:** Survey menetapkan **jenis paket**, sehingga jelas rule mana yang berlaku — rule kondisional (P.3/K.2, hanya ber-SLA) dan ambang K.3 (jaminan, hanya >Rp200 jt) tidak selalu relevan untuk semua paket.
 
 ## Analisis Substantif Wajib (inti Tahap A3)
 

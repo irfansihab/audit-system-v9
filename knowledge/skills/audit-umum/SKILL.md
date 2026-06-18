@@ -75,7 +75,7 @@ penugasan/[ID-PENUGASAN]/
 
 | Tahap | Aktivitas | Pelaku |
 |---|---|---|
-| **A0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode/objek dari KP jelas; kriteria (`input/kriteria/`) + objek (`input/objek/`) tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
+| **A0 — Validasi, Konteks & Survey Pendahuluan** | Pastikan tujuan/objek dari KP jelas & kriteria (`input/kriteria/`) + objek (`input/objek/`) tersedia; **lakukan Survey Pendahuluan** (pahami objek → petakan risiko → inventarisasi dokumen → analytical review awal → hipotesis area pengujian) untuk menajamkan fokus A3; tuangkan di `context.md`. Bukan temuan — orientasi saja. | AT (auto) |
 | **A1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan audit (3–5 poin SMART), ruang lingkup (yang diaudit & yang TIDAK), kriteria (matriks ekstraksi), metodologi (sampling/populasi/pendekatan risiko) — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
 | **A2 — Program Kerja Pengujian (PKP)** | Per sasaran: Aspek · Tujuan Pengujian · Prosedur · Sampel · Bukti yang Dicari. | KT (UI Setup) |
 | **A3 — Pelaksanaan & KKA** | Per langkah/aspek: uji objek vs kriteria → temuan (Kondisi/Kriteria/**Sebab**/Akibat + nilai Rp & level risiko) → `append_temuan`. **Rekomendasi TIDAK di KKP — disusun KT di LHA.** Temuan material (>Rp 500 jt) ditandai `level_risiko` agar ditinjau KT saat approve KKP (bukan stop). | AT (auto) |
