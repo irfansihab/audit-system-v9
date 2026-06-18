@@ -260,15 +260,13 @@ export default function DetailPenugasanPage() {
               steps={['Unduh & baca konsep LHP di bawah', 'Setujui atau minta revisi + catatan', 'Approved → lanjut finalisasi']}
             />
             <LhpFilesPanel penugasanId={id} key={`lhp-files-pt-${id}`} />
-            <LhpReviewPanel
-              penugasanId={id}
-              role={session.role_aktif}
-              onReviewed={(s) => setLhpStatus(s)}
-            />
+            {/* Lembar Reviu PT = satu-satunya panel reviu konsep LHP: aspek A–D +
+                keputusan Setujui/Minta Revisi (sebelumnya terpisah & redundan). */}
             <LembarReviuPanel
               penugasanId={id}
               level="PT"
               canEdit={['PT', 'PM'].includes(session?.role_aktif || '')}
+              onReviewed={(s) => setLhpStatus(s)}
               key={`lr-pt-${id}`}
             />
           </div>
@@ -2307,160 +2305,6 @@ function OutputTab({ penugasan }: { penugasan: Penugasan }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// LhpReviewPanel (S3.2 — tahapan 6 LRS LHP). PT/PM menyetujui konsep LHP atau
-// minta revisi dengan catatan. Role lain (AT/KT) melihat status read-only.
-type LhpReviewItem = {
-  id: number;
-  status: 'APPROVED' | 'NEEDS_REVISION';
-  catatan: string | null;
-  reviewer_role: string | null;
-  reviewer_name: string | null;
-  reviewed_at: string | null;
-};
-
-function LhpReviewPanel({
-  penugasanId,
-  role,
-  onReviewed,
-}: {
-  penugasanId: number;
-  role: Role;
-  onReviewed?: (status: 'APPROVED' | 'NEEDS_REVISION' | null) => void;
-}) {
-  const [items, setItems] = useState<LhpReviewItem[]>([]);
-  const [latest, setLatest] = useState<'APPROVED' | 'NEEDS_REVISION' | null>(null);
-  const [catatan, setCatatan] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const canReview = role === 'PT' || role === 'PM';
-
-  const load = async () => {
-    try {
-      const r = await api.listLhpReview(penugasanId);
-      setItems(r.items);
-      setLatest(r.latest_status);
-    } catch {
-      /* abaikan — fitur opsional */
-    }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [penugasanId]);
-
-  const submit = async (status: 'APPROVED' | 'NEEDS_REVISION') => {
-    if (status === 'NEEDS_REVISION' && !catatan.trim()) {
-      setErr('Catatan revisi wajib diisi saat meminta revisi.');
-      return;
-    }
-    setBusy(true);
-    setErr(null);
-    try {
-      await api.createLhpReview(penugasanId, status, catatan.trim() || undefined);
-      setCatatan('');
-      await load();
-      onReviewed?.(status);
-    } catch (e: any) {
-      setErr(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const badge =
-    latest === 'APPROVED'
-      ? { cls: 'bg-emerald-100 text-emerald-700', label: '✓ Konsep LHP Disetujui' }
-      : latest === 'NEEDS_REVISION'
-      ? { cls: 'bg-amber-100 text-amber-800', label: '⟳ Perlu Revisi' }
-      : { cls: 'bg-gray-100 text-gray-500', label: '○ Belum direviu' };
-
-  return (
-    <div className="mb-5 bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="bg-violet-50 px-4 py-2.5 border-b border-violet-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm text-primary-dark">Tahapan 6 — Reviu Konsep LHP (PT/PM)</span>
-          <span className={`px-2 py-0.5 text-[11px] rounded-full font-medium ${badge.cls}`}>{badge.label}</span>
-        </div>
-      </div>
-      <div className="p-4">
-        {err && (
-          <div className="mb-3 p-2 rounded bg-red-50 border border-red-200 text-red-700 text-xs">{err}</div>
-        )}
-
-        {canReview ? (
-          <>
-            <label className="block text-xs text-gray-600 mb-1">
-              Catatan reviu (wajib bila minta revisi)
-            </label>
-            <textarea
-              value={catatan}
-              onChange={(e) => setCatatan(e.target.value)}
-              rows={3}
-              placeholder="Arahan perbaikan untuk Ketua Tim, atau catatan persetujuan…"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-3"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => submit('APPROVED')}
-                disabled={busy}
-                className="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {busy ? '…' : `✓ Setujui sebagai ${role}`}
-              </button>
-              <button
-                onClick={() => submit('NEEDS_REVISION')}
-                disabled={busy}
-                className="px-4 py-2 rounded bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50"
-              >
-                {busy ? '…' : '⟳ Minta Revisi'}
-              </button>
-            </div>
-          </>
-        ) : (
-          <p className="text-xs text-gray-500">
-            🔒 Hanya Pengendali Teknis (PT) / Pengendali Mutu (PM) yang dapat mereviu konsep LHP.
-          </p>
-        )}
-
-        {items.length > 0 && (
-          <div className="mt-4 border-t border-gray-100 pt-3">
-            <div className="text-xs uppercase text-gray-400 tracking-wider mb-2">Riwayat Reviu</div>
-            <ul className="space-y-2">
-              {items.map((it) => (
-                <li key={it.id} className="text-xs flex gap-2">
-                  <span
-                    className={`px-1.5 py-0.5 rounded font-medium h-fit ${
-                      it.status === 'APPROVED'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {it.status === 'APPROVED' ? 'Disetujui' : 'Revisi'}
-                  </span>
-                  <div className="flex-1">
-                    <div className="text-gray-700">
-                      {it.reviewer_name || '—'}{' '}
-                      <span className="text-gray-400">({it.reviewer_role || '?'})</span>
-                      {it.reviewed_at && (
-                        <span className="text-gray-400">
-                          {' · '}
-                          {new Date(it.reviewed_at).toLocaleString('id-ID')}
-                        </span>
-                      )}
-                    </div>
-                    {it.catatan && <div className="text-gray-500 mt-0.5">{it.catatan}</div>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

@@ -18,16 +18,26 @@ export function LembarReviuPanel({
   penugasanId,
   level,
   canEdit,
+  onReviewed,
 }: {
   penugasanId: number;
   level: 'KT' | 'PT';
   canEdit: boolean;
+  // Hanya level PT: keputusan reviu konsep LHP (Setujui / Minta Revisi).
+  onReviewed?: (status: 'APPROVED' | 'NEEDS_REVISION' | null) => void;
 }) {
   const [data, setData] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  // Keputusan reviu konsep LHP (level PT) — menggantikan panel approve lama.
+  const [verdict, setVerdict] = useState<'APPROVED' | 'NEEDS_REVISION' | null>(null);
+  const [catatan, setCatatan] = useState('');
+  const [verdictBusy, setVerdictBusy] = useState(false);
 
   useEffect(() => {
     api.getLembarReviu(penugasanId, level).then(setData).catch(() => {});
+    if (level === 'PT') {
+      api.listLhpReview(penugasanId).then((r) => setVerdict(r.latest_status)).catch(() => {});
+    }
   }, [penugasanId, level]);
 
   if (!data) return <p className="text-sm text-gray-400">Memuat lembar reviu…</p>;
@@ -57,6 +67,32 @@ export function LembarReviuPanel({
       toast.error(`Gagal menyimpan: ${e?.message || e}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Keputusan reviu konsep LHP (level PT) — menyatu dengan lembar reviu aspek.
+  // APPROVED juga otomatis menarik rekomendasi LHP ke TLHP (backend).
+  const submitVerdict = async (status: 'APPROVED' | 'NEEDS_REVISION') => {
+    if (status === 'NEEDS_REVISION' && !catatan.trim()) {
+      toast.error('Catatan revisi wajib diisi saat meminta revisi.');
+      return;
+    }
+    setVerdictBusy(true);
+    try {
+      // Setuju = paraf lembar aspek sekaligus, lalu catat keputusan.
+      if (status === 'APPROVED') await save(true);
+      await api.createLhpReview(penugasanId, status, catatan.trim() || undefined);
+      setVerdict(status);
+      onReviewed?.(status);
+      toast.success(
+        status === 'APPROVED'
+          ? 'Konsep LHP disetujui & diparaf. Rekomendasi otomatis ditarik ke TLHP.'
+          : 'Revisi diminta — dikembalikan ke Ketua Tim.',
+      );
+    } catch (e: any) {
+      toast.error(`Gagal: ${e?.message || e}`);
+    } finally {
+      setVerdictBusy(false);
     }
   };
 
@@ -119,7 +155,7 @@ export function LembarReviuPanel({
         </table>
       </div>
 
-      <div className="px-5 py-3 border-t border-gray-100">
+      <div className="px-5 py-3 border-t border-gray-100 space-y-3">
         {data.diparaf ? (
           <div className="text-xs text-gray-600">
             Disusun oleh <strong>{data.reviewer_nama || '—'}</strong>
@@ -136,13 +172,64 @@ export function LembarReviuPanel({
               className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
               Simpan draft
             </button>
-            <button onClick={() => save(true)} disabled={saving}
-              className="px-4 py-1.5 text-sm rounded bg-primary text-white font-semibold hover:bg-primary-dark disabled:opacity-50">
-              ✍ Paraf & Simpan
-            </button>
+            {/* Paraf lembar aspek: untuk KT berdiri sendiri; untuk PT menyatu di
+                tombol "Paraf & Setujui Konsep LHP" pada bagian keputusan di bawah. */}
+            {level === 'KT' && (
+              <button onClick={() => save(true)} disabled={saving}
+                className="px-4 py-1.5 text-sm rounded bg-primary text-white font-semibold hover:bg-primary-dark disabled:opacity-50">
+                ✍ Paraf & Simpan
+              </button>
+            )}
           </div>
         ) : (
           <p className="text-xs text-gray-400">Read-only — diisi {level === 'KT' ? 'Ketua Tim' : 'Pengendali Teknis/Mutu'}.</p>
+        )}
+
+        {/* Keputusan reviu konsep LHP — hanya PT/PM. Menggantikan panel approve
+            terpisah (sebelumnya redundan): aspek + keputusan kini satu lembar. */}
+        {level === 'PT' && (
+          <div className="border-t border-dashed border-gray-200 pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-700">Keputusan Reviu Konsep LHP</span>
+              {verdict === 'APPROVED' && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">✓ Konsep LHP Disetujui</span>
+              )}
+              {verdict === 'NEEDS_REVISION' && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">⟳ Perlu Revisi</span>
+              )}
+            </div>
+            {canEdit ? (
+              <>
+                <textarea
+                  value={catatan}
+                  onChange={(e) => setCatatan(e.target.value)}
+                  placeholder="Catatan reviu (wajib bila minta revisi)"
+                  className="w-full text-xs border border-gray-200 rounded p-2 min-h-[56px]"
+                />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <button onClick={() => submitVerdict('APPROVED')} disabled={verdictBusy || saving}
+                    className="px-4 py-1.5 text-sm rounded bg-primary text-white font-semibold hover:bg-primary-dark disabled:opacity-50">
+                    ✍ Paraf &amp; Setujui Konsep LHP
+                  </button>
+                  <button onClick={() => submitVerdict('NEEDS_REVISION')} disabled={verdictBusy}
+                    className="px-4 py-1.5 text-sm rounded border border-amber-400 text-amber-700 hover:bg-amber-50 disabled:opacity-50">
+                    ⟳ Minta Revisi
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Setujui → lembar aspek diparaf, rekomendasi LHP otomatis ditarik ke TLHP, laporan lanjut ke finalisasi.
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-gray-400">
+                {verdict === 'APPROVED'
+                  ? 'Konsep LHP sudah disetujui PT/PM.'
+                  : verdict === 'NEEDS_REVISION'
+                    ? 'PT/PM meminta revisi konsep LHP.'
+                    : 'Menunggu reviu Pengendali Teknis/Mutu.'}
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>
