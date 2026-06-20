@@ -64,7 +64,7 @@ async function request<T>(
 }
 
 // ===== Types =====
-export type Role = 'AT' | 'KT' | 'PT' | 'PM' | 'ADMIN';
+export type Role = 'AT' | 'KT' | 'PT' | 'PM' | 'TU' | 'ADMIN';
 // Skill kini folder-driven di backend (registry) — bukan enum tetap. Tetap
 // alias `string` supaya komponen lama yang mereferensikan `Skill` tidak rusak.
 export type Skill = string;

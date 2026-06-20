@@ -4,16 +4,20 @@ Dipanggil saat first deploy (lihat fly.toml `release_command`) atau manual:
     python -m app.init_db
 """
 import asyncio
+import secrets
 
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.database import Base, SessionLocal, engine
 from app.models import Role, User
 
 
-# Password DEV bersama untuk semua akun seed (Workstream B). Dipakai quick-login
-# auto-fill di layar login. PRODUKSI: ganti password per akun + matikan quick-login.
-DEV_PASSWORD = "audit2026"
+# Password DEV akun seed (quick-login). Diambil dari env DEV_SEED_PASSWORD (.env,
+# gitignored). Bila tak diset → password ACAK per-boot (dicetak ke log) agar TIDAK
+# ada kredensial baked di repo (repo publik). PRODUKSI: jangan set + matikan quick-login.
+_DEV_PW_FROM_ENV = (get_settings().dev_seed_password or "").strip()
+DEV_PASSWORD = _DEV_PW_FROM_ENV or secrets.token_urlsafe(9)
 
 SEED_USERS = [
     {
@@ -58,6 +62,13 @@ SEED_USERS = [
         "nip": "100000000000000000",
         "role_default": Role.ADMIN,
     },
+    {
+        "username": "tu",
+        "email": "tu@komdigi.go.id",
+        "nama_lengkap": "Tata Usaha",
+        "nip": "200000000000000000",
+        "role_default": Role.TU,
+    },
 ]
 
 
@@ -70,6 +81,12 @@ async def seed_auth(db) -> None:
     from sqlalchemy import text
 
     from app.auth import hash_password
+
+    if not _DEV_PW_FROM_ENV:
+        print(
+            "[init_db] ⚠ DEV_SEED_PASSWORD belum di-set — memakai password seed ACAK "
+            f"(berubah tiap boot, quick-login mati): {DEV_PASSWORD}"
+        )
 
     # 1) Kolom (Postgres) — aman bila sudah ada.
     for ddl in (

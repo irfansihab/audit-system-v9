@@ -13,6 +13,7 @@ class Role(str, Enum):
     KT = "KT"  # Ketua Tim
     PT = "PT"  # Pengendali Teknis
     PM = "PM"  # Pengendali Mutu
+    TU = "TU"  # Tata Usaha — administrasi pasca-persetujuan (Tahapan 8)
     ADMIN = "ADMIN"  # Administrator — akses file JSON mentah (digest/temuan/audit trail)
 
 

@@ -17,6 +17,8 @@ const ROLE_LABEL: Record<string, string> = {
   KT: 'Ketua Tim',
   PT: 'Pengendali Teknis',
   PM: 'Pengendali Mutu',
+  TU: 'Tata Usaha',
+  ADMIN: 'Administrator',
 };
 
 const ROLE_COLOR: Record<string, string> = {
@@ -24,6 +26,8 @@ const ROLE_COLOR: Record<string, string> = {
   KT: 'bg-kt',
   PT: 'bg-pt',
   PM: 'bg-pm',
+  TU: 'bg-amber-600',
+  ADMIN: 'bg-slate-700',
 };
 
 export function TopBar() {

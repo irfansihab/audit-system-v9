@@ -6,7 +6,7 @@ Prinsip: **SK mengikuti sistem (v9 = jangkar)** · **v9 = mesin produksi substan
 
 | Fase | Tujuan | Bobot | Bergantung |
 |---|---|---|---|
-| **0** | Fondasi & higiene (repo publik aman, peran TU, deps) | S | — |
+| **0** ✅ | Fondasi & higiene (repo publik aman, peran TU, deps) — **SELESAI** | S | — |
 | **1** | Format laporan **KKSAR terpadu** (shell seragam + istilah baku + RE per jenis) | M | 0 |
 | **1A** | Penguatan agen **AT**: **Root Cause Analysis** untuk unsur Sebab | M | 1 |
 | **1B** | Penguatan agen **KT**: **tabel & diagram** dalam laporan | M | 1 |
@@ -26,6 +26,9 @@ Prinsip: **SK mengikuti sistem (v9 = jangkar)** · **v9 = mesin produksi substan
 - **0.3 Regenerasi dependensi** v9 (npm + venv) lalu smoke test backend/frontend. *(S)*
 
 **Acceptance:** tak ada kredensial hidup/keras di repo; login `tu` menghasilkan `role_aktif: TU`; backend `:8000` & frontend `:3000` 200.
+
+> **Status SELESAI (20 Jun):** ✅ password seed via `DEV_SEED_PASSWORD` (acak bila kosong) + quick-login FE via `NEXT_PUBLIC_DEV_PASSWORD` (mati bila kosong); ✅ peran `TU` (enum + seed user `tu` + tipe FE + label TopBar + default stage); ✅ deps v9 ter-install (npm + venv py3.12); ✅ DB diisolasi ke `audit_v9`. Verifikasi: backend app import OK (Role.TU, env terbaca), `tsc` 0 error.
+> **Sisa (live smoke, butuh Docker):** nyalakan Docker → `createdb audit_v9` (atau `docker exec <db> createdb -U audit audit_v9`) → jalankan backend (seed otomatis) → uji login `tu`.
 
 ---
 

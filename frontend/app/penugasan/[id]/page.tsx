@@ -22,6 +22,7 @@ function defaultStageForRole(role: Role): number {
   if (role === 'PT') return 1; // Kartu Penugasan
   if (role === 'KT') return 2; // PKP
   if (role === 'AT') return 3; // KKP
+  if (role === 'TU') return 7; // Tata Usaha → Laporan Hasil/output (Tahapan 8 administrasi menyusul, Fase 4)
   return 6; // PM → LRS LHP
 }
 

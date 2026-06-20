@@ -9,14 +9,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, setToken, setSession, Role, User } from '@/lib/api';
 
-// Password dev bersama (selaras backend init_db.DEV_PASSWORD). Hanya untuk dev.
-const DEV_PASSWORD = 'audit2026';
+// Password dev untuk quick-login — dari env NEXT_PUBLIC_DEV_PASSWORD (.env.local,
+// gitignored), selaras backend DEV_SEED_PASSWORD. Kosong = quick-login dimatikan
+// (tidak ada kredensial baked di repo).
+const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_PASSWORD || '';
 
 const ROLE_META: Record<string, { label: string; cls: string }> = {
   PT: { label: 'Pengendali Teknis', cls: 'bg-purple-100 text-purple-800' },
   PM: { label: 'Pengendali Mutu', cls: 'bg-fuchsia-100 text-fuchsia-800' },
   KT: { label: 'Ketua Tim', cls: 'bg-emerald-100 text-emerald-800' },
   AT: { label: 'Anggota Tim', cls: 'bg-blue-100 text-blue-800' },
+  TU: { label: 'Tata Usaha', cls: 'bg-amber-100 text-amber-800' },
+  ADMIN: { label: 'Administrator', cls: 'bg-slate-200 text-slate-800' },
 };
 
 export default function LoginPage() {
@@ -117,8 +121,9 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Login cepat (dev) — auto-isi username+password per role */}
-          {users.length > 0 && (
+          {/* Login cepat (dev) — auto-isi username+password per role.
+              Hanya muncul bila NEXT_PUBLIC_DEV_PASSWORD di-set (mati di publik/prod). */}
+          {DEV_PASSWORD && users.length > 0 && (
             <div className="mt-6 pt-5 border-t border-gray-100">
               <p className="text-xs text-gray-400 mb-2">⚡ Login cepat (dev) — klik untuk masuk sebagai:</p>
               <div className="grid grid-cols-2 gap-2">

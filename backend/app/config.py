@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     # debug query; sebelumnya selalu ON di dev → spam log + overhead.
     debug_sql: bool = False
     app_secret_key: str = "dev-secret-please-change"
+    # Password seed akun dev (quick-login). Kosong = init_db pakai password ACAK
+    # per-boot (tak ada kredensial baked di repo). Set DEV_SEED_PASSWORD di .env
+    # (gitignored) untuk dev lokal. PRODUKSI: jangan diset + matikan quick-login.
+    dev_seed_password: str = ""
     app_data_dir: str = "/data"
     app_v6_path: str = "/v6"
     app_wiki_path: str = "/wiki"  # knowledge base auditor (pattern temuan, dll)
