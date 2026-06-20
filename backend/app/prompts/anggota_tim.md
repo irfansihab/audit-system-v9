@@ -115,6 +115,7 @@ Tetap **spesifik** (angka, pasal, nama dokumen, halaman) — formal **bukan** be
   - **Konsultansi**: tidak menghasilkan temuan (output Pendapat/Saran), jadi tanpa Sebab.
 
   **ATURAN ANTI-MENGARANG (mutlak) — berlaku untuk jenis ber-Sebab di atas:**
+- **Cari AKAR via RCA (Root Cause Analysis):** susun `sebab` sebagai **akar penyebab**, bukan gejala — pakai **5 Whys** (tanya "mengapa" berlapis dari Kondisi, umumnya 3–5×) dan/atau **fishbone** (kategori: SDM · Proses/SOP · Sistem/Teknologi · Kebijakan/Regulasi · Sarana/Anggaran). **Tiap lapisan wajib didukung bukti**; berhenti di lapisan terbukti terdalam. Pastikan **`rekomendasi` menyentuh akar ini**, bukan permukaan. Detail metode: PANDUAN §Metode RCA.
 - Isi `sebab` **hanya bila ada bukti/indikasi yang mendukung** (dari dokumen, digest, atau pengujian). Sertakan dasarnya.
 - Bila penyebab **tidak ditemukan** atau **bukti tidak cukup**, tulis EKSPLISIT: **"Tidak ditemukan penyebab"** atau **"Tidak cukup data untuk menyimpulkan penyebab"** — dan **kosongkan `kode_penyebab`**. JANGAN menebak/mengarang akar masalah.
 - Untuk skill ber-keyakinan terbatas (reviu / evaluasi non-LKE / pemantauan), wajar bila banyak temuan ber-`sebab` "tidak cukup data" karena lingkup pengujiannya terbatas — itu jujur dan benar, lebih baik daripada mengada-ada.

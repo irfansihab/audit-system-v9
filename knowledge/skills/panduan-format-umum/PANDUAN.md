@@ -56,6 +56,21 @@ Reviu memberikan keyakinan terbatas atas aspek administratif/prosedural. Unsur *
 **Evaluasi ber-LKE (RB, SAKIP, SPIP) punya format khusus:**
 Ketiganya diatur oleh PermenPAN-RB / pedoman SPIP dengan **instrumen Lembar Kerja Evaluasi (LKE)** spesifik — Eval RB (tabel 4 dimensi: Ketepatan/Ketercapaian/Kualitas/Kesesuaian), Eval SAKIP (LKE PermenPAN-RB 88/2021, predikat per kriteria), Eval SPIP (LKE maturitas 1–5 per unsur). **Tidak menggunakan KKSA dan tidak memuat unsur Sebab** — penilaian = skor/predikat LKE + Area of Improvement (AoI) + rekomendasi, sesuai Juknis masing-masing.
 
+### Metode Root Cause Analysis (RCA) untuk unsur Sebab — WAJIB jenis ber-Sebab
+
+Untuk jenis ber-Sebab (audit, reviu, evaluasi non-LKE, pemantauan), unsur **Sebab harus berupa AKAR penyebab**, bukan sebab permukaan/gejala. Susun Sebab dengan metode RCA — **berbasis bukti** dan **tetap anti-mengarang**:
+
+**1. 5 Whys (rantai "mengapa").** Dari Kondisi (gejala), tanyakan "mengapa" berlapis (umumnya 3–5×) hingga menemukan akar yang dapat ditindaklanjuti. **Tiap lapisan wajib didukung bukti** (dokumen/digest/pengujian); **berhenti saat bukti habis** — jangan melanjutkan rantai dengan dugaan.
+> Contoh: pembayaran melebihi barang diterima → *mengapa?* PPK tidak memverifikasi fisik penerimaan → *mengapa?* tidak ada SOP pemeriksaan penerimaan → *mengapa?* pedoman internal belum disusun pasca-SOTK. **Akar = ketiadaan SOP pemeriksaan penerimaan.**
+
+**2. Fishbone / Ishikawa (kategori penyebab APIP).** Telusuri kemungkinan akar pada kategori: **Manusia/SDM · Metode/Proses/SOP · Sistem/Teknologi · Kebijakan/Regulasi · Sarana/Anggaran**. Pilih kategori yang **terbukti** dari bukti.
+
+**Aturan RCA:**
+- Sebab = **akar** yang bila diperbaiki mencegah temuan berulang → **Rekomendasi WAJIB menyentuh akar ini**, bukan gejala (selaras tujuan KKSA: rekomendasi menutup akar masalah).
+- **Anti-mengarang tetap mutlak:** bila rantai *why* putus karena bukti tidak cukup, tulis **"Tidak cukup data untuk menyimpulkan penyebab"** pada lapisan terbukti terdalam — **jangan paksakan akar**. RCA bukan lisensi berspekulasi.
+- Untuk skill ber-keyakinan terbatas (reviu/evaluasi non-LKE/pemantauan), wajar bila RCA berhenti dini ("tidak cukup data") — itu jujur dan benar.
+- **TIDAK berlaku** untuk evaluasi ber-LKE (RB/SAKIP/SPIP) & konsultansi (tanpa Sebab).
+
 ---
 
 ---

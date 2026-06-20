@@ -8,7 +8,7 @@ Prinsip: **SK mengikuti sistem (v9 = jangkar)** · **v9 = mesin produksi substan
 |---|---|---|---|
 | **0** ✅ | Fondasi & higiene (repo publik aman, peran TU, deps) — **SELESAI** | S | — |
 | **1** | Format laporan **KKSAR terpadu** (shell seragam + istilah baku + RE per jenis) | M | 0 |
-| **1A** | Penguatan agen **AT**: **Root Cause Analysis** untuk unsur Sebab | M | 1 |
+| **1A** ✅ | Penguatan agen **AT**: **Root Cause Analysis** untuk unsur Sebab — **SELESAI** | M | 1 |
 | **1B** | Penguatan agen **KT**: **tabel & diagram** dalam laporan | M | 1 |
 | **2** | **Lembar Kendali Mutu Berjenjang** (gabung M.01+M.02+M.03) | M | 0 |
 | **3** | **Auto‑generate dokumen produksi** (Daftar Temuan & Rekomendasi, indeksasi) | M | 1 |
@@ -52,6 +52,8 @@ Prinsip: **SK mengikuti sistem (v9 = jangkar)** · **v9 = mesin produksi substan
 - **1A.5 Checklist skill**: tambahkan butir "Sebab berbasis RCA & terhubung ke rekomendasi" di SKILL.md skill ber‑Sebab. *(S)*
 
 **Acceptance:** pada penugasan audit, Sebab memperlihatkan penelusuran akar (rantai why/kategori fishbone) yang grounded ke bukti dan **terhubung ke rekomendasi**; kasus tanpa bukti tetap jujur "tidak cukup data".
+
+> **Status SELESAI (20 Jun):** ✅ 1A.1 doktrin RCA (5 Whys + Fishbone 5 kategori APIP) di `PANDUAN.md` §Metode RCA; ✅ 1A.2/1A.3 orkestrasi AT diperkuat di `anggota_tim.md` (cari akar via RCA, tiap lapisan didukung bukti, rekomendasi menyentuh akar, anti-mengarang tetap mutlak); ✅ 1A.5 berlaku lintas skill ber-Sebab via PANDUAN bersama + driver AT (tanpa edit 11 SKILL.md). Berlaku hanya jenis ber-Sebab (bukan evaluasi-LKE/konsultansi). **1A.4** (field `rca` terstruktur di temuan.json) = opsional, ditunda. Uji mutu live menyusul saat menjalankan agen (butuh Docker+API).
 
 ## Fase 1B — Penguatan agen KT: tabel & diagram dalam laporan
 **Tujuan:** Ketua Tim dapat menyisipkan **tabel** dan **diagram** untuk memperjelas laporan (mis. rekap temuan per aspek, matriks nilai/severity, grafik tren TLHP, diagram alur proses).
