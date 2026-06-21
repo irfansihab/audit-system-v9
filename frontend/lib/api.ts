@@ -158,6 +158,18 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  // ===== Administrasi (Tahapan 8 — TU, pasca-persetujuan) =====
+  getAdministrasi: (penugasanId: number) =>
+    request<any>(`/penugasan/${penugasanId}/administrasi`),
+  buatSuratPenyampaian: (
+    penugasanId: number,
+    body: { nomor?: string; tanggal?: string; tujuan?: string; perihal?: string; auditi?: string },
+  ) =>
+    request<{ ok: boolean; path: string; name: string }>(
+      `/penugasan/${penugasanId}/administrasi/surat-penyampaian`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
   /** Daftar rekomendasi TLHP (ber-aging). Filter opsional satker/status. */
   listTlhp: (params?: { satker_kode?: string; status?: string }) => {
     const qs = new URLSearchParams();

@@ -118,6 +118,11 @@ function deriveStageStatus(
     return lhpReviewStatus === 'APPROVED' ? 'pending' : 'locked';
   }
 
+  // Stage 8 Administrasi (TU) — terbuka hanya setelah laporan disetujui (garis serah).
+  if (stageNum === 8) {
+    return lhpReviewStatus === 'APPROVED' ? 'pending' : 'locked';
+  }
+
   return 'pending';
 }
 
@@ -140,7 +145,7 @@ export function HeroPenugasan({
   const st = (n: number) => deriveStageStatus(penugasan, n, lhpReviewStatus);
 
   // Progress % berbasis tahapan done
-  const totalStages = showSurvey ? 8 : 7;
+  const totalStages = showSurvey ? 9 : 8;
   const stages: StageInfo[] = [
     { num: 0, label: 'Survey Pendahuluan', hint: 'Hanya audit-*', status: st(0) },
     { num: 1, label: 'Kartu Penugasan', hint: 'PT · template wiki', status: st(1) },
@@ -150,6 +155,7 @@ export function HeroPenugasan({
     { num: 5, label: 'Konsep Laporan', hint: 'KT · LHP draft', status: st(5) },
     { num: 6, label: 'LRS LHP', hint: 'PT/PM review', status: st(6) },
     { num: 7, label: 'Laporan Hasil', hint: 'Inspektur', status: st(7) },
+    { num: 8, label: 'Administrasi', hint: 'TU · pasca-persetujuan', status: st(8) },
   ];
 
   const doneCount = stages.filter((s, i) => (i > 0 || showSurvey) && s.status === 'done').length;

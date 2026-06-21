@@ -10,6 +10,7 @@ import { AppShell } from '@/components/AppShell';
 import { HeroPenugasan } from '@/components/HeroPenugasan';
 import { TemplatePickerKpPkp } from '@/components/TemplatePickerKpPkp';
 import { LembarReviuPanel } from '@/components/LembarReviuPanel';
+import { AdminTUPanel } from '@/components/AdminTUPanel';
 
 // NAVIGASI = KARTU TAHAPAN (ala SIMWAS "Detail Pelaksanaan Penugasan").
 // Tidak ada tab bar terpisah — klik kartu tahapan di hero membuka workspace
@@ -22,7 +23,7 @@ function defaultStageForRole(role: Role): number {
   if (role === 'PT') return 1; // Kartu Penugasan
   if (role === 'KT') return 2; // PKP
   if (role === 'AT') return 3; // KKP
-  if (role === 'TU') return 7; // Tata Usaha → Laporan Hasil/output (Tahapan 8 administrasi menyusul, Fase 4)
+  if (role === 'TU') return 8; // Tata Usaha → Tahapan 8 Administrasi (pasca-persetujuan)
   return 6; // PM → LRS LHP
 }
 
@@ -287,6 +288,17 @@ export default function DetailPenugasanPage() {
               steps={['Unduh KKP/LHP/QC', 'Finalisasi oleh Inspektur (via SIMWAS)']}
             />
             <OutputTab penugasan={penugasan} />
+          </div>
+        )}
+
+        {/* === Tahapan 8 — Administrasi / Pasca-Persetujuan (TU) === */}
+        {stage === 8 && (
+          <div key={`s8-${id}`} className="space-y-6">
+            <WorkspaceBanner
+              title="🗄 Tahapan 8 — Administrasi (Tata Usaha) — pasca-persetujuan"
+              steps={['Paket ekspor: LHP + Daftar Temuan & Rekomendasi', 'Buat draft Surat Penyampaian', 'Penomoran/TTE/arsip → SIMWAS · TL → modul TLHP']}
+            />
+            <AdminTUPanel penugasanId={id} role={session.role_aktif} />
           </div>
         )}
       </div>
