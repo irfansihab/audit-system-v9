@@ -1565,6 +1565,7 @@ async def create_lhp_review(
 
     # C5 — tutup lingkaran: LHP disetujui (laporan terbit) → tarik rekomendasi ke TLHP.
     tlhp_ditambahkan = 0
+    daftar_temuan_path: str | None = None
     if payload.status == "APPROVED":
         try:
             from app.routes.tlhp import ingest_tlhp_from_penugasan
@@ -1572,5 +1573,19 @@ async def create_lhp_review(
         except Exception:  # noqa: BLE001 — best-effort, jangan gagalkan approval
             import logging
             logging.getLogger(__name__).exception("Auto-ingest TLHP gagal untuk penugasan %s", penugasan_id)
+        # Fase 3 — garis serah: hasilkan Daftar Temuan & Rekomendasi (paket ekspor ke administrasi/TU).
+        try:
+            from pathlib import Path
+            from app.export_dhp import build_daftar_temuan_rekomendasi
+            _p = build_daftar_temuan_rekomendasi(Path(penugasan.folder_path))
+            daftar_temuan_path = str(_p) if _p else None
+        except Exception:  # noqa: BLE001 — best-effort
+            import logging
+            logging.getLogger(__name__).exception("Generate Daftar Temuan gagal utk penugasan %s", penugasan_id)
 
-    return {"ok": True, "tlhp_ditambahkan": tlhp_ditambahkan, **_lhp_review_dict(review, user.nama_lengkap)}
+    return {
+        "ok": True,
+        "tlhp_ditambahkan": tlhp_ditambahkan,
+        "daftar_temuan_path": daftar_temuan_path,
+        **_lhp_review_dict(review, user.nama_lengkap),
+    }

@@ -991,6 +991,21 @@ async def append_lampiran_diagram(args: dict) -> dict:
     return {"content": [{"type": "text", "text": f"OK|diagram {tipe} '{judul}' → {doc_path.name}"}]}
 
 
+@tool(
+    "render_daftar_temuan",
+    "Hasilkan/perbarui 'Daftar Temuan & Rekomendasi' (DHP) di _LHP/ dari temuan.json + "
+    "rekomendasi.json — paket EKSPOR ke administrasi/TU (kolom Tindak Lanjut/PIC/Target "
+    "dikosongkan untuk diisi TU). Otomatis juga dibuat saat LHP disetujui; tool ini untuk regen manual.",
+    {"penugasan_folder": str},
+)
+async def render_daftar_temuan(args: dict) -> dict:
+    from app.export_dhp import build_daftar_temuan_rekomendasi
+    p = build_daftar_temuan_rekomendasi(Path(args["penugasan_folder"]))
+    if p is None:
+        return {"content": [{"type": "text", "text": "FAILED|tak ada temuan (temuan.json kosong/absen)"}], "is_error": True}
+    return {"content": [{"type": "text", "text": f"OK|Daftar Temuan & Rekomendasi → {p.name}"}]}
+
+
 LHR_TOOLS = [
     write_sasaran_assignment,  # Setup Penugasan mode
     read_temuan_json,
@@ -1003,5 +1018,6 @@ LHR_TOOLS = [
     write_penilaian_rb,  # Evaluasi RB 4-dimensi
     append_lampiran_tabel,    # 1B — tabel rekap ke laporan (data dari sumber kebenaran)
     append_lampiran_diagram,  # 1B — diagram bar/pie/line ke laporan (matplotlib)
+    render_daftar_temuan,     # 3 — Daftar Temuan & Rekomendasi (ekspor ke administrasi/TU)
     run_qc_lhp,
 ]

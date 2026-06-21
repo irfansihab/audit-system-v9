@@ -11,7 +11,7 @@ Prinsip: **SK mengikuti sistem (v9 = jangkar)** · **v9 = mesin produksi substan
 | **1A** ✅ | Penguatan agen **AT**: **Root Cause Analysis** untuk unsur Sebab — **SELESAI** | M | 1 |
 | **1B** ✅ | Penguatan agen **KT**: **tabel & diagram** dalam laporan — **SELESAI** | M | 1 |
 | **2** ✅ | **Lembar Kendali Mutu Berjenjang** (gabung M.01+M.02+M.03) — **SELESAI** | M | 0 |
-| **3** | **Auto‑generate dokumen produksi** (Daftar Temuan & Rekomendasi, indeksasi) | M | 1 |
+| **3** ✅ | **Auto‑generate dokumen produksi** (Daftar Temuan & Rekomendasi, indeksasi) — **SELESAI** | M | 1 |
 | **4** | **Tahapan 8 — Administrasi (TU)** (handoff + register ringkas) | L | 0,3 |
 | **5** | **Proporsionalitas per jenis** + paket usulan revisi SK | M | 1–4 |
 
@@ -87,6 +87,8 @@ Prinsip: **SK mengikuti sistem (v9 = jangkar)** · **v9 = mesin produksi substan
 - **3.3 (Opsional) Log komunikasi/monitoring** dari `agent_runs` (audit trail). *(S)*
 
 **Acceptance:** "Daftar Temuan & Rekomendasi" ter‑generate & terunduh saat laporan disetujui; indeks KKP konsisten.
+
+> **Status SELESAI (20 Jun):** ✅ 3.1 `app/export_dhp.py` `build_daftar_temuan_rekomendasi` (python-docx, pure-python) dari `_KKP/temuan.json` + `_LHP/rekomendasi.json` → `_LHP/Daftar-Temuan-Rekomendasi.docx` (tabel No/Sasaran/Uraian K-K-S-A/Rekomendasi + kolom Tindak Lanjut/PIC/Target **dikosongkan untuk TU**). **Auto-generate di garis serah** (di-hook ke `create_lhp_review` saat APPROVED, bersama TLHP ingest; respons memuat `daftar_temuan_path`) + tool KT `render_daftar_temuan` untuk regen. ✅ 3.2 indeksasi/kode (`kode_kondisi`) disertakan di sel Uraian (folded ke DHP) — dokumen indeksasi standalone ditunda. ⏸ 3.3 log komunikasi dari agent_runs ditunda (opsional). Verifikasi unit (v9 venv): DHP terbentuk — header 7 kolom, baris per temuan, rekomendasi termapping; backend restart sehat.
 
 ---
 
