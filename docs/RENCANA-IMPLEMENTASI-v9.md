@@ -13,7 +13,7 @@ Prinsip: **SK mengikuti sistem (v9 = jangkar)** · **v9 = mesin produksi substan
 | **2** ✅ | **Lembar Kendali Mutu Berjenjang** (gabung M.01+M.02+M.03) — **SELESAI** | M | 0 |
 | **3** ✅ | **Auto‑generate dokumen produksi** (Daftar Temuan & Rekomendasi, indeksasi) — **SELESAI** | M | 1 |
 | **4** ✅ | **Tahapan 8 — Administrasi (TU)** (handoff + register ringkas) — **SELESAI** | L | 0,3 |
-| **5** | **Proporsionalitas per jenis** + paket usulan revisi SK | M | 1–4 |
+| **5** ✅ | **Proporsionalitas per jenis** + paket usulan revisi SK — **SELESAI** | M | 1–4 |
 
 > Prasyarat jalan‑uji v9: `cd frontend && npm install`; `cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
 
@@ -111,6 +111,8 @@ Prinsip: **SK mengikuti sistem (v9 = jangkar)** · **v9 = mesin produksi substan
 - **5.2 Paket usulan revisi SK**: errata konsistensi + matriks proporsionalitas + tabel pemetaan SDP↔v9 + klausul digital‑native — sebagai lampiran usulan ke penyusun SK. *(M)*
 
 **Acceptance:** UI menyesuaikan dokumen per jenis; dokumen usulan SK siap dibawa ke rapat.
+
+> **Status SELESAI (20 Jun):** ✅ 5.2 paket usulan SK lengkap → [`USULAN-REVISI-SK.md`](USULAN-REVISI-SK.md): prinsip pembatas + klausul digital-native, **pemetaan 36 SDP↔v9**, **matriks proporsionalitas dokumen WAJIB per jenis**, **errata konsistensi (13 butir)**, bukti kesiapan sistem (Fase 0–4), rekomendasi tindak lanjut. ✅ 5.1 proporsionalitas: sistem v9 **sudah adaptif emergen** (Survei audit-only; Daftar Temuan hanya bila ada temuan; kolom KKP & paradigma laporan per jenis) — matriks didokumentasikan sebagai standar yang diadopsi SK; stage tidak di-hard-gate (hindari over-engineering/risiko alur). **Semua fase v9 (0,1,1A,1B,2,3,4,5) SELESAI.**
 
 ---
 
