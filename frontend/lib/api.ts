@@ -169,6 +169,20 @@ export const api = {
       `/penugasan/${penugasanId}/administrasi/surat-penyampaian`,
       { method: 'POST', body: JSON.stringify(body) },
     ),
+  uploadKelengkapan: (penugasanId: number, kode: string, file: File) => {
+    const fd = new FormData();
+    fd.append('kode', kode);
+    fd.append('file', file);
+    return request<{ ok: boolean; kode: string; name: string; path: string }>(
+      `/penugasan/${penugasanId}/administrasi/kelengkapan`,
+      { method: 'POST', body: fd },
+    );
+  },
+  hapusKelengkapan: (penugasanId: number, path: string) =>
+    request<{ ok: boolean }>(
+      `/penugasan/${penugasanId}/administrasi/kelengkapan?path=${encodeURIComponent(path)}`,
+      { method: 'DELETE' },
+    ),
 
   /** Daftar rekomendasi TLHP (ber-aging). Filter opsional satker/status. */
   listTlhp: (params?: { satker_kode?: string; status?: string }) => {

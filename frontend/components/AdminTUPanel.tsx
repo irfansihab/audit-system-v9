@@ -44,6 +44,20 @@ export function AdminTUPanel({ penugasanId, role }: { penugasanId: number; role:
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
 
+  const [uploading, setUploading] = useState<string | null>(null);
+  const uploadFor = async (kode: string, file: File) => {
+    setUploading(kode);
+    try {
+      await api.uploadKelengkapan(penugasanId, kode, file);
+      toast.success('Dokumen kelengkapan terunggah.');
+      await load();
+    } catch (e: any) { toast.error(e.message); } finally { setUploading(null); }
+  };
+  const hapus = async (path: string) => {
+    try { await api.hapusKelengkapan(penugasanId, path); await load(); }
+    catch (e: any) { toast.error(e.message); }
+  };
+
   if (err) return <div className="p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{err}</div>;
   if (!data) return <p className="text-sm text-gray-400 italic">Memuat administrasi…</p>;
   if (!data.approved) {
@@ -57,6 +71,7 @@ export function AdminTUPanel({ penugasanId, role }: { penugasanId: number; role:
   const lhp: FileRef[] = data.paket_ekspor?.lhp || [];
   const daftar: FileRef[] = data.paket_ekspor?.daftar_temuan || [];
   const surat: FileRef[] = data.surat_penyampaian || [];
+  const kelengkapan: Array<{ kode: string; nama: string; wajib: boolean; files: FileRef[] }> = data.kelengkapan || [];
 
   const fileRow = (f: FileRef) => (
     <div key={f.path} className="flex items-center justify-between border border-gray-200 rounded px-3 py-2">
@@ -69,6 +84,44 @@ export function AdminTUPanel({ penugasanId, role }: { penugasanId: number; role:
 
   return (
     <div className="space-y-5">
+      {/* Kelengkapan administrasi (unggah sesuai pedoman) */}
+      <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 className="font-semibold text-primary-dark mb-1">🗂 Kelengkapan Administrasi (Pedoman)</h3>
+        <p className="text-xs text-gray-500 mb-3">Unggah dokumen administrasi yang sudah ditandatangani/diproses sesuai pedoman. Wajib bertanda <span className="text-rose-600 font-semibold">*</span>.</p>
+        <div className="space-y-2">
+          {kelengkapan.map((item) => {
+            const ada = item.files.length > 0;
+            return (
+              <div key={item.kode} className="border border-gray-200 rounded px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-gray-800">
+                    {ada ? '✅' : (item.wajib ? '⛔' : '⬜')} {item.nama}
+                    {item.wajib && <span className="text-rose-600 font-semibold"> *</span>}
+                  </span>
+                  {canEdit && (
+                    <label className="text-xs px-2 py-1 rounded border border-primary text-primary hover:bg-primary hover:text-white transition cursor-pointer whitespace-nowrap">
+                      {uploading === item.kode ? 'Mengunggah…' : '+ Unggah'}
+                      <input type="file" className="hidden" disabled={uploading !== null}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFor(item.kode, f); e.currentTarget.value = ''; }} />
+                    </label>
+                  )}
+                </div>
+                {ada && (
+                  <div className="mt-1.5 space-y-1">
+                    {item.files.map((f) => (
+                      <div key={f.path} className="flex items-center justify-between text-xs text-gray-600 pl-5">
+                        <button onClick={() => download(f)} className="hover:underline text-primary truncate">📎 {f.name}</button>
+                        {canEdit && <button onClick={() => hapus(f.path)} className="text-rose-500 hover:text-rose-700 ml-2">hapus</button>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Paket ekspor */}
       <div className="bg-white rounded-lg border border-gray-200 p-5">
         <h3 className="font-semibold text-primary-dark mb-1">📦 Paket Ekspor (Garis Serah)</h3>
