@@ -38,8 +38,10 @@ def _scaffold_penugasan_files(folder: Path, kode: str, payload: PenugasanCreate,
     context_md_path = folder / "context.md"
     if not context_md_path.exists():
         skill_label = payload.skill.replace("-", " ").title()
+        # tanggal_st bertipe str (schema) — namun data lama bisa berupa date.
+        _t = payload.tanggal_st
         tanggal_str = (
-            payload.tanggal_st.strftime("%d %B %Y") if payload.tanggal_st else "[DIISI AUDITOR]"
+            _t.strftime("%d %B %Y") if hasattr(_t, "strftime") else (str(_t) if _t else "[DIISI AUDITOR]")
         )
         content = f"""# Konteks Penugasan: {payload.obyek}
 
@@ -108,7 +110,7 @@ periode pelaksanaan, instansi auditi, dll.]
                 "obyek": payload.obyek,
                 "jenis_pengawasan": payload.skill,
                 "nomor_st": payload.nomor_st or "[DIISI AUDITOR]",
-                "tanggal_st": payload.tanggal_st.isoformat() if payload.tanggal_st else None,
+                "tanggal_st": (payload.tanggal_st.isoformat() if hasattr(payload.tanggal_st, "isoformat") else payload.tanggal_st) if payload.tanggal_st else None,
             },
             "schema_version": "v4.0.0",
             "temuan": [],
