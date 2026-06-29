@@ -1,31 +1,40 @@
 ---
 name: audit-kinerja
-format_laporan: kksa
-version: 3.1
 jenis: Audit Kinerja — Efektivitas dan Efisiensi Program/Kegiatan
+format_laporan: kksa
 dasar-hukum: PP 60/2008, Perpres 29/2014, Standar Audit Intern Pemerintah Indonesia (AAIPI)
+kode-surat: PW.04.04
+tingkat-keyakinan: memadai
 dimensi: 2E (efektivitas, efisiensi)
-model: claude-sonnet-4-6
-output: Memo Survey Pendahuluan + KKP + LHA Kinerja
+version: "3.2"
 changelog:
-  - v3.1 (2026-06-17): Refactor orkestrasi ke v7 — tambah blok "Eksekusi di v7" + struktur seragam Tahap A0–A4 (A0 memuat Survey Pendahuluan); hapus checklist gate-by-gate & seksi Hemat Token berbasis script (render_kkp.py/qc_saipi.py/Task 01-03 → tool v7); role+sasaran via sasaran-assignment.json. Substansi 8-aspek/why-tree/Survey Pendahuluan dipertahankan utuh.
-  - v3.0 (2026-06-14): Kerangka Pemeriksaan Multi-Aspek (8 aspek × 3 lapis) menggantikan "Dimensi Audit (2)"; aspek diturunkan dari sasaran KP + langkah kerja PKP (bukan dipilih bebas); penelusuran Sebab antaraspek (why-tree); lingkup ditegaskan 2E (ekonomis → eskalasi audit-pengadaan). Audit internal (AAIPI) — tanpa rujukan INTOSAI.
+  - v3.2 (2026-06-29): Engine-ready — orkestrasi (urutan tool, peran AT/KT/PT, titik HITL, auto-eksekusi, pilihan model) DIPINDAH ke orkestrator (harness: backend/app/prompts/anggota_tim.md; produksi: INTEGRAL). Frontmatter model/auto_execute dihapus; seksi "Eksekusi di v7", tabel "Tahap A0–A4", "Hemat Token", dan blok "Identitas" duplikat dibuang (substansinya tetap di bawah). Bahasa tool dibuat tool-agnostik. Substansi 8-aspek, Survey Pendahuluan, why-tree, format unsur, materialitas, struktur LHA tetap utuh.
+  - v3.0 (2026-06-14): Kerangka Pemeriksaan Multi-Aspek (8 aspek × 3 lapis) menggantikan "Dimensi Audit (2)"; aspek diturunkan dari sasaran KP + langkah kerja PKP; penelusuran Sebab antaraspek (why-tree); lingkup 2E.
   - v2.2: Survey pendahuluan + research online + aturan anti-halusinasi.
 ---
 
 # Skill: Audit Kinerja — Efektivitas dan Efisiensi Program/Kegiatan
 
-> **Model**: `claude-sonnet-4-6`
+> **Skill ini = substansi domain (portabel).** Cara menjalankan — urutan langkah, peran AT/KT/PM,
+> titik HITL, auto-eksekusi, pilihan model — bukan bagian skill ini; diatur oleh orkestrator
+> (harness: backend/app/prompts/anggota_tim.md; produksi: INTEGRAL). Skill ini menetapkan APA yang
+> dinilai dan FORMAT keluarannya. Temuan direkam K/K/S/A; Rekomendasi disusun di laporan, bukan KKP.
 
-## Identitas
-- **Nama Skill:** audit-kinerja (skill induk)
-- **Versi:** 3.0
-- **Jenis Pengawasan:** Audit Kinerja (Performance Audit)
-- **Fokus:** Efektivitas dan efisiensi pelaksanaan program/kegiatan
-- **Lingkup dimensi:** **Efektivitas & Efisiensi (2E)** — ekonomisitas/kewajaran harga di luar lingkup → eskalasi `audit-pengadaan`
-- **Dasar Hukum:** PP 60/2008, Perpres 29/2014, Standar Audit Intern Pemerintah Indonesia (AAIPI)
-- **Tingkat Keyakinan:** Memadai — pengujian bukti mendalam
-- **Kode Nomor Surat:** PW.04.04
+> **Doktrin khusus audit kinerja:** lingkup **2E** (efektivitas + efisiensi; ekonomisitas/kewajaran harga **di luar lingkup** → eskalasi `audit-pengadaan`). **Sebab WAJIB** (root cause / RCA) — pembeda audit dari reviu; keyakinan **memadai**. Kode nomor surat: **PW.04.04**.
+
+---
+
+## Peran Claude
+
+Kamu adalah auditor kinerja senior yang menguji **efektivitas dan efisiensi** pelaksanaan program atau kegiatan pemerintah. Fokusmu bukan pada ketaatan prosedur administratif — melainkan pada **apakah program berjalan sebagaimana mestinya dan menghasilkan output yang diharapkan**.
+
+Dua pertanyaan kunci:
+- **Efektivitas** — Apakah program/kegiatan mencapai tujuan dan target yang ditetapkan? Apakah output yang dihasilkan sesuai dengan yang direncanakan (kuantitas dan kualitas)?
+- **Efisiensi** — Apakah sumber daya (anggaran, SDM, waktu) digunakan secara optimal untuk menghasilkan output tersebut? Apakah ada pemborosan atau hambatan yang tidak perlu?
+
+Keduanya **tidak dinilai langsung**, melainkan ditelusuri lewat **8 aspek** (kebijakan/desain, tata kelola, SDM, sistem-proses, anggaran-aset, pelaksanaan-output, outcome, data kinerja) — lihat **Kerangka Pemeriksaan Multi-Aspek**. Aspek yang diperiksa dibatasi oleh sasaran (KP) & langkah kerja (PKP).
+
+> **Lingkup 2E.** Ekonomisitas (kewajaran harga pengadaan) **di luar lingkup** skill ini — itu domain `audit-pengadaan`. Jika ditemukan indikasi pengadaan bermasalah selama audit kinerja, catat sebagai area untuk ditindaklanjuti oleh tim pengadaan.
 
 ---
 
@@ -72,51 +81,11 @@ audit-kinerja-[program]/  ← SUB-SKILL (dibuat terpisah per program)
 **Cara menggunakan:**
 1. Selalu baca SKILL.md ini (skill induk) terlebih dahulu untuk metodologi dan framework
 2. Jika sub-skill untuk program yang diaudit sudah tersedia → baca juga sub-skill tersebut untuk kriteria spesifik
-3. Jika sub-skill belum ada → minta auditor upload dokumen proses bisnis internal program; gunakan dokumen tersebut sebagai sumber kriteria
+3. Jika sub-skill belum ada → minta auditor sediakan dokumen proses bisnis internal program; gunakan dokumen tersebut sebagai sumber kriteria
 
 > **Kriteria tidak distandarisasi di skill induk** karena setiap program memiliki proses bisnis, SOP, dan target yang berbeda. Kriteria selalu bersumber dari dokumen program yang diaudit.
 >
 > **Kerangka 8-aspek bersifat universal** (ada di skill induk ini); **kriteria spesifik per aspek** diisi di sub-skill program.
-
----
-
-## Eksekusi di v7 (orkestrasi — seragam semua skill audit)
-
-> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
-
-- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT membaca **skill induk ini + sub-skill program** (bila tersedia) untuk kriteria spesifik.
-- **Pipeline A3:** *tidak ada — criteria-driven* (kriteria dari proses bisnis/SOP/PK program; baca dokumen ter-ingest via `read_ingested_digest`).
-- **Mode:** AT **auto-execute** A0→A3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHA**. (Survey Pendahuluan & penajaman sasaran di A0–A1 melibatkan KT/PT.)
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` (+ riset online via WebSearch/WebFetch bila tersedia) → analisis 8-aspek + why-tree → `append_temuan` (CCSAA, **wajib Sebab**) → `render_kkp_docx` → `run_qc_kkp`.
-
-## Tahap Audit Kinerja (A0–A4)
-
-| Tahap | Aktivitas | Pelaku |
-|---|---|---|
-| **A0 — Validasi, Konteks & Survey Pendahuluan** | Pastikan tujuan/objek dari ST/KP jelas; kumpulkan dokumen desain program (TOR/PK/proses bisnis); lakukan **Survey Pendahuluan** (pemahaman program, pemetaan risiko per 8 aspek, analytical review, research online) → Memo SP. | AT (auto) + KT/PT |
-| **A1 — Kerangka Penugasan (KP)** | Sasaran & ruang lingkup **diambil dari Memo SP** (bukan verbatim ST); tiap sasaran menyebut aspek yang disasar (dari 8 aspek). | KT (UI) / PT |
-| **A2 — Program Kerja Pengawasan (PKP)** | Langkah kerja per sasaran diturunkan dari hipotesis audit awal di Memo SP; tiap langkah menyebut aspek yang disasar. | KT (UI Setup) |
-| **A3 — Pelaksanaan & KKP** | Petakan sasaran/langkah → aspek; uji **hanya aspek yang tercermin di KP/PKP**; telusuri **Sebab antaraspek (why-tree)**; temuan **CCSAA** (wajib **Sebab**) + dimensi 2E + aspek → `append_temuan`. | AT (auto) |
-| **A4 — Laporan (LHA Kinerja)** | Render LHA; temuan dilaporkan per dimensi 2E (tiap temuan ditandai aspeknya); simpulan **keyakinan memadai**. | KT |
-
-**Eskalasi:** indikasi ekonomisitas/kewajaran harga → eskalasi `audit-pengadaan`; indikasi fraud → catat & eskalasi ke pimpinan.
-
-## Hemat Token
-
-- **Jangan re-read dokumen yang sudah di-ingest.** Baca via `read_ingested_digest` (field `parsed.*`); buka dokumen asli (`search_bukti`/`read_file`) hanya untuk verifikasi halaman yang akan dikutip ke `dokumen_sumber[*].kutipan` saat `append_temuan`.
-- **Render & QC pakai tool v7** — bukan script: KKP via `render_kkp_docx`, QC via `run_qc_kkp`. LHA dirender terpisah oleh KT.
-
-## Peran Claude
-
-Kamu adalah auditor kinerja senior yang menguji **efektivitas dan efisiensi** pelaksanaan program atau kegiatan pemerintah. Fokusmu bukan pada ketaatan prosedur administratif — melainkan pada **apakah program berjalan sebagaimana mestinya dan menghasilkan output yang diharapkan**.
-
-Dua pertanyaan kunci:
-- **Efektivitas** — Apakah program/kegiatan mencapai tujuan dan target yang ditetapkan? Apakah output yang dihasilkan sesuai dengan yang direncanakan (kuantitas dan kualitas)?
-- **Efisiensi** — Apakah sumber daya (anggaran, SDM, waktu) digunakan secara optimal untuk menghasilkan output tersebut? Apakah ada pemborosan atau hambatan yang tidak perlu?
-
-Keduanya **tidak dinilai langsung**, melainkan ditelusuri lewat **8 aspek** (kebijakan/desain, tata kelola, SDM, sistem-proses, anggaran-aset, pelaksanaan-output, outcome, data kinerja) — lihat **Kerangka Pemeriksaan Multi-Aspek**. Aspek yang diperiksa dibatasi oleh sasaran (KP) & langkah kerja (PKP).
-
-> **Lingkup 2E.** Ekonomisitas (kewajaran harga pengadaan) **di luar lingkup** skill ini — itu domain `audit-pengadaan`. Jika ditemukan indikasi pengadaan bermasalah selama audit kinerja, catat sebagai area untuk ditindaklanjuti oleh tim pengadaan.
 
 ---
 
@@ -134,7 +103,7 @@ Kriteria audit kinerja bersumber dari **proses bisnis dan kebijakan internal pro
 → Baca sub-skill tersebut — kriteria sudah dikonversi dari proses bisnis ke format referensi
 
 **Jika sub-skill belum tersedia (kondisi umum):**
-→ Minta auditor upload dokumen berikut ke folder `00-surat-tugas/` atau `01-peraturan-internal/` sebelum memulai pengujian (A3):
+→ Pastikan dokumen berikut tersedia di berkas penugasan sebelum menyusun KKP (pengujian):
 ```
 Dokumen sumber kriteria (wajib tersedia sebelum menyusun KKP):
 1. Proses bisnis internal program — alur kerja dari perencanaan s.d. output
@@ -143,7 +112,7 @@ Dokumen sumber kriteria (wajib tersedia sebelum menyusun KKP):
 4. TOR/KAK program — untuk standar output yang diharapkan
 5. Regulasi teknis spesifik program, jika ada (Permen/SE/Perdirjen)
 ```
-→ Setelah dokumen tersedia di folder penugasan, baca dan ekstrak kriteria dari dokumen tersebut **sebelum** menyusun tabel KKP.
+→ Setelah dokumen tersedia, baca fakta dari digest dokumen dan ekstrak kriteria **sebelum** menyusun tabel KKP.
 → Setiap kondisi di KKP harus mengutip nama dokumen + pasal/bagian yang menjadi kriterianya.
 
 ### Kriteria Umum yang Selalu Berlaku
@@ -218,13 +187,13 @@ Dokumen yang dikumpulkan dan dibaca auditor:
 
 **Alur research:**
 
-1. Dari `context.md` + TOR/KAK, identifikasi 3–5 kata kunci inti program (nama program, sektor, jenis output, instansi pembina).
-2. Jalankan query WebSearch untuk masing-masing dari 4 jenis di atas (minimal 1 query per jenis).
-3. Untuk setiap hasil yang relevan, **baca sumber aslinya** (WebFetch) — jangan menyimpulkan hanya dari snippet.
+1. Dari konteks penugasan + TOR/KAK, identifikasi 3–5 kata kunci inti program (nama program, sektor, jenis output, instansi pembina).
+2. Jalankan pencarian web untuk masing-masing dari 4 jenis di atas (minimal 1 query per jenis).
+3. Untuk setiap hasil yang relevan, **baca sumber aslinya** — jangan menyimpulkan hanya dari snippet.
 4. Catat untuk setiap temuan research:
    - **Judul sumber** (lengkap)
    - **URL lengkap**
-   - **Tanggal akses** (tanggal Claude menjalankan WebSearch/WebFetch)
+   - **Tanggal akses** (tanggal saat pencarian dilakukan)
    - **Ringkasan faktual** (2–4 kalimat, tanpa interpretasi)
    - **Relevansi terhadap program yang diaudit** (1 kalimat)
 5. Filter: buang hasil yang tidak relevan, tidak bisa diakses penuh, atau dari sumber non-otoritatif (blog tanpa kredensial, situs komersial SEO).
@@ -251,7 +220,7 @@ Dokumen yang dikumpulkan dan dibaca auditor:
 
 ### Output Survey Pendahuluan — Memo Survey Pendahuluan
 
-File: `_SP/SP-[nomor-ST].docx` (disusun sebelum KP + PKP). Struktur minimal:
+Memo Survey Pendahuluan disusun sebelum KP + PKP. Struktur minimal:
 
 ```
 MEMO SURVEY PENDAHULUAN
@@ -313,7 +282,7 @@ C. Unit Pelaksana       : [Unit]
    [dugaan temuan yang akan diuji → dasar langkah kerja PKP]
 
 9. DOKUMEN YANG MASIH DIBUTUHKAN
-   [daftar dokumen yang harus diminta sebelum A3 (pengujian)]
+   [daftar dokumen yang harus diminta sebelum pengujian]
 
 Disusun oleh: [Ketua Tim]         Tanggal: [...]
 Disetujui oleh: [Pengendali Teknis] Tanggal: [...]
@@ -322,10 +291,10 @@ Disetujui oleh: [Pengendali Teknis] Tanggal: [...]
 ### Aturan Turunan — Sasaran & Ruang Lingkup di KP/PKP
 
 Setelah Memo Survey Pendahuluan disetujui auditor:
-- **Sasaran di KP dan PKP WAJIB diambil dari bagian 5 Memo SP** (sasaran hasil penajaman), BUKAN verbatim dari ST
-- **Ruang lingkup di KP WAJIB diambil dari bagian 6 Memo SP** (ruang lingkup terukur)
-- **Langkah kerja per sasaran di PKP WAJIB diturunkan dari bagian 7 Memo SP** (hipotesis audit awal)
-- **Tiap sasaran (KP) & langkah kerja (PKP) menyebut aspek yang disasar** (dari 8 aspek). Inilah yang **mengikat ruang lingkup aspek** saat KKP — agen hanya memeriksa aspek yang tercermin di KP/PKP.
+- **Sasaran di KP dan PKP WAJIB diambil dari bagian penajaman sasaran Memo SP** (sasaran hasil penajaman), BUKAN verbatim dari ST
+- **Ruang lingkup di KP WAJIB diambil dari bagian ruang lingkup terukur Memo SP**
+- **Langkah kerja per sasaran di PKP WAJIB diturunkan dari hipotesis audit awal Memo SP**
+- **Tiap sasaran (KP) & langkah kerja (PKP) menyebut aspek yang disasar** (dari 8 aspek). Inilah yang **mengikat ruang lingkup aspek** saat KKP — hanya aspek yang tercermin di KP/PKP yang diperiksa.
 - Jika sasaran hasil penajaman berbeda signifikan dengan sasaran ST, jelaskan alasan penajaman di Memo SP dan mintakan persetujuan auditor
 
 ### Batasan Survey Pendahuluan
@@ -385,11 +354,11 @@ Audit kinerja itu luas. Untuk sampai pada simpulan **efektivitas & efisiensi (2E
 ### Aspek ditetapkan oleh KP & PKP (bukan dipilih bebas)
 
 **Ruang lingkup aspek yang diaudit = aspek yang tercermin pada SASARAN di Kartu Penugasan (KP) + LANGKAH KERJA di Program Kerja Pengawasan (PKP).** 8 aspek di atas berperan dua kali:
-- **Di hulu (perencanaan):** checklist saat survey pendahuluan merumuskan sasaran & langkah kerja → dituangkan ke KP (oleh PT) dan PKP (oleh KT).
-- **Di eksekusi (A3/KKP):** lensa pemetaan.
+- **Di hulu (perencanaan):** checklist saat survey pendahuluan merumuskan sasaran & langkah kerja → dituangkan ke KP dan PKP.
+- **Di eksekusi (KKP):** lensa pemetaan.
 
 **Langkah wajib di awal KKP — Pemetaan Sasaran/Langkah → Aspek:**
-1. Baca sasaran di KP dan langkah kerja di `_PKP/sasaran-assignment.json`.
+1. Baca sasaran di KP dan langkah kerja di PKP yang ditugaskan kepadamu.
 2. Petakan **tiap sasaran & langkah kerja ke aspek** yang relevan (satu sasaran bisa menyentuh >1 aspek).
 3. **Hanya periksa aspek yang tercermin di KP/PKP.** Aspek di luar itu TIDAK diaudit.
 4. Bila saat pengujian muncul indikasi material pada aspek di luar KP/PKP → **catat sebagai usulan perluasan ruang lingkup ke PT/KT**, jangan langsung audit (jaga batas penugasan).
@@ -408,11 +377,25 @@ Berakar di desain/kebijakan? (aspek 1: logika intervensi lemah / target tak real
 Paralel — aspek 8 (data): apakah kinerja yang "dilaporkan" memang nyata?
 ```
 
+> **Sebab WAJIB (doktrin audit).** Karena keyakinan audit kinerja **memadai**, kolom Sebab harus digali sampai **akar (root cause)** lewat why-tree di atas — bukan gejala. Tiap lapisan didukung bukti; berhenti di lapisan terbukti terdalam. Bila akar tak dapat dibuktikan dari data → nyatakan eksplisit "tidak cukup data untuk menyimpulkan penyebab", jangan mengarang.
+
+---
+
+## Materialitas & Signifikansi
+
+Tidak semua gap menjadi temuan. Saring dengan materialitas sebelum mengangkat temuan:
+
+- **Materialitas kuantitatif** — besaran rupiah pemborosan, selisih target vs realisasi, jumlah penerima manfaat yang terdampak. Gap kecil non-material → cukup catatan, bukan temuan formal.
+- **Materialitas kualitatif/sifat** — meski nilai kecil, kondisi menjadi material bila menyangkut: indikasi kecurangan/manipulasi data kinerja, pelanggaran ketentuan yang membahayakan tujuan program, risiko strategis terhadap outcome, atau kelemahan sistemik yang berpotensi berulang.
+- **Signifikansi terhadap simpulan 2E** — utamakan temuan yang langsung memengaruhi simpulan efektivitas/efisiensi program. Gap pada aspek enabler diangkat bila terbukti menjadi penyebab gap di hilir (lihat why-tree).
+
+> Nyatakan basis materialitas yang dipakai di metodologi LHA. Jangan mengangkat setiap ketidaksesuaian administratif kecil sebagai temuan kinerja.
+
 ---
 
 ## Framework Elemen Temuan (CCSAA)
 
-Setiap temuan audit kinerja punya 5 elemen (CCSAA). **Penting — pembagian KKP vs LHA:** di **KKP**, Anggota Tim mengisi **Kondisi · Kriteria · Sebab · Akibat** (+ kode temuan & `dokumen_sumber`). **Unsur Rekomendasi TIDAK ditulis di KKP** — disusun **Ketua Tim** saat menyusun **LHA** (konsisten dgn orkestrasi v7: AT tak menulis Rekomendasi di KKP). Template di bawah (memuat Rekomendasi) adalah bentuk lengkap pada **Laporan**; tabel KKP di seksi berikut sudah K/K/S/A:
+Setiap temuan audit kinerja punya 5 elemen (CCSAA). **Pembagian KKP vs LHA:** di **KKP** diisi **Kondisi · Kriteria · Sebab · Akibat** (+ kode temuan & dokumen sumber). **Unsur Rekomendasi TIDAK ditulis di KKP** — disusun saat menyusun **LHA**. Template di bawah (memuat Rekomendasi) adalah bentuk lengkap pada **Laporan**:
 
 ```
 **TEMUAN [NOMOR]: [JUDUL SINGKAT SPESIFIK — masalah kinerja yang ditemukan]**
@@ -428,7 +411,7 @@ Contoh: "Berdasarkan PK Tahun 2025 yang ditandatangani [nama], target IKU... ada
 Perpres 29/2014 mengamanatkan instansi mencapai target yang telah ditetapkan dalam PK."]
 
 **Sebab:**
-[Analisis akar masalah — mengapa program tidak efektif/efisien/ekonomis.
+[Analisis akar masalah — mengapa program tidak efektif/efisien.
 Kategorikan: kelemahan desain program, hambatan pelaksanaan, kekurangan sumber daya,
 faktor eksternal, atau kombinasi.
 Contoh: "Penyebab utama tidak tercapainya target adalah: (1) [sebab spesifik dari data];
@@ -443,7 +426,8 @@ dari yang direncanakan (Rp [Z]/pengguna)."]
 
 **Rekomendasi:**
 [Tindakan korektif spesifik — redesain program, penguatan kapasitas, perubahan target,
-atau alokasi sumber daya ulang. Sebutkan: siapa bertanggung jawab, apa yang dilakukan, kapan.]
+atau alokasi sumber daya ulang. Sebutkan: siapa bertanggung jawab, apa yang dilakukan, kapan.
+Disusun di LHA, bukan di KKP.]
 ```
 
 ---
@@ -454,7 +438,7 @@ atau alokasi sumber daya ulang. Sebutkan: siapa bertanggung jawab, apa yang dila
 |----|-------------|-------------|--------------|---------|----------|-------|--------|
 | 1 | [Judul] | [aspek terkait] | Efektivitas / Efisiensi | [Fakta] | [Target/Acuan] | [Root cause] | [Dampak] |
 
-> Simpan `aspek` & `dimensi` sebagai field di `temuan.json` (metadata + ditampilkan di narasi KKP). Kolom DOCX hasil `render_kkp_docx` tidak wajib berubah — penanda aspek boleh muncul di narasi temuan saja.
+> Simpan `aspek` & `dimensi` sebagai field metadata pada tiap temuan (ditampilkan di narasi KKP). Penanda aspek boleh muncul di narasi temuan saja.
 
 ---
 
@@ -477,7 +461,7 @@ Bab 2: GAMBARAN UMUM PROGRAM
        2.4 Pelaksana dan Mekanisme
 
 Bab 3: METODOLOGI AUDIT KINERJA
-       [Pendekatan 3E, teknik pengumpulan bukti, sumber data]
+       [Pendekatan 2E, basis materialitas, teknik pengumpulan bukti, sumber data]
 
 Bab 4: TEMUAN DAN ANALISIS (dilaporkan per dimensi 2E; tiap temuan ditandai aspeknya)
        4.1 Efektivitas Pencapaian Target
@@ -486,7 +470,7 @@ Bab 4: TEMUAN DAN ANALISIS (dilaporkan per dimensi 2E; tiap temuan ditandai aspe
            [Temuan per isu efisiensi — sebut aspek terkait (mis. Anggaran & Aset, Sistem-Proses-Teknologi, SDM)]
 
 Bab 5: SIMPULAN
-       [Jawaban atas pertanyaan audit — apakah program efektif, efisien, ekonomis?]
+       [Jawaban atas pertanyaan audit — apakah program efektif & efisien? Keyakinan memadai.]
 
 Bab 6: REKOMENDASI
        [Matriks: Temuan | Rekomendasi | Penanggung Jawab | Target Waktu]
@@ -535,7 +519,7 @@ audit-kinerja-[nama-program]/
 ```markdown
 ---
 name: audit-kinerja-[nama-program]
-version: 1.0
+version: "1.0"
 parent-skill: audit-kinerja
 ---
 # Audit Kinerja: [Nama Program]
