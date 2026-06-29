@@ -216,7 +216,7 @@ async def run_batch_pbj(args: dict) -> dict:
 
 @tool(
     "read_pdf_page",
-    "Baca teks satu halaman PDF — dipakai agen untuk verifikasi false positive anomali.",
+    "Baca teks satu halaman PDF — untuk verifikasi kutipan/fakta janggal (≤1–2 halaman per temuan, anti sapu-baca).",
     {"pdf_path": str, "halaman": int},
 )
 async def read_pdf_page(args: dict) -> dict:
@@ -245,53 +245,6 @@ async def read_pdf_page(args: dict) -> dict:
             "content": [{"type": "text", "text": f"FAILED|{str(e)[:200]}"}],
             "is_error": True,
         }
-
-
-@tool(
-    "read_anomalies",
-    "Baca daftar LENGKAP anomali hasil pipeline V6 dari _KKP/anomalies-master.json "
-    "(reviu-rka-kl) atau _KKP/anomalies.json (reviu-pengadaan). PAKAI SETELAH "
-    "run_batch_* supaya kamu tahu SEMUA anomali yang ditemukan rules (rule_id, "
-    "severity, aspek, judul, deskripsi, bukti, draft kondisi/kriteria/akibat, RO). "
-    "Cross-check sistematis: verifikasi tiap anomali via read_pdf_page lalu "
-    "TERIMA/TOLAK/MODIFIKASI sebelum append_temuan. Mencegah anomali terlewat.",
-    {"penugasan_folder": str},
-)
-async def read_anomalies(args: dict) -> dict:
-    folder = Path(args["penugasan_folder"])
-    for name in ("anomalies-master.json", "anomalies.json"):
-        path = folder / "_KKP" / name
-        if not path.exists():
-            continue
-        data = safe_read_json(path)
-        if isinstance(data, dict):
-            anomalies = data.get("anomalies", [])
-            ringkasan = data.get("ringkasan", {})
-        elif isinstance(data, list):
-            anomalies, ringkasan = data, {}
-        else:
-            anomalies, ringkasan = [], {}
-        return {
-            "content": [{
-                "type": "text",
-                "text": json.dumps(
-                    {
-                        "source": name,
-                        "total": len(anomalies),
-                        "ringkasan": ringkasan,
-                        "anomalies": anomalies[:50],
-                    },
-                    ensure_ascii=False,
-                ),
-            }]
-        }
-    return {
-        "content": [{
-            "type": "text",
-            "text": "FAILED|anomalies file tidak ada di _KKP/ — jalankan run_batch_* dulu",
-        }],
-        "is_error": True,
-    }
 
 
 @tool(
@@ -462,5 +415,5 @@ async def read_digest(args: dict) -> dict:
 
 PIPELINE_TOOLS = [
     run_batch_rka, run_batch_pbj, run_batch_audit_pbj, run_digest_generic,
-    read_pdf_page, read_anomalies, read_digest, read_preload_context,
+    read_pdf_page, read_digest, read_preload_context,
 ]

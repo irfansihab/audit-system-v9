@@ -854,78 +854,6 @@ from app.tools.lhr_tools import read_temuan_json  # noqa: E402
 
 
 @tool(
-    "build_draft_temuan_from_anomalies",
-    "Konversi DETERMINISTIK anomalies-master.json (output pipeline V6) → draft "
-    "temuan v4.0.0. Hasil disimpan ke `_KKP/temuan-draft.json` (BUKAN temuan.json). "
-    "Setiap anomali yang punya `draft_catatan` jadi satu draft temuan dengan field "
-    "kondisi/kriteria/akibat sudah terisi otomatis. TIDAK panggil LLM. Agen AT "
-    "kemudian baca file ini, verifikasi tiap draft (buang false-positive, poles "
-    "narasi, tambah dokumen_sumber dgn halaman/kutipan dari PDF), baru append ke "
-    "temuan.json via `append_temuan`. Param severity_min: INFO (default, semua) | "
-    "PERINGATAN | KRITIS.",
-    {"penugasan_folder": str, "severity_min": str, "anggota_tim_nama": str, "overwrite": bool, "skill": str},
-)
-async def build_draft_temuan_from_anomalies(args: dict) -> dict:
-    from app.prefill_temuan import write_draft_temuan
-    folder = Path(args["penugasan_folder"])
-    severity_min = args.get("severity_min", "INFO")
-    anggota_tim_nama = args.get("anggota_tim_nama") or None
-    overwrite = bool(args.get("overwrite", False))
-    # Resolve skill dari args, atau fallback dari folder name (auto-detect untuk
-    # skill audit-* supaya kolom Sebab di-isi placeholder eksplisit).
-    skill = args.get("skill") or _detect_skill_from_folder(folder)
-    try:
-        path, data = write_draft_temuan(
-            folder,
-            overwrite=overwrite,
-            severity_min=severity_min,
-            anggota_tim_nama=anggota_tim_nama,
-            skill=skill,
-        )
-    except Exception as e:  # noqa: BLE001 — surface error ke agen
-        return {
-            "content": [{"type": "text", "text": f"FAILED|{e}"}],
-            "is_error": True,
-        }
-    meta = data.get("_meta") or {}
-    n_drafts = len(data.get("temuan") or [])
-    skip_count = len(meta.get("anomali_skip") or [])
-    msg = (
-        f"OK|temuan-draft.json @ {path} — {n_drafts} draft dari "
-        f"{meta.get('anomali_total', 0)} anomali "
-        f"(skip {skip_count}, severity_min={meta.get('severity_min')})"
-    )
-    return {"content": [{"type": "text", "text": msg}]}
-
-
-@tool(
-    "read_draft_temuan",
-    "Baca `_KKP/temuan-draft.json` hasil `build_draft_temuan_from_anomalies`. "
-    "Return JSON {meta, temuan:[...]}. Pakai untuk verifikasi draft sebelum "
-    "append_temuan.",
-    {"penugasan_folder": str},
-)
-async def read_draft_temuan(args: dict) -> dict:
-    folder = Path(args["penugasan_folder"])
-    path = folder / "_KKP" / "temuan-draft.json"
-    if not path.exists():
-        return {
-            "content": [{
-                "type": "text",
-                "text": "FAILED|temuan-draft.json tidak ada — panggil build_draft_temuan_from_anomalies dulu",
-            }],
-            "is_error": True,
-        }
-    data = safe_read_json(path)
-    return {
-        "content": [{
-            "type": "text",
-            "text": json.dumps(data, ensure_ascii=False, indent=2)[:24000],
-        }]
-    }
-
-
-@tool(
     "build_context_md_template",
     "Susun context.md DETERMINISTIK dari field penugasan + digest hasil ingestion. "
     "Mengisi 80% bagian context (Identitas, Periode, Tujuan/Ruang Lingkup per skill, "
@@ -980,7 +908,6 @@ KKP_TOOLS = [
     read_context, list_ingested, read_ingested_digest, get_team_members,
     write_context_md, build_context_md_template,
     append_temuan, reset_temuan, get_kodefikasi_temuan,
-    build_draft_temuan_from_anomalies, read_draft_temuan,
     render_kkp_docx, run_qc_kkp,
     read_temuan_json,
 ]
