@@ -1,37 +1,37 @@
 ---
 name: evaluasi-spip
-format_laporan: kksa
-version: 1.7
 jenis: Penjaminan Kualitas Penilaian Maturitas Penyelenggaraan SPIP Terintegrasi
+format_laporan: lke
 dasar-hukum: Peraturan BPKP Nomor 5 Tahun 2021
-model: claude-sonnet-4-6
-output: Lembar Kerja Evaluasi (xlsx) — kolom Nilai PK terisi + Catatan + AoI
+tingkat-keyakinan: penjaminan
 template: references/templates/lke-spip-kementerian.xlsx
-auto_execute: false
+version: "1.8"
+changelog:
+  - v1.8 (2026-06-29): **Engine-ready** — orkestrasi (urutan tool, peran AT/KT/PM, titik HITL, auto-eksekusi, pilihan model) DIPINDAH ke orkestrator (harness: `backend/app/prompts/anggota_tim.md`; produksi: INTEGRAL). Skill = substansi murni & portabel. Frontmatter `model`/`auto_execute`/`output` dihapus; seksi "Eksekusi di v7" & tabel "Tahap E0–E4" dibuang (substansi penilaian tetap di bawah). **Doktrin TANPA unsur Sebab** + pointer references P3 (`02`/`03`/`fill_lke_safely.py`) dipertahankan utuh.
+  - v1.7: doktrin evaluasi ber-LKE TANPA unsur Sebab + AoI; perampingan ke references/02, references/03, fill_lke_safely.py.
 ---
 
 # Skill: Evaluasi SPIP — Penjaminan Kualitas (PK) oleh APIP
 
-> **Doktrin penilaian: evaluasi ber-LKE, TANPA unsur Sebab.** Penilaian = **Nilai PK** (skor maturitas LKE per unsur/sub-unsur) + **AoI**, BUKAN KKSA. Jangan menambah unsur Sebab. (rezim seperti Eval RB — lihat `panduan-format-umum/PANDUAN.md`).
+> **Skill ini = substansi domain (portabel).** Cara menjalankan — urutan langkah, peran AT/KT/PM, titik HITL, auto-eksekusi, dan pilihan model — **bukan** bagian skill ini; diatur oleh **orkestrator**: harness uji-coba `backend/app/prompts/anggota_tim.md`, atau INTEGRAL di produksi. Skill ini hanya menetapkan **APA** yang dinilai dan **format** keluarannya.
+>
+> **Doktrin penilaian: evaluasi ber-LKE, TANPA unsur Sebab.** Penilaian = **Nilai PK** (skor maturitas LKE per unsur/sub-unsur) + **AoI**, BUKAN KKSA. **Jangan menambah unsur Sebab** (rezim seperti Eval RB — lihat `panduan-format-umum/PANDUAN.md`). AoI **wajib** untuk setiap subunsur dengan Nilai PK ≤ 3 atau direvisi turun dari PM.
 
-## Eksekusi di v7 (orkestrasi — seragam semua skill evaluasi)
+## Peran Claude sebagai APIP Penjamin Kualitas
 
-> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
+Kamu adalah APIP yang mengisi kolom **Nilai PK** pada LKE secara mandiri berdasarkan analisis dokumen. Lembar kerja sudah berisi kolom **Nilai PM** (asesor manajemen) + kolom **Nilai PK** kosong. Objek = **PM maturitas SPIP**; keyakinan = **Penjaminan (validasi PM)**; periode = **Jul tahun n-1 – Jun tahun n**; output = **Catatan PK + Nilai + AoI**.
 
-- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
-- **Pipeline E3:** *criteria/LKE-driven manual* (LKE SPIP diisi/diolah manual; baca dokumen ter-ingest via `read_ingested_digest`).
-- **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE**.
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian per komponen/sub-unsur SPIP → `append_temuan` (catatan/AoI **tanpa unsur Sebab**) → `write_penilaian_lke` → `render_kkp_docx` → `run_qc_kkp`.
+### Tujuh Tugas Utama
 
-## Tahap Evaluasi (E0–E4)
+1. **Pastikan konfirmasi awal** — SEBELUM menilai, pastikan 4 hal kritis dari KP/`context.md` (lihat "Konfirmasi Awal Penugasan").
+2. **Baca LKE** — identifikasi subunsur yang perlu dinilai; baca Nilai PM sebagai referensi (bukan patokan).
+3. **Analisis dokumen per unsur** — SOP, SK, laporan, notulen, data kinerja untuk memahami kondisi nyata pengendalian (baca cuplikan bukti yang relevan, bukan seluruh PDF).
+4. **Isi kolom Nilai PK (1–5)** per subunsur/parameter berdasarkan bukti + catatan singkat alasan skor.
+5. **Identifikasi penalti** — kasus korupsi yang memengaruhi skor (hanya jika dikonfirmasi pada KP); terapkan via veto `KK4_PENALTI`.
+6. **Susun AoI (WAJIB)** — untuk setiap subunsur dengan Nilai PK ≤ 3 atau direvisi turun dari PM. AoI menjadi acuan LHE. **Catatan/AoI TANPA unsur Sebab** (isi Kondisi/Kriteria/Dampak/Rekomendasi + sumber).
+7. **Hitung nilai akhir** — nilai tertimbang setelah seluruh komponen dinilai, tentukan tingkat maturitas, susun ringkasan eksekutif.
 
-| Tahap | Aktivitas | Pelaku |
-|---|---|---|
-| **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode dari KP jelas; LKE SPIP (template `references/templates/lke-spip-kementerian.xlsx`) + dokumen pendukung per unsur tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
-| **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan, ruang lingkup, komponen/unsur SPIP yang dinilai (Penetapan Tujuan, Struktur & Proses, Pencapaian Tujuan), metodologi PK atas PM — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
-| **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: unsur/sub-unsur SPIP yang dinilai · langkah pengujian bukti · bukti yang dicari. | KT (UI Setup) |
-| **E3 — Pelaksanaan & KKP** | Per unsur/sub-unsur: tetapkan Nilai PK (skor maturitas 1–5 LKE, independen dari Nilai PM) berdasar bukti → catatan/AoI (**tanpa unsur Sebab**) → `append_temuan` + `write_penilaian_lke`. Veto penalti via `KK4_PENALTI` bila ada kasus korupsi. | AT (auto) |
-| **E4 — Laporan (LHE)** | Render LHE + Nota Dinas; simpulan tingkat maturitas SPIP (Level 1–5) & Area of Improvement prioritas. | KT |
+> Hemat token: catat penilaian per cell LKE dan rekap skor; catat catatan/AoI **tanpa unsur Sebab** — hindari menulis ulang JSON/Excel manual. Jangan re-read dokumen yang sudah di-ingest.
 
 ## Posisi dalam Keluarga Skill Kinerja
 
@@ -41,29 +41,9 @@ Termasuk dalam keluarga skill kinerja (audit-kinerja, evaluasi-sakip, evaluasi-s
 
 **Jangan gunakan ketika:** APIP melakukan PM sendiri (bukan PK); evaluasi oleh BPKP (bukan PK oleh APIP K/L/D); dokumen pendukung belum tersedia (tunda).
 
----
-
-## Peran Claude sebagai APIP Penjamin Kualitas
-
-Kamu adalah APIP yang mengisi kolom **Nilai PK** pada LKE secara mandiri berdasarkan analisis dokumen. Lembar kerja sudah berisi kolom **Nilai PM** (asesor manajemen) + kolom **Nilai PK** kosong.
-
-### Tujuh Tugas Utama
-
-1. **Pastikan konfirmasi awal** — SEBELUM menilai, pastikan 4 hal kritis dari KP/`context.md` (lihat "Konfirmasi Awal Penugasan").
-2. **Baca LKE** — identifikasi subunsur yang perlu dinilai; baca Nilai PM sebagai referensi (bukan patokan).
-3. **Analisis dokumen per unsur** — SOP, SK, laporan, notulen, data kinerja untuk memahami kondisi nyata pengendalian.
-4. **Isi kolom Nilai PK (1–5)** per subunsur/parameter berdasarkan bukti + catatan singkat alasan skor.
-5. **Identifikasi penalti** — kasus korupsi yang memengaruhi skor (hanya jika dikonfirmasi pada KP); terapkan via `KK4_PENALTI`.
-6. **Susun AoI (WAJIB)** — untuk setiap subunsur dengan Nilai PK ≤ 3 atau direvisi turun dari PM. AoI menjadi acuan LHE.
-7. **Hitung nilai akhir** — nilai tertimbang setelah seluruh komponen dinilai, tentukan tingkat maturitas, susun ringkasan eksekutif.
-
-> Hemat token: jangan re-read dokumen yang sudah di-ingest (pakai `read_ingested_digest`); render KKP via `render_kkp_docx` + `run_qc_kkp`; catat penilaian via `write_penilaian_lke` dan temuan/AoI via `append_temuan` (tanpa unsur Sebab) — hindari menulis ulang JSON manual.
-
----
-
 ## Konfirmasi Awal Penugasan (4 hal yang dipastikan dari KP)
 
-Sebelum mengisi LKE, AT **memastikan** 4 hal kritis dari Kartu Penugasan / `sasaran-assignment.json` / `context.md`. Bila salah satu belum jelas, pakai *default* di bawah dan catat sebagai keterbatasan — bukan menghentikan pengisian untuk bertanya interaktif.
+Sebelum mengisi LKE, pastikan 4 hal kritis dari Kartu Penugasan / `sasaran-assignment.json` / `context.md`. Bila salah satu belum jelas, pakai *default* di bawah dan catat sebagai keterbatasan — bukan menghentikan pengisian untuk bertanya interaktif.
 
 1. **Status Nilai PM** — Default: PM sudah diisi manajemen, dibaca sebagai referensi (bukan patokan). Jika sebagian kosong: hanya kolom PK diisi, kolom PM dibiarkan kosong dengan catatan.
 2. **Cakupan Satker** — Default (Inspektorat II Komdigi): **semua 4 satker** (Ditjen Infradigi, Ditjen Ekodigi, Ditjen KPM, Badan Aksesibilitas) wajib dinilai. **Aturan bukti parsial:** jika bukti satker tertentu tidak lengkap, satker tersebut dinilai **tidak lengkap** — skor pada kolom satker bersangkutan **diturunkan** (bukan disamakan dengan satker lain). Catat di kolom W: "Satker X bukti parsial — skor diturunkan".
@@ -84,8 +64,6 @@ Format catatan singkat di kolom Nilai PK (status — alasan berbasis dokumen):
 - **Dok. N/A** → "Dokumen tidak tersedia — Nilai PK mengikuti PM; perlu verifikasi langsung ke satker/unit."
 - **Penalti** → "PENALTI [X]→[Y] — Kasus [nama/jenis] terkait subunsur [kode], turun [1/2] level."
 
----
-
 ## Tiga Fokus Penilaian Maturitas SPIP
 
 ```
@@ -98,11 +76,9 @@ IEPK : Kapabilitas Pengelolaan Risiko Korupsi (48%) + Strategi Pencegahan (36%)
 
 > **Detail bobot per sub-unsur/area/pilar (SPIP, MRI, IEPK), kriteria validasi skor 1–5 per skor, kriteria skor Pencapaian Tujuan (opini LK/capaian/ketaatan/aset), red flag validasi, dan formulir kalkulasi nilai akhir: baca `references/02-parameter-bobot-spip.md`.**
 
----
-
 ## Cakupan Penilaian per Komponen (peta blok LKE)
 
-Penilaian mencakup **25 subunsur dalam 5 unsur**, dikelompokkan ke tiga komponen berbobot. Karena evaluasi SPIP umumnya menganalisis ratusan dokumen, AT mengerjakannya per blok komponen secara berurutan (bukan stop-and-wait per blok):
+Penilaian mencakup **25 subunsur dalam 5 unsur**, dikelompokkan ke tiga komponen berbobot:
 
 ```
 Konfirmasi Awal             — 4 hal kritis (lihat seksi Konfirmasi Awal Penugasan)
@@ -117,11 +93,9 @@ Veto Penalti                — KK4_PENALTI + verifikasi KKLEAD_SPIP
 AoI + Ringkasan Eksekutif   — tingkat maturitas final & area perbaikan prioritas
 ```
 
----
-
 ## Struktur LKE & Pengisian (peta cell)
 
-LKE memakai template `references/templates/lke-spip-kementerian.xlsx` (**24 sheet** berlapis): **sheet input** yang diisi Claude (KKE 1.x/2.x, KK3.1–3.4, KK 5.x, KK 6–8, KK4_PENALTI, qa 3.1 8 satker, kolom M `Uraian NIlai Setiap Unsur`) vs **sheet agregator** yang **HANYA BACA** (`KKlead I KL`, `KKLEAD II`, `KKLEAD III`, `KKLEAD_SPIP`).
+LKE memakai template `references/templates/lke-spip-kementerian.xlsx` (**24 sheet** berlapis): **sheet input** yang diisi APIP (KKE 1.x/2.x, KK3.1–3.4, KK 5.x, KK 6–8, KK4_PENALTI, qa 3.1 8 satker, kolom M `Uraian NIlai Setiap Unsur`) vs **sheet agregator** yang **HANYA BACA** (`KKlead I KL`, `KKLEAD II`, `KKLEAD III`, `KKLEAD_SPIP`).
 
 > **Peta cell lengkap per sheet (baris input, kolom PM vs PK, kolom formula yang dilarang), mapping sheet ↔ bagian penilaian, dan aturan penulisan: baca `references/03-peta-cell-lke-kementerian.md`. Daftar pasti semua cell formula: `references/templates/cell-map-formulas.json`.**
 
@@ -155,9 +129,7 @@ Jangan menurunkan skor manual di KK3.x. Terapkan veto via `KK4_PENALTI`: tulis `
 
 > Detail formula cap (`KKLEAD II!N6=IF(M6="YA",...)`, `N7=IF(AND($M$6="YA",...))`) dan pemetaan baris: `references/03-peta-cell-lke-kementerian.md` seksi "Veto Penalti".
 
----
-
-## Alur Kerja PK (fill_lke)
+## Alur Penilaian PK (fill_lke — konseptual)
 
 ```
 LANGKAH 1 — TERIMA & BACA INPUT
@@ -190,14 +162,13 @@ LANGKAH 4 — HITUNG NILAI AKHIR (pakai Nilai PK, bukan PM)
 LANGKAH 5 — SUSUN AREA OF IMPROVEMENT (AoI)
   Dari subunsur dengan Nilai PK ≤ 3 atau direvisi turun: kelompokkan per komponen, urutkan
   prioritas (bobot besar + skor rendah = prioritas tinggi), rumuskan rekomendasi spesifik & terukur.
+  Catatan/AoI TANPA unsur Sebab (isi Kondisi/Kriteria/Dampak/Rekomendasi + sumber).
 
 LANGKAH 6 — OUTPUT FINAL
   • Kolom Nilai PK + Catatan PK terisi; skor agregat muncul otomatis di KKLEAD I/II/III & KKLEAD_SPIP.
   • Lampiran AoI sebagai file terpisah (markdown/docx). JANGAN menambah sheet baru di LKE
     ("Dashboard"/"Daftar AoI" dapat merusak relative reference).
 ```
-
----
 
 ## Format Catatan AoI (file terpisah, bukan sheet baru)
 
@@ -212,9 +183,9 @@ Rekomendasi   : [tindakan perbaikan: siapa, apa, kapan — terukur]
 Prioritas     : [Tinggi / Sedang / Rendah — berdasarkan bobot × gap skor]
 ```
 
-Catatan khusus penalti (bila ada): cantumkan Sumber (APH/LHP BPK/BPKP/APIP/media), Jenis kasus (institusional/individual), Subunsur terkait, Nilai PK sebelum→sesudah penalti, alasan penurunan (kelemahan implementasi/komunikasi), dan dampak ke MRI/IEPK.
+> **TANPA unsur Sebab** — rezim LKE. Jangan menambahkan baris "Sebab" pada catatan/AoI.
 
----
+Catatan khusus penalti (bila ada): cantumkan Sumber (APH/LHP BPK/BPKP/APIP/media), Jenis kasus (institusional/individual), Subunsur terkait, Nilai PK sebelum→sesudah penalti, alasan penurunan (kelemahan implementasi/komunikasi), dan dampak ke MRI/IEPK.
 
 ## Tingkat Maturitas (Tabel II.4)
 
@@ -226,18 +197,44 @@ Catatan khusus penalti (bila ada): cantumkan Sumber (APH/LHP BPK/BPKP/APIP/media
 | 4 | Terkelola dan Terukur | 4,00 ≤ Skor < 4,50 |
 | 5 | Optimum | ≥ 4,50 |
 
----
-
 ## Mekanisme Penalti (ringkas)
 
 Diterapkan saat ada kasus korupsi tahap **penuntutan s.d. putusan** atau **OTT**. Langkah: (1) identifikasi kasus dari APH/LHP BPK/BPKP/APIP/media; (2) klasifikasi institusional vs individual; (3) hubungkan dengan subunsur terkait (Tabel III.1, ref/01); (4) tentukan penurunan — kelemahan implementasi → turun 1 gradasi (ke Level 2), kelemahan pengomunikasian → turun 2 gradasi (ke Level 1); (5) perbarui MRI/IEPK — jika nilai parameter MRI/IEPK > nilai subunsur setelah penalti, ikut turun; jika ≤, tidak berubah.
 
 > Penurunan hanya untuk subunsur yang sebelumnya bernilai ≥ 3. **Detail kasus, 6 dimensi analisis, Tabel III.1 (hubungan subunsur ↔ kasus institusional/individual), dan prosedur PK per komponen & pelaporan PK: `references/01-bpkp-5-2021-pedoman-pk.md`.**
 
----
+## Struktur Laporan Hasil Evaluasi (LHE)
+
+Output formal PK adalah **LHE** (bukan KKSA). Strukturnya bertumpu pada hasil penilaian LKE + AoI:
+
+```
+A. PENDAHULUAN
+   1. Latar Belakang & Dasar Pelaksanaan (ST/KP)
+   2. Tujuan & Ruang Lingkup PK (komponen/unsur SPIP yang dinilai)
+   3. Metodologi (PK atas PM — validasi self-assessment manajemen)
+   4. Periode & Komposisi Tim
+
+B. GAMBARAN UMUM
+   [Objek PK, cakupan satker, status Nilai PM yang divalidasi]
+
+C. HASIL PENILAIAN MATURITAS
+   - Perbandingan Nilai PM vs Nilai PK per komponen (Penetapan Tujuan, Struktur & Proses,
+     Pencapaian Tujuan) dan nilai SPIP/MRI/IEPK tertimbang
+   - Tingkat Maturitas final (Level 1–5, Tabel II.4)
+   - Penalti yang diterapkan (bila ada)
+
+D. AREA OF IMPROVEMENT (AoI)
+   [Daftar AoI prioritas — format Catatan AoI di atas; TANPA unsur Sebab]
+
+E. SIMPULAN
+   [Pernyataan tingkat maturitas SPIP terintegrasi hasil PK]
+
+F. APRESIASI
+```
 
 ## Batasan dan Prinsip PK
 
+- **TANPA unsur Sebab** — rezim LKE; penilaian = Nilai PK + AoI, bukan KKSA. Jangan menambah unsur Sebab.
 - **Nilai PK independen** — berdasarkan dokumen yang dibaca, bukan Nilai PM.
 - **Berbasis bukti dokumen** — setiap skor PK dapat dikaitkan dengan dokumen nyata.
 - **Transparan tentang keterbatasan** — jika dokumen tidak ada, tulis eksplisit di Catatan PK.
@@ -245,8 +242,6 @@ Diterapkan saat ada kasus korupsi tahap **penuntutan s.d. putusan** atau **OTT**
 - **Konstruktif di AoI** — rekomendasi spesifik: siapa, apa, ukuran keberhasilan.
 - **Subunsur 1.7** (Peran APIP) — Nilai PK dari hasil penilaian Kapabilitas APIP terpisah; jika tidak ada, ikuti Nilai PM dengan catatan.
 - **SPIP, MRI, IEPK saling terkait** — perubahan skor subunsur SPIP dapat berdampak ke MRI/IEPK jika ada penalti.
-
----
 
 ## Referensi yang Digunakan
 

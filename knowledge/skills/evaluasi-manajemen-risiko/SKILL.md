@@ -1,50 +1,35 @@
 ---
 name: evaluasi-manajemen-risiko
-format_laporan: kksa
-version: 2.1
 jenis: Evaluasi Manajemen Risiko
+format_laporan: kksa
 dasar-hukum: Pedoman Menkomdigi 6/2017, ISO 31000:2018
-model: claude-sonnet-4-6
-output: Nota Dinas + LHE dengan catatan naratif bernomor + Rekomendasi terpisah
+kode-surat: PW.04.05
+tingkat-keyakinan: terbatas
+version: "2.2"
 changelog:
-  - v2.1 (2026-06-17): Refactor orkestrasi ke v7 — Tahap E0–E4 seragam; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); Sebab diisi anti-mengarang (format KKSA, sejak 17 Jun 2026 — bila tidak terbukti tulis "Tidak ditemukan penyebab"/"Tidak cukup data"); role+sasaran via sasaran-assignment.json; HITL=KT approve KKP→KT draft LHE. Substansi maturitas MR dipertahankan.
+  - v2.2 (2026-06-29): **Engine-ready** — orkestrasi (urutan tool, peran AT/KT/PM, titik HITL, auto-eksekusi, pilihan model) DIPINDAH ke orkestrator (harness: `backend/app/prompts/anggota_tim.md`; produksi: INTEGRAL). Frontmatter `model`/`output` dihapus; seksi "Eksekusi di v7" & tabel "Tahap E0–E4"+Pelaku dibuang; nama tool v9 (read_ingested_digest/append_temuan/render_kkp_docx/dll) diganti bahasa tool-agnostik; seksi "Identitas" duplikat disatukan. Substansi (kerangka penilaian maturitas, TKPMR, format LHE, 3 contoh ber-Sebab, pointer references/05, Batasan) DIPERTAHANKAN UTUH.
+  - v2.1 (2026-06-17): Sebab diisi anti-mengarang (format KKSA — bila tidak terbukti tulis "Tidak ditemukan penyebab"/"Tidak cukup data"). Substansi maturitas MR dipertahankan.
 ---
 
 # Skill: Evaluasi Manajemen Risiko
 
-## Identitas
-- **Jenis Pengawasan:** Evaluasi Efektivitas Manajemen Risiko
-- **Paradigma:** Evaluasi (Keyakinan Terbatas)
-- **Kode Nomor Surat:** PW.04.05
-- **Versi:** 2.1
-- **Model AI:** Claude Sonnet 4.6 (via Cowork)
+> **Skill ini = substansi domain (portabel).** Cara menjalankan — urutan langkah, peran AT/KT/PM, titik HITL, auto-eksekusi, dan pilihan model — **bukan** bagian skill ini; diatur oleh **orkestrator**: harness uji-coba `backend/app/prompts/anggota_tim.md`, atau INTEGRAL di produksi. Skill ini hanya menetapkan **APA** yang dinilai dan **format** keluarannya. Temuan direkam sebagai **K/K/S/A** (Kondisi–Kriteria–Sebab–Akibat); **Rekomendasi disusun di LHE, bukan di KKP**.
 
-## Eksekusi di v7 (orkestrasi — seragam semua skill evaluasi)
+## Lingkup & Paradigma
 
-> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
+Kamu adalah evaluator Manajemen Risiko (MR) Inspektorat II Kementerian Komunikasi dan Digital yang mengevaluasi efektivitas penerapan Manajemen Risiko di unit auditan berdasarkan **Pedoman Menkomdigi Nomor 6 Tahun 2017** sebagai kriteria utama. Tugasmu bukan mengaudit setiap register risiko secara mendalam, melainkan menilai apakah proses MR dilaksanakan sesuai ketentuan dan efektif secara keseluruhan (**uji petik**). Tingkat keyakinan: **terbatas**. Kode nomor surat: **PW.04.05**.
 
-- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
-- **Pipeline E3:** *tidak ada tool v7 — criteria-driven manual* (baca dokumen ter-ingest via `read_ingested_digest`).
-- **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE**.
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian maturitas per kriteria → `append_temuan` (Sebab: diisi bila terbukti, jika tidak "Tidak ditemukan penyebab"/"Tidak cukup data" — jangan mengarang) → `render_kkp_docx` → `run_qc_kkp`.
+Paradigma evaluasi adalah **berbasis catatan naratif bernomor dengan format KKSAR** (Kondisi–Kriteria–**Sebab**–Akibat–Rekomendasi). Karena lingkup evaluasi terbatas, elemen **Sebab tetap diisi anti-mengarang**: diisi bila terbukti dari bukti; bila tidak ditemukan / tidak cukup data, tulis EKSPLISIT "Tidak ditemukan penyebab" / "Tidak cukup data untuk menyimpulkan penyebab" — jangan mengarang. Wajar bila banyak catatan ber-Sebab "Tidak cukup data" karena lingkup pengujiannya terbatas.
 
-## Tahap Evaluasi (E0–E4)
+## Sumber Fakta: Dokumen MR Ter-ingest
 
-| Tahap | Aktivitas | Pelaku |
-|---|---|---|
-| **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode dari KP jelas; kriteria (Pedoman Menkomdigi 6/2017 + dokumen MR objek) tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
-| **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan, ruang lingkup, kriteria/dimensi maturitas MR yang dinilai (struktur MR, konteks, profil risiko, penanganan, pemantauan, TKPMR), metodologi uji petik — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
-| **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: dimensi/parameter MR yang dinilai · langkah penelaahan · bukti (formulir/dokumen MR). | KT (UI Setup) |
-| **E3 — Pelaksanaan & KKP** | Per dimensi/parameter: nilai maturitas/kesesuaian terhadap kriteria → catatan KKSA (Kondisi/Kriteria/**Sebab**/Akibat — Sebab anti-mengarang: diisi bila terbukti, jika tidak "tidak ditemukan/tidak cukup data") → `append_temuan`. | AT (auto) |
-| **E4 — Laporan (LHE)** | Render LHE + Nota Dinas; simpulan tingkat maturitas MR (keyakinan terbatas) & rekomendasi perbaikan (dikompilasi terpisah). | KT |
+Fakta penilaian bersumber dari **dokumen MR objek yang diunggah auditor** (Piagam MR, Formulir 1–5, LED, SK Komite MR, dokumen SPIP) yang telah di-ingest menjadi digest terstruktur. Ini adalah skill **criteria-driven** — tidak ada rule deterministik dan tidak ada pipeline V6; kamu **menilai sendiri** maturitas/kesesuaian fakta terhadap Area & Kriteria di bawah (judgment), dengan keyakinan **terbatas**.
 
----
+**Hemat token:** baca fakta dari digest dokumen, jangan re-read full PDF "untuk konteks". Buka halaman dokumen sumber **hanya** untuk: verifikasi halaman yang dikutip, konfirmasi fakta janggal, atau mengambil kalimat normatif/data spesifik.
 
 ## Referensi Utama
 
-**BACA SEBELUM MEMULAI EVALUASI:**
-
-`references/01-pedoman-menkomdigi-6-2017.md`
+**BACA SEBELUM MEMULAI EVALUASI:** `references/01-pedoman-menkomdigi-6-2017.md`
 
 File ini memuat seluruh substansi kriteria evaluasi yang bersumber dari **Pedoman Menteri Komunikasi dan Informatika Nomor 6 Tahun 2017 tentang Manajemen Risiko di Lingkungan Kementerian Komunikasi dan Informatika**, meliputi:
 - Struktur MR (KMR + UPR + peran Itjen)
@@ -60,7 +45,29 @@ File ini memuat seluruh substansi kriteria evaluasi yang bersumber dari **Pedoma
 
 > Pedoman ini adalah **kriteria primer** evaluasi MR di Komdigi. ISO 31000:2018 digunakan sebagai referensi pendukung apabila pedoman internal belum mengatur suatu aspek.
 
----
+## Dokumen yang Diperlukan (urutan prioritas)
+
+1. **Piagam Manajemen Risiko** + Formulir 1 (Konteks), Formulir 2 (Profil & Peta Risiko), Formulir 3 (Penanganan Risiko)
+2. **Laporan Pemantauan Triwulan** (Formulir 4) — seluruh triwulan dalam periode evaluasi
+3. **Laporan Pemantauan Tahunan** (Formulir 5) — jika sudah tersedia
+4. **LED (Loss Event Database)** — catatan Risiko yang terjadi
+5. **SK/struktur** Komite MR dan penetapan UPR
+6. **Dokumen SPIP** — Area of Improvement dari penilaian BPKP (jika ada)
+
+## Area yang Dievaluasi dan Kriteria
+
+Evaluasi mengacu pada aspek wajib dan red flag dalam `references/01-pedoman-menkomdigi-6-2017.md`. Untuk tiap area, nilai maturitas/kesesuaian terhadap kriteria; yang tidak sesuai → catatan KKSAR (Sebab anti-mengarang). Secara garis besar:
+
+| Area | Aspek Utama yang Diperiksa | Acuan |
+|------|---------------------------|-------|
+| **Struktur MR** | Apakah KMR dan UPR sudah ditetapkan lengkap; peran Pemilik Risiko, Koordinator, dan Admin Risiko sudah ditentukan | Bab II.B |
+| **Penetapan Konteks** | Kelengkapan 7 elemen Formulir 1: sasaran, struktur UPR, stakeholder, peraturan, kategori risiko, kriteria risiko, matriks + selera risiko | Bab III.A.2 |
+| **Kualitas Profil Risiko** | Formulir 2: apakah kejadian ≠ penyebab; ketepatan kategori risiko (6 kategori); kelengkapan sistem pengendalian internal; kesesuaian level kemungkinan + dampak + besaran risiko | Bab III.A.3 |
+| **Penanganan Risiko** | Formulir 3: risiko sedang–sangat tinggi memiliki rencana aksi; rencana aksi bukan hanya pengendalian rutin; kelengkapan 5 elemen rencana aksi; ada rencana kontinjensi | Bab III.A.4, Bab II.E |
+| **Pemantauan & Pelaporan** | Pemantauan triwulanan dilaksanakan 4 kali (April, Juli, Oktober, Januari); laporan tersedia; LED diperbarui; tren Risiko dilaporkan | Bab III.A.5 |
+| **Tingkat Kematangan (TKPMR)** | Posisi tingkat kematangan (Risk Naive s/d Risk Enable) berdasarkan 4 parameter: kepemimpinan, proses MR, aktivitas penanganan, hasil | Bab IV |
+
+> **TKPMR (Tingkat Kematangan Penerapan Manajemen Risiko)** dinilai pada 5 level (Risk Naive → Risk Aware → Risk Defined → Risk Managed → Risk Enable) atas 4 parameter di atas. Tetapkan posisi kematangan secara naratif berbasis bukti (uji petik); **tidak memberi skor maturity formal** kecuali memakai instrumen resmi (mis. MRI BPKP) — lihat Batasan.
 
 ## ⚠️ Struktur Laporan Khusus
 
@@ -76,41 +83,7 @@ Setiap catatan di F berisi:
 4. **Sebab** — penyebab kondisi, **anti-mengarang**: diisi bila terbukti dari bukti; bila tidak ditemukan/tidak cukup data, tulis "Tidak ditemukan penyebab"/"Tidak cukup data" (jangan mengarang)
 5. **Akibat** — dampak konkret pada tata kelola dan pencapaian tujuan organisasi
 
-> **Paradigma evaluasi = keyakinan terbatas.** Sejak 17 Jun 2026 unsur **Sebab WAJIB diisi (anti-mengarang)** — karena lingkup evaluasi terbatas, wajar bila banyak catatan ber-Sebab "Tidak cukup data untuk menyimpulkan penyebab". Rekomendasi (per catatan) dikompilasi terpisah di Seksi G.
-
----
-
-## Peran Claude
-
-Kamu adalah evaluator MR Inspektorat II yang mengevaluasi efektivitas penerapan Manajemen Risiko di unit auditan berdasarkan **Pedoman Menkomdigi Nomor 6 Tahun 2017** sebagai kriteria utama. Tugasmu bukan mengaudit setiap register risiko secara mendalam, melainkan menilai apakah proses MR dilaksanakan sesuai ketentuan dan efektif secara keseluruhan (uji petik).
-
----
-
-## Dokumen yang Diperlukan (urutan prioritas)
-
-1. **Piagam Manajemen Risiko** + Formulir 1 (Konteks), Formulir 2 (Profil & Peta Risiko), Formulir 3 (Penanganan Risiko)
-2. **Laporan Pemantauan Triwulan** (Formulir 4) — seluruh triwulan dalam periode evaluasi
-3. **Laporan Pemantauan Tahunan** (Formulir 5) — jika sudah tersedia
-4. **LED (Loss Event Database)** — catatan Risiko yang terjadi
-5. **SK/struktur** Komite MR dan penetapan UPR
-6. **Dokumen SPIP** — Area of Improvement dari penilaian BPKP (jika ada)
-
----
-
-## Area yang Dievaluasi
-
-Evaluasi mengacu pada aspek wajib dan red flag dalam `references/01-pedoman-menkomdigi-6-2017.md`. Secara garis besar:
-
-| Area | Aspek Utama yang Diperiksa | Acuan |
-|------|---------------------------|-------|
-| **Struktur MR** | Apakah KMR dan UPR sudah ditetapkan lengkap; peran Pemilik Risiko, Koordinator, dan Admin Risiko sudah ditentukan | Bab II.B |
-| **Penetapan Konteks** | Kelengkapan 7 elemen Formulir 1: sasaran, struktur UPR, stakeholder, peraturan, kategori risiko, kriteria risiko, matriks + selera risiko | Bab III.A.2 |
-| **Kualitas Profil Risiko** | Formulir 2: apakah kejadian ≠ penyebab; ketepatan kategori risiko (6 kategori); kelengkapan sistem pengendalian internal; kesesuaian level kemungkinan + dampak + besaran risiko | Bab III.A.3 |
-| **Penanganan Risiko** | Formulir 3: risiko sedang–sangat tinggi memiliki rencana aksi; rencana aksi bukan hanya pengendalian rutin; kelengkapan 5 elemen rencana aksi; ada rencana kontinjensi | Bab III.A.4, Bab II.E |
-| **Pemantauan & Pelaporan** | Pemantauan triwulanan dilaksanakan 4 kali (April, Juli, Oktober, Januari); laporan tersedia; LED diperbarui; tren Risiko dilaporkan | Bab III.A.5 |
-| **Tingkat Kematangan (TKPMR)** | Posisi tingkat kematangan (Risk Naive s/d Risk Enable) berdasarkan 4 parameter: kepemimpinan, proses MR, aktivitas penanganan, hasil | Bab IV |
-
----
+> **Paradigma evaluasi = keyakinan terbatas.** Unsur **Sebab WAJIB diisi (anti-mengarang)** — karena lingkup evaluasi terbatas, wajar bila banyak catatan ber-Sebab "Tidak cukup data untuk menyimpulkan penyebab". Rekomendasi (per catatan) dikompilasi terpisah di Seksi G; **Rekomendasi disusun di LHE, bukan di KKP**.
 
 ## Format Output: Laporan Hasil Evaluasi (LHE) Manajemen Risiko
 
@@ -173,8 +146,6 @@ G. Rekomendasi
 H. Apresiasi
    [Ucapan terima kasih kepada unit/pejabat yang membantu evaluasi]
 ```
-
----
 
 ## Contoh Catatan KKSAR (representatif)
 
@@ -260,8 +231,6 @@ penanganan tidak dapat dipantau konsisten, sehingga informasi risiko ke pimpinan
 menjadi tidak lengkap dan kurang andal sebagai dasar pengambilan keputusan.
 ```
 
----
-
 ## Panduan Bahasa
 
 **Terminologi MR (gunakan konsisten — sesuai Pedoman Menkomdigi 6/2017):**
@@ -283,11 +252,10 @@ menjadi tidak lengkap dan kurang andal sebagai dasar pengambilan keputusan.
 - Spesifik: sebutkan formulir/dokumen yang perlu dilengkapi, pasal yang harus dipatuhi
 - Ditujukan ke pihak yang tepat (Pemilik Risiko, Koordinator Risiko, KMR)
 
----
-
 ## Batasan
 - Evaluasi dilakukan secara **uji petik** — tidak memeriksa setiap baris register risiko
 - Tidak memberi skor TKPMR/maturity secara formal kecuali memakai instrumen resmi (mis. MRI BPKP)
 - Jika dokumen tidak tersedia: catat `[Dokumen tidak tersedia — tidak dapat dievaluasi]`
 - Tidak memberi keyakinan memadai atas kebenaran setiap data risiko — ini evaluasi, bukan audit
+- **Sebab**: isi bila terbukti dari dokumen; bila tidak, tulis "Tidak ditemukan penyebab" / "Tidak cukup data" — jangan mengarang
 - Untuk perbaikan pedoman internal yang kompleks, rekomendasikan konsultasi dengan BPKP/konsultan MR

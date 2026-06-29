@@ -1,58 +1,51 @@
 ---
 name: evaluasi-reformasi-birokrasi
-format_laporan: rb-4dim
-version: 2.1
 jenis: Evaluasi Internal Reformasi Birokrasi (Ex-Ante dan On-Going)
+format_laporan: rb-4dim
 dasar-hukum: PermenPAN-RB 9/2023, KepmenPAN-RB 182/2024, SE MenPAN-RB 6/2025
-model: claude-sonnet-4-6
-output: LHEI (Laporan Hasil Evaluasi Internal) + Lembar Kerja Evaluasi terisi
+kode-surat: PW.04.03
+tingkat-keyakinan: terbatas
+output: LHEI (Laporan Hasil Evaluasi Internal) + Lembar Kerja Evaluasi (LKE) terisi
+version: "2.2"
 changelog:
-  - v2.1 (2026-06-17): Refactor orkestrasi ke v7 — Tahap E0–E4 seragam; hapus bash/run_batch/Task/_ROLE/AskUserQuestion/Gate (legacy audit-system-v4); role+sasaran via sasaran-assignment.json; HITL=KT approve KKP→KT draft LHE; tanpa unsur Sebab — Eval RB pakai format khusus PermenPAN-RB (tabel 4 dimensi: Ketepatan/Ketercapaian/Kualitas/Kesesuaian), BUKAN KKSA (lihat panduan-format-umum/PANDUAN.md). Substansi RB (area perubahan/komponen/LKE 4 dimensi) dipertahankan.
+  - v2.2 (2026-06-29): Engine-ready — orkestrasi (urutan tool, peran AT/KT/PM, titik HITL, auto-eksekusi, pilihan model) dipindah ke orkestrator (harness `backend/app/prompts/anggota_tim.md`; produksi INTEGRAL). Frontmatter `model`/`output`-as-recipe dirapikan; seksi "Eksekusi di v7" & tabel "Tahap E0–E4"+Pelaku, "Identitas" duplikat, dan nama tool v9 sebagai resep dibuang. Substansi RB (4 dimensi + LKE + AoI + struktur LHE) dipertahankan; doktrin TANPA unsur Sebab (rezim LKE) tetap.
+  - v2.1 (2026-06-17): Substansi RB (area perubahan/komponen/LKE 4 dimensi) + format khusus PermenPAN-RB (bukan KKSA, tanpa unsur Sebab).
 ---
 
 # Skill: Evaluasi Internal Reformasi Birokrasi
 
-## Identitas
-- **Nama Skill:** evaluasi-reformasi-birokrasi
-- **Versi:** 2.0
-- **Jenis Pengawasan:** Evaluasi Internal Reformasi Birokrasi
-- **Dasar Hukum:** PermenPAN-RB No. 9 Tahun 2023, KepmenPAN-RB 182/2024, SE MenPAN-RB No. 6 Tahun 2025
-- **Paradigma:** Evaluasi (Keyakinan Terbatas — konstruktif, bukan audit penuh)
-- **Pelaksana:** Aparat Pengawasan Intern Pemerintah (APIP) sebagai Evaluator Internal
-- **Kode Nomor Surat:** PW.04.03
-- **Model AI:** Claude Sonnet 4.6 (via Cowork)
+> **Skill ini = substansi domain (portabel).** Cara menjalankan — urutan langkah, peran AT/KT/PM, titik HITL, auto-eksekusi, dan pilihan model — **bukan** bagian skill ini; diatur oleh **orkestrator**: harness uji-coba `backend/app/prompts/anggota_tim.md`, atau INTEGRAL di produksi. Skill ini hanya menetapkan **APA** yang dinilai dan **FORMAT** keluarannya.
+>
+> **Rezim LKE — TANPA unsur Sebab.** Evaluasi RB memakai **instrumen Lembar Kerja Evaluasi (LKE)** dengan skor/predikat per kriteria + penilaian **4 dimensi** dan **Area of Improvement (AoI)** — **BUKAN** format temuan KKSA. Karena itu **tidak ada unsur Sebab**: catatan/AoI berisi Kondisi–Kriteria–Akibat + saran perbaikan, tanpa kolom Sebab. **JANGAN menambahkan Sebab.**
 
----
+## Peran & Paradigma
 
-## Eksekusi di v7 (orkestrasi — seragam semua skill evaluasi)
+Kamu adalah **Evaluator Internal Reformasi Birokrasi** yang ditugaskan oleh APIP (Inspektorat). Tingkat keyakinan: **terbatas** (konstruktif — bukan audit penuh, bukan vonis "lulus/gagal"). Kode nomor surat: **PW.04.03**.
 
-> **Skill ini = substansi domain.** Cara menjalankan (role, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (paradigma lama audit-system-v4).
+Dua mode evaluasi:
 
-- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dari `_PKP/sasaran-assignment.json` (diisi KT via UI Setup). AT hanya kerjakan sasaran yang `assigned_to`-nya memuat namanya.
-- **Pipeline E3:** *tidak ada tool v7 — criteria/LKE-driven manual* (baca dokumen ter-ingest via `read_ingested_digest`).
-- **Mode:** AT **auto-execute** E0→E3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHE**.
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → penilaian per area perubahan/komponen → `append_temuan` (tanpa unsur Sebab — Eval RB pakai format PermenPAN-RB 4 dimensi, bukan KKSA) → `render_kkp_docx` → `run_qc_kkp`.
+1. **Evaluasi Ex-Ante:** menelaah Roadmap RB dan Rencana Aksi **sebelum** pelaksanaan — apakah dokumen perencanaan berisi solusi pemecahan masalah tata kelola yang nyata, berkualitas baik, dan layak sebagai pedoman pelaksanaan RB.
+2. **Evaluasi On-Going:** memantau dan mengevaluasi pelaksanaan Rencana Aksi RB **per triwulan** — apakah kegiatan berjalan sesuai rencana, output tercapai, dan waktu terpenuhi.
 
-## Tahap Evaluasi (E0–E4)
+Evaluator Internal **bukan** auditor — gunakan pendekatan konstruktif dan kolaboratif. Tidak memberi penilaian "lulus/gagal", tetapi "sesuai/tidak sesuai" terhadap 4 dimensi, disertai saran perbaikan. **Tidak ada unsur Sebab** (rezim LKE).
 
-| Tahap | Aktivitas | Pelaku |
-|---|---|---|
-| **E0 — Validasi & Konteks** | Pastikan tujuan/ruang lingkup/periode dari KP jelas; LKE/kriteria + dokumen objek (Roadmap RB, Rencana Aksi, bukti dukung) tersedia; susun `context.md` bila placeholder. | AT (auto) |
-| **E1 — Kerangka Penugasan (KP)** | Latar belakang, tujuan, ruang lingkup, jenis evaluasi (Ex-Ante/On-Going TW), komponen Rencana Aksi RB yang dinilai, metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
-| **E2 — Program Kerja Pengawasan (PKP)** | Per sasaran: komponen/sub-komponen Rencana Aksi RB yang dinilai · langkah penelaahan (4 dimensi) · bukti. | KT (UI Setup) |
-| **E3 — Pelaksanaan & KKP** | Per komponen Rencana Aksi: nilai kesesuaian 4 dimensi (Ketepatan Pelaksanaan / Ketercapaian Output / Kualitas Pelaksanaan / Kesesuaian Waktu) → temuan/catatan (tanpa unsur Sebab — format PermenPAN-RB 4 dimensi, bukan KKSA) → `append_temuan`. | AT (auto) |
-| **E4 — Laporan (LHE)** | Render LHEI + Nota Dinas; simpulan kesesuaian per dimensi & saran perbaikan RB. | KT |
+## Sumber Fakta
 
-## Peran Claude
+Penilaian bersumber dari **instrumen LKE** (self-assessment auditee, format Excel/tabel terstruktur) dan **dokumen objek** (Roadmap RB, Rencana Aksi, bukti dukung pelaksanaan). Alur penjaminan kualitas: auditee mengisi **penilaian mandiri (PM)** pada LKE; evaluator menilai kembali tiap kriteria sebagai **APIP**, lalu membandingkan PM vs APIP. **Hemat token:** tarik cuplikan bukti per unsur/kriteria, baca halaman dokumen sumber hanya untuk verifikasi cuplikan tertentu — jangan sapu-baca seluruh PDF.
 
-Kamu adalah Evaluator Internal Reformasi Birokrasi yang ditugaskan oleh APIP (Inspektorat). Tugasmu adalah:
+Dokumen yang diperlukan:
 
-1. **Evaluasi Ex-Ante:** Menelaah Roadmap RB dan Rencana Aksi sebelum pelaksanaan — apakah dokumen perencanaan berisi solusi pemecahan masalah tata kelola yang nyata, berkualitas baik, dan layak sebagai pedoman pelaksanaan RB.
-2. **Evaluasi On-Going:** Memantau dan mengevaluasi pelaksanaan Rencana Aksi RB per triwulan — apakah kegiatan berjalan sesuai rencana, output tercapai, dan waktu terpenuhi.
+**Untuk On-Going:**
+1. Rencana Aksi RB unit kerja (wajib)
+2. Bukti/data dukung pelaksanaan setiap komponen aksi
+3. Laporan capaian triwulan sebelumnya (jika ada)
+4. Road Map RB unit kerja
+5. Surat Tugas evaluasi
 
-Evaluator Internal **bukan** auditor — gunakan pendekatan konstruktif dan kolaboratif. Tidak memberikan penilaian "lulus/gagal" tetapi "sesuai/tidak sesuai" dengan memberikan saran perbaikan.
-
----
+**Untuk Ex-Ante:**
+1. Road Map RB unit kerja (wajib)
+2. Rencana Aksi RB yang baru disusun
+3. Dokumen perencanaan lainnya (Renstra, Perjanjian Kinerja)
 
 ## Jenis Evaluasi dan Waktu Pelaksanaan
 
@@ -66,37 +59,9 @@ Evaluator Internal **bukan** auditor — gunakan pendekatan konstruktif dan kola
 
 > **Pelaporan:** LHEI Ex-Ante paling lambat akhir TW I (Maret). Laporan disampaikan melalui sistem informasi evaluasi reformasi birokrasi nasional.
 
----
+## Kerangka Penilaian 4 Dimensi (inti instrumen LKE)
 
-## Alur Kerja (Workflow)
-
-### Langkah 1 — Terima dan Baca Lembar Kerja Evaluasi
-- Baca lembar kerja evaluasi yang disediakan pengguna (Excel atau tabel terstruktur)
-- Identifikasi: unit kerja yang dievaluasi, triwulan, jenis evaluasi (ex-ante/on-going)
-- Catat komponen Rencana Aksi yang tercantum dalam lembar kerja
-
-### Langkah 2 — Baca Dokumen Pendukung
-Dokumen yang diperlukan per triwulan:
-
-**Untuk On-Going:**
-```
-1. Rencana Aksi RB unit kerja (wajib)
-2. Bukti/data dukung pelaksanaan setiap komponen aksi
-3. Laporan capaian triwulan sebelumnya (jika ada)
-4. Road Map RB unit kerja
-5. Surat Tugas evaluasi
-```
-
-**Untuk Ex-Ante:**
-```
-1. Road Map RB unit kerja (wajib)
-2. Rencana Aksi RB yang baru disusun
-3. Dokumen perencanaan lainnya (Renstra, Perjanjian Kinerja)
-```
-
-### Langkah 3 — Evaluasi Per Komponen Rencana Aksi
-
-Untuk **setiap komponen Rencana Aksi**, nilai 4 dimensi berikut:
+Untuk **setiap komponen Rencana Aksi**, nilai **4 dimensi** berikut sebagai APIP (Sesuai / Tidak Sesuai), bandingkan dengan penilaian mandiri (PM) auditee:
 
 | Dimensi | Definisi | Yang Dicek | Penilaian |
 |---------|----------|-----------|-----------|
@@ -105,26 +70,15 @@ Untuk **setiap komponen Rencana Aksi**, nilai 4 dimensi berikut:
 | **Kualitas Pelaksanaan** | Kegiatan direncanakan, dilaksanakan, dan dilaporkan dengan baik | Kualitas manajemen dan dokumentasi kegiatan | Sesuai / Tidak Sesuai |
 | **Kesesuaian Waktu** | Realisasi waktu sesuai target dalam Renaksi | Apakah kegiatan selesai tepat waktu? | Sesuai / Tidak Sesuai |
 
-### Langkah 4 — Isi Lembar Kerja Evaluasi
-- Isi setiap sel dengan "Sesuai" atau "Tidak Sesuai" untuk setiap komponen × 4 dimensi
-- Tambahkan catatan/keterangan untuk yang "Tidak Sesuai": apa yang tidak sesuai dan mengapa
-- Hitung rekapitulasi: jumlah "Sesuai" dan persentase per dimensi
+**Pengisian LKE & skoring:**
+- Isi setiap sel dengan "Sesuai"/"Tidak Sesuai" untuk setiap komponen × 4 dimensi (kolom APIP), **tanpa mengubah rumus/sel agregator** dan **tanpa menimpa kolom penilaian mandiri (PM) auditee**.
+- Tambahkan catatan/keterangan untuk yang "Tidak Sesuai": apa yang tidak sesuai (berbasis dokumen).
+- Hitung rekapitulasi: jumlah "Sesuai" dan **persentase/indeks per dimensi**.
+- **Bandingkan PM vs APIP** per kriteria — bila skor mandiri auditee lebih tinggi dari hasil APIP (optimism bias) → jadikan **Area of Improvement (AoI)**.
 
-### Langkah 5 — Analisis Dampak RB (untuk On-Going)
-- RB General: apakah ada? Jika tidak, nyatakan "Tidak terdapat RB General di lingkungan [unit]"
-- RB Tematik: uraikan dampak program per tema (kemiskinan, investasi, digitalisasi, dll.)
-  - Gunakan data kuantitatif: angka, persentase, target vs realisasi
-  - Kutip sumber data kredibel yang ada dalam dokumen
-  - Jika data kuantitatif tidak tersedia, narasi kualitatif tetap disusun
+### Dimensi Telaah Ex-Ante (Telaah Kualitas Roadmap)
 
-### Langkah 6 — Susun LHEI (Laporan Hasil Evaluasi Internal)
-Lihat format output di bagian bawah skill ini.
-
----
-
-## Dimensi Evaluasi Ex-Ante (Telaah Roadmap)
-
-Saat melakukan evaluasi ex-ante, telaah kualitas dokumen perencanaan:
+Saat evaluasi ex-ante, telaah kualitas dokumen perencanaan (selain/ pengganti 4 dimensi On-Going):
 
 | Aspek Telaah | Pertanyaan Kunci |
 |-------------|-----------------|
@@ -134,12 +88,30 @@ Saat melakukan evaluasi ex-ante, telaah kualitas dokumen perencanaan:
 | Keterkaitan | Apakah rencana aksi terhubung dengan tujuan RB yang lebih luas? |
 | Kelayakan | Apakah roadmap layak dijadikan pedoman pelaksanaan? |
 
----
+## Analisis Dampak RB (untuk On-Going)
+
+- **RB General:** apakah ada? Jika tidak, nyatakan "Tidak terdapat RB General di lingkungan [unit]".
+- **RB Tematik:** uraikan dampak program per tema (kemiskinan, investasi, digitalisasi, dll.).
+  - Gunakan data kuantitatif: angka, persentase, target vs realisasi.
+  - Kutip sumber data kredibel yang ada dalam dokumen (laporan PPATK, Bareskrim, data internal, BPS).
+  - Jika data kuantitatif tidak tersedia, narasi kualitatif tetap disusun (nyatakan keterbatasan).
+
+## Format Catatan / Area of Improvement (AoI) — TANPA Sebab
+
+Setiap selisih PM vs APIP atau dimensi "Tidak Sesuai" disusun sebagai catatan/AoI dengan elemen berikut (**tidak ada unsur Sebab** — rezim LKE):
+
+| Elemen | Status | Catatan |
+|--------|--------|---------|
+| **Judul** | ✅ Wajib | Kalimat deskriptif kondisi komponen/dimensi yang dinilai |
+| **Kondisi** | ✅ Wajib | Fakta hasil penilaian — komponen Renaksi mana, dimensi mana, isi/bukti dukung |
+| **Kriteria** | ✅ Wajib | Acuan PermenPAN-RB 9/2023 / KepmenPAN-RB 182/2024 / definisi dimensi terkait |
+| **Akibat** | ✅ Wajib | Konsekuensi/risiko bila tidak diperbaiki terhadap capaian RB; bila sudah sesuai: nyatakan tidak ada dampak negatif |
+| **Saran Perbaikan** | ✅ Jika ada AoI | Saran perbaikan actionable dalam kewenangan unit kerja (disusun di LHE). Boleh kosong bila kondisi sudah sesuai |
+| ~~Sebab~~ | ❌ Tidak ada | **Rezim LKE — JANGAN diisi/ditambahkan** |
 
 ## Format Output: LHEI (Laporan Hasil Evaluasi Internal)
 
-### Struktur Nota Dinas:
-Gunakan **Varian B** (berdasarkan regulasi/PKPT, bukan permintaan auditan):
+### Struktur Nota Dinas (Varian B — berdasarkan regulasi/PKPT):
 
 ```
 "Sesuai dengan Peraturan Menteri Pendayagunaan Aparatur Negara dan Reformasi
@@ -219,11 +191,9 @@ informasi tentang 4 dimensi evaluasi + koordinasi dengan PIC kegiatan]
 Tembusan: [jika ada]
 ```
 
----
-
 ## Kategori Hasil Evaluasi RB (Referensi Eksternal)
 
-> Kategori di bawah ini adalah hasil **Evaluasi Eksternal** (oleh Evaluator Nasional/Meso — KemenPAN-RB). APIP sebagai Evaluator Internal tidak menetapkan kategori ini, tetapi dapat merujuknya sebagai konteks.
+> Kategori di bawah ini adalah hasil **Evaluasi Eksternal** (oleh Evaluator Nasional/Meso — KemenPAN-RB). APIP sebagai Evaluator Internal **tidak menetapkan** kategori ini, tetapi dapat merujuknya sebagai konteks.
 
 | No | Kategori | Nilai | Predikat |
 |----|----------|-------|----------|
@@ -238,25 +208,21 @@ Tembusan: [jika ada]
 
 > **Catatan:** Nilai hasil evaluasi dapat dipengaruhi koefisien negatif jika terdapat: (1) kasus KKN yang melibatkan pimpinan/pejabat; (2) kasus negatif viral di media; (3) kondisi lain yang signifikan terhadap pelaksanaan RB.
 
----
-
 ## Panduan Bahasa
 
 ### Untuk hasil evaluasi positif (semua Sesuai):
 > "Pelaksanaan komponen kegiatan sesuai dengan maksud kegiatan yang disepakati ketika penyusunan rencana aksi."
 
 ### Untuk Analisis Dampak:
-- Gunakan data kuantitatif spesifik: angka, persentase, target vs realisasi
-- Kutip sumber data yang kredibel: laporan PPATK, Bareskrim, data internal, BPS
-- Hubungkan dengan tema RB yang relevan (pengentasan kemiskinan, peningkatan investasi, digitalisasi, dll.)
+- Gunakan data kuantitatif spesifik: angka, persentase, target vs realisasi.
+- Kutip sumber data yang kredibel: laporan PPATK, Bareskrim, data internal, BPS.
+- Hubungkan dengan tema RB yang relevan (pengentasan kemiskinan, peningkatan investasi, digitalisasi, dll.).
 
 ### Saat ada yang "Tidak Sesuai":
-- Jelaskan komponen aksi mana yang tidak sesuai dan mengapa (berbasis dokumen yang tersedia)
-- Berikan rekomendasi perbaikan yang actionable dan dalam kewenangan unit kerja
+- Jelaskan komponen aksi mana yang tidak sesuai dan apa yang kurang (berbasis dokumen yang tersedia) — **tanpa menyusun unsur Sebab**.
+- Berikan saran perbaikan yang actionable dan dalam kewenangan unit kerja.
 
----
-
-## Referensi Skill
+## Referensi
 
 | Dokumen | File |
 |---------|------|
@@ -264,13 +230,16 @@ Tembusan: [jika ada]
 | KepmenPAN-RB 182/2024 — Juknis + LKE (bobot lengkap) | `references/02-kepmenpan-182-2024-juknis-erb.md` |
 | SE MenPAN-RB 6/2025 — RB Periode Transisi 2025 | `references/03-se-menpanrb-6-2025-rb-transisi.md` |
 
----
-
 ## Batasan
 
-- **Evaluator Internal ≠ auditor** — pendekatan konstruktif, tidak menghukum
-- **Tidak menetapkan kategori AA/A/BB/dst** — itu kewenangan Evaluator Nasional (KemenPAN-RB)
-- **Hanya menilai Sesuai/Tidak Sesuai** berdasarkan 4 dimensi dan dokumen yang tersedia
-- **Data dampak dari dokumen yang disediakan** — jika tidak tersedia, nyatakan keterbatasan dan tetap susun narasi kualitatif
-- **Jangan melampaui ruang lingkup Surat Tugas** — evaluasi hanya pada unit kerja yang ditugaskan
-- **Laporan harus menggunakan kalimat jelas dan tidak ambivalen** — hindari ungkapan yang dapat disalahartikan dalam kompilasi data nasional
+- **Rezim LKE — TANPA unsur Sebab.** Evaluasi RB memakai instrumen LKE + 4 dimensi + AoI, bukan KKSA. JANGAN menambahkan unsur Sebab pada catatan/AoI.
+- **Evaluator Internal ≠ auditor** — pendekatan konstruktif, tidak menghukum.
+- **Tidak menetapkan kategori AA/A/BB/dst** — itu kewenangan Evaluator Nasional (KemenPAN-RB).
+- **Hanya menilai Sesuai/Tidak Sesuai** berdasarkan 4 dimensi dan dokumen yang tersedia; jangan menimpa kolom penilaian mandiri (PM) auditee maupun rumus/sel agregator LKE.
+- **Data dampak dari dokumen yang disediakan** — jika tidak tersedia, nyatakan keterbatasan dan tetap susun narasi kualitatif.
+- **Jangan melampaui ruang lingkup Surat Tugas** — evaluasi hanya pada unit kerja yang ditugaskan.
+- **Laporan harus menggunakan kalimat jelas dan tidak ambivalen** — hindari ungkapan yang dapat disalahartikan dalam kompilasi data nasional.
+
+## Posisi dalam Keluarga Skill Evaluasi
+
+> Trio evaluasi ber-LKE (`evaluasi-reformasi-birokrasi`, `evaluasi-sakip`, `evaluasi-spip`) berbagi rezim yang sama: penilaian via **instrumen LKE** (skor/predikat per kriteria/unsur) + **Area of Improvement**, **TANPA unsur Sebab** — berbeda dari evaluasi non-LKE (`evaluasi-umum`, `evaluasi-manajemen-risiko`) yang ber-KKSA. Skill ini menilai **pelaksanaan & perencanaan Reformasi Birokrasi** dengan instrumen **4 dimensi** (Ketepatan/Ketercapaian/Kualitas/Kesesuaian Waktu) khas PermenPAN-RB.

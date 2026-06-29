@@ -1,29 +1,35 @@
 ---
 name: reviu-umum
+jenis: Reviu (umum — kriteria fleksibel, criteria-driven)
 format_laporan: kksa
-version: 1.2
-jenis: Reviu (umum — kriteria fleksibel)
-fungsi: Assurance — Keyakinan Terbatas
-output: KKR (.xlsx) + LHR (.docx) + JSON KKP
-model: claude-sonnet-4-6
+dasar-hukum: Standar Reviu APIP; kriteria spesifik diunggah auditor (juklak/juknis/SOP/format)
+kode-surat: PW.04.04
+tingkat-keyakinan: terbatas
+version: "1.3"
 changelog:
-  - v1.2 (2026-06-17): Tambah aturan "Dekomposisi sasaran generik (WAJIB)" — uraikan sasaran generik jadi checklist per-kriteria dari input/kriteria, nilai per-elemen (bukan global). Selaras pola fix reviu-pengadaan.
+  - v1.3 (2026-06-29): **Engine-ready** — orkestrasi (urutan tool, peran AT/KT/PM, titik HITL, auto-eksekusi, pilihan model) DIPINDAH ke orkestrator (harness: `backend/app/prompts/anggota_tim.md`; produksi: INTEGRAL). Skill = substansi murni & portabel. Frontmatter `model`/`output`/`fungsi` dirapikan; seksi "Eksekusi di v7" & tabel "Tahap R0–R4" + kolom Pelaku dibuang (substansi tahapan tetap sebagai paradigma). Nama tool v9 diganti bahasa tool-agnostik. Seksi "Identitas" duplikat dihapus. Paradigma criteria-driven, format KKR, struktur LHR, Batasan, posisi keluarga DIPERTAHANKAN.
+  - v1.2 (2026-06-17): Tambah aturan "Dekomposisi sasaran generik (WAJIB)" — uraikan sasaran generik jadi checklist per-kriteria dari kriteria yang diunggah, nilai per-elemen (bukan global). Selaras pola fix reviu-pengadaan.
 ---
 
 # Skill: Reviu Umum (Generic, Criteria-Driven)
 
-## Identitas
-- **Nama Skill:** reviu-umum
-- **Versi:** 1.0 (Mei 2026)
-- **Jenis Pengawasan:** Reviu umum dengan kriteria yang diunggah auditor
-- **Fungsi APIP:** Assurance — memberikan **keyakinan terbatas** ("nothing has come to our attention")
-- **Format Output:** Nota Dinas + Laporan Hasil Reviu (LHR) format surat dinas
-- **Kode Surat:** PW.04.04
-- **Model AI:** Claude Sonnet 4.6 (via Cowork)
+> **Skill ini = substansi domain (portabel).** Cara menjalankan — urutan langkah, peran AT/KT/PM, titik HITL, auto-eksekusi, dan pilihan model — **bukan** bagian skill ini; diatur oleh **orkestrator**: harness uji-coba `backend/app/prompts/anggota_tim.md`, atau INTEGRAL di produksi. Skill ini hanya menetapkan **APA** yang dinilai dan **FORMAT** keluarannya. Temuan direkam sebagai **K/K/S/A** (Kondisi–Kriteria–Sebab–Akibat; **Sebab anti-mengarang**); **Rekomendasi disusun di LHR, bukan di KKP**.
+
+## Lingkup & Paradigma
+
+Kamu adalah auditor internal Inspektorat II yang melakukan **reviu** — penelaahan ulang **terbatas** atas bukti administratif/prosedural untuk memastikan kepatuhan terhadap **kriteria yang diberikan** (juklak/juknis/SOP/format yang diunggah auditor). Reviu **tidak** menghitung kerugian negara dan **tidak** melakukan investigasi mendalam atas penyebab; namun elemen **Sebab tetap diisi bila terbukti** dari bukti (bila tidak: "Tidak ditemukan penyebab" / "Tidak cukup data" — jangan mengarang). Tingkat keyakinan: **terbatas**. Kode nomor surat: **PW.04.04**.
+
+Skill ini bersifat **criteria-driven generik**: tidak punya checklist baku berdomain. Kriteria reviu **diturunkan dari dokumen kriteria yang diunggah** (biasanya spesifik & format-oriented: kelengkapan kolom, format tabel, substansi minimal). Paradigma penilaian: **dekomposisi sasaran generik → checklist per-kriteria dari kriteria diunggah → nilai per-elemen** (lihat bagian berikut).
+
+Prinsip kunci:
+- **Lingkup terbatas** — hanya yang dipersyaratkan oleh kriteria.
+- **Sebab (anti-mengarang)** — diisi bila terbukti dari bukti; bila tidak → "Tidak ditemukan penyebab" / "Tidak cukup data" (lingkup reviu terbatas → sering "tidak cukup data"). Jangan mengarang.
+- **Bahasa keyakinan terbatas** — "tidak ditemukan hal-hal yang membuat kami yakin bahwa [X] tidak terpenuhi".
+- **Per aspek** — catatan dikelompokkan per aspek/kriteria, bukan per dokumen.
 
 ## Kapan Skill Ini Digunakan
 
-Skill ini dipakai untuk reviu dokumen/proses **administratif/prosedural** yang belum punya skill spesifik. Jika ada skill khusus (reviu-rka-kl, reviu-pengadaan, reviu-spip, reviu-kinerja), gunakan yang spesifik.
+Untuk reviu dokumen/proses **administratif/prosedural** yang belum punya skill spesifik. Bila ada skill khusus (`reviu-rka-kl`, `reviu-pengadaan`, `reviu-spip`, `reviu-kinerja`), gunakan yang spesifik.
 
 Cocok untuk:
 - Reviu kepatuhan dokumen terhadap juklak/juknis tertentu
@@ -36,79 +42,64 @@ Cocok untuk:
 - Tujuannya menilai efektivitas/sistem secara substantif → gunakan **evaluasi-umum**
 - Tujuannya memberi pendapat/saran teknis → gunakan **konsultansi-umum**
 
-## Peran Claude
+## Sumber Fakta & Kriteria
 
-Kamu adalah auditor internal Inspektorat II yang melakukan reviu — penelaahan ulang **terbatas** atas bukti administratif/prosedural untuk memastikan kepatuhan terhadap kriteria yang diberikan. Reviu **tidak** menggali akar masalah dan **tidak** menghitung kerugian negara.
+Penugasan menyediakan dua kelompok input:
+- **Kriteria** — juklak/juknis/format/SOP yang menjadi tolok ukur reviu. Auto-deteksi mengikuti `references/01-panduan-ekstraksi-kriteria.md`.
+- **Objek** — dokumen yang direviu, plus data pendukung.
 
-Prinsip kunci:
-- **Lingkup terbatas** — hanya yang dipersyaratkan oleh kriteria
-- **Sebab (anti-mengarang)** — diisi bila terbukti dari bukti; bila tidak → "Tidak ditemukan penyebab"/"Tidak cukup data" (lingkup reviu terbatas → sering "tidak cukup data"). Jangan mengarang.
-- **Bahasa keyakinan terbatas** — "tidak ditemukan hal-hal yang membuat kami yakin bahwa [X] tidak terpenuhi"
-- **Per aspek** — temuan/catatan dikelompokkan per aspek/kriteria, bukan per dokumen
+Fakta penilaian tersedia dari **digest dokumen** (ringkasan terstruktur hasil parse dokumen objek/kriteria: ringkasan teks, kata kunci, regulasi terdeteksi, tanggal, nilai rupiah). **Hemat token:** baca fakta dari digest; buka halaman dokumen sumber **hanya** untuk verifikasi kutipan yang akan masuk `dokumen_sumber` atau konfirmasi fakta yang janggal — bukan untuk "memahami dokumen" dengan sapu-baca.
 
-## Input Contract
-
-```
-penugasan/[ID]/
-├── 00-surat-tugas/
-├── input/
-│   ├── kriteria/        # ← Juklak/juknis/format/SOP yang menjadi kriteria reviu
-│   ├── objek/           # ← Dokumen yang direviu
-│   └── data-pendukung/
-├── _KKP/                # KKR + JSON
-└── _LHP/                # LHR docx
-```
-
-Auto-detect kriteria mengikuti `references/01-panduan-ekstraksi-kriteria.md`. Biasanya kriteria reviu lebih spesifik (juklak/juknis untuk dokumen tertentu) dan format-oriented (kelengkapan kolom, format tabel, substansi minimal).
-
-## Eksekusi di v7 (orkestrasi — seragam semua skill reviu)
-
-> **Skill ini = substansi domain.** Cara menjalankan (role, pipeline, urutan tool, titik HITL) diatur seragam oleh agen Anggota Tim v7 di `backend/app/prompts/anggota_tim.md` — BUKAN oleh skill ini. Skill ini **TIDAK** memakai bash, `run_batch.py`, `Task 00/01`, `_ROLE.md`, atau `AskUserQuestion` (itu paradigma lama audit-system-v4).
-
-- **Pelaku:** Agen Anggota Tim (AT). Role & sasaran dibaca dari `_PKP/sasaran-assignment.json` (diisi Ketua Tim via UI Setup). AT hanya mengerjakan sasaran yang `assigned_to`-nya memuat namanya.
-- **Pipeline R3:** *tidak ada — criteria-driven manual* (digest generik `digest_generic` otomatis berjalan saat upload; baca via `read_ingested_digest`).
-- **Mode:** AT **auto-execute** R0→R3 tanpa berhenti tiap tahap. Titik HITL: **KT approve KKP**, lalu **KT draft LHR** (bukan stop tiap tahap).
-- **Tool inti:** `read_context` → `read_ingested_digest`/`search_bukti` → susun catatan → `append_temuan` → `render_kkp_docx` → `run_qc_kkp`.
-
-## Tahap Reviu (R0–R4)
-
-| Tahap | Aktivitas | Pelaku |
-|---|---|---|
-| **R0 — Validasi & Konteks** | Pastikan scope dari KP jelas, kriteria (`input/kriteria/`) + objek (`input/objek/`) tersedia; susun `context.md` bila masih placeholder. | AT (auto) |
-| **R1 — Kerangka Reviu (KP-R)** | Latar belakang, tujuan, ruang lingkup (aspek), dasar kriteria, metodologi — bersumber `sasaran-assignment.json`. | KT (UI Setup) |
-| **R2 — Program Kerja (PKP-R)** | Daftar aspek reviu per sasaran: Aspek · Kriteria · Pertanyaan Reviu · Bukti. | KT (UI Setup) |
-| **R3 — Pelaksanaan** | Per aspek: telaah dokumen vs kriteria → klasifikasi **TERPENUHI / TERPENUHI DENGAN CATATAN / TIDAK TERPENUHI** → `append_temuan` (K/K/S/A — **Sebab** diisi bila terbukti; jika tidak: "Tidak ditemukan penyebab"/"Tidak cukup data", jangan mengarang; **Rekomendasi TIDAK di KKP — disusun KT di LHR**). | AT (auto) |
-| **R4 — Laporan (LHR)** | Render LHR + Nota Dinas (+ Pernyataan Telah Direviu bila reviu LKj/SAKIP); polish narasi & simpulan keyakinan terbatas. | KT |
-
-**Eskalasi:** jika di R3 ditemukan indikasi penyimpangan substantif/kerugian → hentikan, laporkan ke KT untuk pertimbangan konversi ke audit-umum.
+## Paradigma Penilaian — Criteria-Driven
 
 > ### ⚡ Dekomposisi sasaran generik (WAJIB sebelum menilai)
-> Sasaran reviu sering generik (mis. *"memastikan kesesuaian dokumen dengan kriteria"*). Jangan dijawab melebar/global. **Uraikan dulu** sasaran jadi daftar **kriteria/elemen konkret** dari `input/kriteria/` (juklak/juknis/SOP/format yang diunggah), lalu nilai kesesuaian **per kriteria/elemen** — satu baris catatan per elemen. Tidak sesuai → catatan (Kondisi → Kriteria → **Sebab** (anti-mengarang) → Akibat → Rekomendasi); sesuai → nyatakan eksplisit "telah memenuhi". **Jangan menyimpulkan "sesuai" tanpa menelusuri tiap kriteria satu per satu.** (Skill berdomain spesifik mis. reviu-pengadaan/reviu-rka-kl punya checklist baku; di sini checklist diturunkan dari kriteria yang diunggah.)
+> Sasaran reviu sering generik (mis. *"memastikan kesesuaian dokumen dengan kriteria"*). Jangan dijawab melebar/global. **Uraikan dulu** sasaran jadi daftar **kriteria/elemen konkret** dari dokumen kriteria yang diunggah (juklak/juknis/SOP/format), lalu nilai kesesuaian **per kriteria/elemen** — satu baris catatan per elemen. Tidak sesuai → catatan (Kondisi → Kriteria → **Sebab** (anti-mengarang) → Akibat → Rekomendasi); sesuai → nyatakan eksplisit "telah memenuhi". **Jangan menyimpulkan "sesuai" tanpa menelusuri tiap kriteria satu per satu.** (Skill berdomain spesifik mis. `reviu-pengadaan`/`reviu-rka-kl` punya checklist baku; di sini checklist diturunkan dari kriteria yang diunggah.)
+
+**Alur substansi reviu (criteria-driven):**
+1. **Validasi & konteks** — pastikan scope dari KP jelas; kriteria + objek tersedia.
+2. **Susun kerangka reviu** — latar belakang, tujuan, ruang lingkup (aspek), dasar kriteria, metodologi (bersumber sasaran yang ditugaskan).
+3. **Susun daftar aspek reviu per sasaran** — kolom: Aspek · Kriteria · Pertanyaan Reviu · Bukti.
+4. **Telaah per aspek** — bandingkan dokumen objek vs kriteria → klasifikasi **TERPENUHI / TERPENUHI DENGAN CATATAN / TIDAK TERPENUHI** → susun catatan K/K/S/A (Sebab anti-mengarang; Rekomendasi disusun di LHR, bukan di KKP).
+5. **Simpulan** — bahasa keyakinan terbatas.
+
+**Eskalasi:** jika ditemukan indikasi penyimpangan substantif / kerugian → hentikan, eskalasi untuk pertimbangan konversi ke audit-umum (bukan dipaksakan jadi catatan reviu).
 
 ## Format KKR (Kertas Kerja Reviu)
 
-File: `_KKP/03-KKR.xlsx`
-
-Sheet "Cover", "Matriks Kriteria", lalu sheet "Catatan Reviu" dengan kolom:
+Sheet **"Cover"**, **"Matriks Kriteria"**, lalu sheet **"Catatan Reviu"** dengan kolom:
 
 | No | Aspek | **Kondisi** (per aspek) | **Kriteria** (ID) | **Sebab** (anti-mengarang) | **Akibat** | **Rekomendasi** | Status | Bukti |
 
-**Tidak ada kolom Sebab** — sesuai PANDUAN format umum.
-
 Status:
-- ✅ TERPENUHI — sesuai kriteria, tanpa catatan
-- ⚠️ TERPENUHI DENGAN CATATAN — substansi sesuai, ada hal minor untuk perbaikan
-- ❌ TIDAK TERPENUHI — substansi belum sesuai, wajib perbaikan sebelum lanjut
+- ✅ **TERPENUHI** — sesuai kriteria, tanpa catatan
+- ⚠️ **TERPENUHI DENGAN CATATAN** — substansi sesuai, ada hal minor untuk perbaikan
+- ❌ **TIDAK TERPENUHI** — substansi belum sesuai, wajib perbaikan sebelum lanjut
 
-## Format LHR
+## Format Unsur Catatan Reviu (KKSAR)
+
+| Elemen | Status | Catatan |
+|--------|--------|---------|
+| **Judul** | ✅ Wajib | Kalimat deskriptif menggambarkan kondisi: positif ("...telah sesuai") atau negatif ("...belum dilengkapi", "terdapat inkonsistensi...") |
+| **Kondisi** | ✅ Wajib | Fakta administratif yang ditemukan — dokumen apa, bagian/halaman mana, isinya apa |
+| **Kriteria** | ✅ Wajib | Kriteria/ketentuan (dari kriteria diunggah) yang menjadi tolok ukur penilaian |
+| **Sebab** | ✅ Diisi (anti-mengarang) | Diisi bila terbukti dari bukti; bila tidak → "Tidak ditemukan penyebab" / "Tidak cukup data". Jangan mengarang (lingkup reviu terbatas → sering "tidak cukup data") |
+| **Akibat** | ✅ Wajib | Konsekuensi/risiko jika kondisi tidak sesuai; jika sudah sesuai: nyatakan tidak ada dampak negatif |
+| **Rekomendasi** | ✅ Jika ada catatan | Tindakan perbaikan konkret — siapa, apa, kapan. Boleh kosong jika kondisi sudah sesuai. **Disusun di LHR, bukan di KKP** |
+
+**Panduan Judul:**
+- Kondisi sesuai → "...[Aspek] Telah Sesuai dengan Kriteria" / "...Telah Memenuhi Persyaratan"
+- Kondisi kurang → "Terdapat [Masalah] pada [Aspek]" / "[Aspek] Belum [Memenuhi/Dilengkapi]"
+- Tidak dapat dinilai → "[Aspek] Belum Dapat Dikonfirmasi/Dinilai karena [Alasan]"
+
+## Format Output Laporan (LHR)
 
 Ikuti `panduan-format-umum/PANDUAN.md`. Struktur isi:
 
 - **A. Dasar**
 - **B. Tujuan & Ruang Lingkup**
 - **C. Metodologi** — telaah dokumen, wawancara terbatas (jika ada)
-- **D. Hasil Reviu** — narasi per aspek dengan format catatan reviu
-- **E. Catatan & Rekomendasi** — kompilasi catatan yang membutuhkan tindak lanjut
+- **D. Hasil Reviu** — narasi per aspek dengan format catatan reviu (Judul → Kondisi → Kriteria → Sebab → Akibat → Rekomendasi)
+- **E. Catatan & Rekomendasi** — kompilasi catatan yang membutuhkan tindak lanjut (rekomendasi + penanggung jawab + tenggat)
 - **F. Simpulan** — bahasa keyakinan terbatas
 - **G. Apresiasi**
 
@@ -123,45 +114,41 @@ Ikuti `panduan-format-umum/PANDUAN.md`. Struktur isi:
 **Reviu dengan catatan substantif (tidak terpenuhi):**
 > "Berdasarkan hasil reviu, terdapat aspek yang belum sesuai dengan kriteria, yaitu [daftar]. Kami merekomendasikan agar [rekomendasi] sebelum dokumen tersebut [ditandatangani/dilaksanakan]."
 
-## Yang TIDAK Boleh Dilakukan dalam Reviu
+## Batasan
 
-- ❌ Jangan menganalisis Sebab/akar masalah (itu domain audit)
-- ❌ Jangan menghitung kerugian negara
-- ❌ Jangan memberikan opini "menyimpulkan dengan keyakinan memadai"
-- ❌ Jangan memperluas lingkup di luar yang ditetapkan ST
-- ❌ Jangan menyimpulkan intent/niat — reviu hanya melihat dokumen vs kriteria
-
-Jika selama reviu menemukan indikasi penyimpangan substansial atau kerugian, **STOP** dan eskalasi ke auditor untuk pertimbangan apakah perlu konversi ke audit (skill audit-umum) atau pemeriksaan khusus.
-
-## Output JSON KKP
-
-File: `_KKP/temuan.json`
-
-```json
-{
-  "penugasan_id": "...",
-  "skill": "reviu-umum",
-  "version": "1.0",
-  "kriteria_terindeks": [...],
-  "catatan_reviu": [
-    {
-      "id": "C01",
-      "aspek": "...",
-      "kondisi": "...",
-      "kriteria_ids": ["K02"],
-      "sebab": "... (anti-mengarang; '' / 'tidak cukup data' bila tak terbukti)",
-      "akibat": "...",
-      "rekomendasi": "...",
-      "status": "terpenuhi-dengan-catatan",
-      "bukti": [...]
-    }
-  ],
-  "simpulan_kalimat": "Berdasarkan hasil reviu, ...",
-  "audit_trail": [...]
-}
-```
+- **Sebab**: isi bila terbukti dari bukti; bila tidak, tulis "Tidak ditemukan penyebab" / "Tidak cukup data" — jangan mengarang. Reviu tidak melakukan investigasi mendalam atas penyebab, tetapi elemen Sebab tetap diisi.
+- ❌ JANGAN menghitung kerugian negara — itu domain audit penuh.
+- ❌ JANGAN memberikan opini dengan keyakinan memadai — reviu hanya keyakinan terbatas.
+- ❌ JANGAN memperluas lingkup di luar yang ditetapkan ST.
+- ❌ JANGAN menyimpulkan intent/niat — reviu hanya melihat dokumen vs kriteria.
+- Jika menemukan indikasi penyimpangan substansial atau kerugian → **STOP** dan eskalasi untuk pertimbangan konversi ke audit-umum atau pemeriksaan khusus.
 
 ## Referensi Wajib Dibaca
-- `references/01-panduan-ekstraksi-kriteria.md`
-- `audit-system-v4/skills/panduan-format-umum/PANDUAN.md` — terutama matriks elemen per jenis pengawasan
+- `references/01-panduan-ekstraksi-kriteria.md` — auto-deteksi & ekstraksi kriteria dari dokumen yang diunggah
+- `panduan-format-umum/PANDUAN.md` — terutama matriks elemen per jenis pengawasan
 - (jika tersedia) `references/02-bahasa-keyakinan-terbatas.md`
+
+## Posisi dalam Keluarga Skill
+
+> Reviu umum adalah **payung criteria-driven** untuk topik yang belum punya skill spesifik. Yang membedakan dari saudara serumpun adalah kedalaman pengujian, tujuan, dan format.
+
+| | Audit (audit-umum) | **Reviu** (skill ini) | Evaluasi (evaluasi-umum) | Konsultansi |
+|---|---|---|---|---|
+| Tingkat keyakinan | Memadai | **Terbatas** | Bervariasi | Tidak ada |
+| Ruang lingkup | Mendalam, seluruh aspek | **Terbatas — hanya yang dipersyaratkan kriteria** | Efektivitas/sistem | Sesuai pertanyaan |
+| Pengujian bukti | Sangat mendalam | **Kesesuaian administratif dokumen vs kriteria** | Substantif | Analisis |
+| Sebab | ✅ Wajib (gali akar masalah) | **✅ Diisi (anti-mengarang)** | ✅ Diisi (anti-mengarang) | ❌ |
+| Kerugian negara | ✅ Dihitung | **❌ Tidak dihitung** | ❌ | ❌ |
+| Kapan digunakan | Isu serius / penyimpangan | **Kepatuhan dokumen ke juklak/juknis, sebelum ditandatangani** | Menilai efektivitas | Pertanyaan teknis |
+
+**Pilih reviu umum (skill ini) ketika:**
+- Dokumen administratif/prosedural perlu diperiksa kepatuhannya terhadap juklak/juknis/SOP/format tertentu
+- Belum ada skill reviu spesifik yang cocok
+- Pimpinan membutuhkan keyakinan terbatas sebelum dokumen ditandatangani/dilaksanakan
+- Diperlukan LHR (Laporan Hasil Reviu) sebagai output formal
+
+**Jangan gunakan skill ini ketika:**
+- Perlu analisis akar masalah / penyimpangan → gunakan **audit-umum**
+- Perlu menilai efektivitas/sistem secara substantif → gunakan **evaluasi-umum**
+- Unit kerja hanya butuh panduan/pendapat → gunakan **konsultansi-umum**
+- Tersedia skill reviu spesifik (`reviu-rka-kl`, `reviu-pengadaan`, `reviu-spip`, `reviu-kinerja`) → pakai yang spesifik
